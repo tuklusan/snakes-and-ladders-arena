@@ -14,12 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
         window.gameController = controller;
         window.gameView = view;
     } catch (e) {
-        alert("Error initializing game: " + e);
-        console.error(e);
-        // Also show error in the container
+        // Show error in the container instead of a blocking alert
         const container = document.getElementById('game-container');
         if (container) {
             container.innerHTML = `<div style="color:red; padding:20px;">Error: ${e}</div>`;
         }
+        console.error(e);
     }
 });

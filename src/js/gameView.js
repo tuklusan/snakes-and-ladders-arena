@@ -63,8 +63,6 @@ class GameView {
         this.container.style.height = 'auto';
         this.container.style.padding = '20px';
         this.container.style.boxSizing = 'border-box';
-        // Add a border to see the container
-        this.container.style.border = "2px solid red";
 
         // Create loading overlay
         this.loadingOverlay = document.createElement('div');
@@ -140,6 +138,20 @@ class GameView {
         this.playerInfoElement.style.justifyContent = 'space-around';
         this.playerInfoElement.style.alignItems = 'center';
         this.container.appendChild(this.playerInfoElement);
+
+        // Create message area for non-blocking alerts
+        this.messageElement = document.createElement('div');
+        this.messageElement.style.position = 'absolute';
+        this.messageElement.style.bottom = '55px';
+        this.messageElement.style.left = '10px';
+        this.messageElement.style.right = '10px';
+        this.messageElement.style.backgroundColor = 'rgba(255,255,0,0.8)';
+        this.messageElement.style.color = '#333';
+        this.messageElement.style.padding = '8px';
+        this.messageElement.style.borderRadius = '5px';
+        this.messageElement.style.fontSize = '14px';
+        this.messageElement.style.display = 'none';
+        this.container.appendChild(this.messageElement);
 
         // Create roll button
         this.rollButton = document.createElement('button');
@@ -352,7 +364,7 @@ class GameView {
         this.autoRollTimeout = setTimeout(() => {
             console.log("[gameView] Auto-rolling");
             this.controller.rollDice();
-        }, 1000);
+        }, 1800);
     }
 
     // Handle game over: show win, then after 10 sec restart
@@ -407,7 +419,7 @@ class GameView {
         // Convert to percentage (0-100%) within the board
         // Each tile is 10% of the board width (since 10 tiles per row)
         const xPercent = (col * 10) + 5; // add half a token to center the token
-        const yPercentFromTop = 3.33 + (9 - row) * 95.34 / 9; // inset y to match grid that occupies 95.34% of height (top at 3.33%, bottom at 98.67%)
+        const yPercentFromTop = GRID_TOP + ((9 - row) * cell) + (cell / 2);
 
         return { x: xPercent, y: yPercentFromTop };
     }
@@ -553,8 +565,10 @@ class GameView {
 
     onTripleSixPenalty() {
         this.playAudio('triple_six');
-        // Optionally show a visual indication
-        alert('Triple Six! Penalty: Turn reverted and turn passed to next player.');
+        // Show non-blocking message
+        this.messageElement.textContent = 'Triple Six! Penalty: Turn reverted and turn passed to next player.';
+        this.messageElement.style.display = 'block';
+        setTimeout(() => { this.messageElement.textContent = ''; this.messageElement.style.display = 'none'; }, 3000);
     }
 
     onCapture(opponent, targetPos) {
@@ -567,10 +581,10 @@ class GameView {
         this.playAudio('win');
         this.rollButton.disabled = true;
         this.rollButton.textContent = 'Game Over!';
-        // Show win message
-        setTimeout(() => {
-            alert(`Player ${playerId + 1} wins!`);
-        }, 1000);
+        // Show non-blocking win message
+        this.messageElement.textContent = `Player ${playerId + 1} wins!`;
+        this.messageElement.style.display = 'block';
+        setTimeout(() => { this.messageElement.textContent = ''; this.messageElement.style.display = 'none'; }, 3000);
         // Handle game over: after showing win, wait 10 sec then restart
         this.handleGameOver();
     }
