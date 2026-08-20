@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Snakes and Ladders</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+<body>
+    <div id="game-container" style="position: relative; width: 100%; max-width: 800px; margin: 0px auto; height: auto; padding: 20px; box-sizing: border-box; border: 2px solid red;"><div id="loading-overlay" style="position: absolute; top: 0px; left: 0px; width: 100%; height: 100%; background-color: rgba(255, 255, 255, 0.9); display: flex; justify-content: center; align-items: center; font-size: 24px; z-index: 1000;">Loading game assets...</div><div id="game-board" style="position: relative; width: 100%; padding-bottom: 100%; background-size: contain; background-repeat: no-repeat; background-position: center center; background-image: url(&quot;http://localhost:8000/assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.svg&quot;);"><div class="game-token player-0" style="position: absolute; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center center; pointer-events: none;"></div><div class="game-token player-1" style="position: absolute; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center center; pointer-events: none;"></div><div class="game-token player-2" style="position: absolute; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center center; pointer-events: none;"></div><div class="game-token player-3" style="position: absolute; width: 20px; height: 20px; background-size: contain; background-repeat: no-repeat; background-position: center center; pointer-events: none;"></div><div id="dice-container" style="position: absolute; top: 10px; right: 10px; width: 60px; height: 60px; background-size: contain; background-repeat: no-repeat; background-position: center center;"></div></div><div id="player-info" style="position: absolute; bottom: 10px; left: 10px; right: 10px; background-color: rgba(0, 0, 0, 0.5); color: white; padding: 10px; border-radius: 5px; display: flex; justify-content: space-around; align-items: center;"></div><button id="roll-button" disabled="" style="padding: 10px 20px; font-size: 16px; cursor: pointer; display: block; margin: 20px auto;">Roll Dice</button></div>
+    <noscript>
+        <div style="text-align: center; padding: 20px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba;">
+            JavaScript is disabled. Please enable JavaScript to play the game.
+        </div>
+    </noscript>
+    <script src="src/js/gameModel.js"></script>
+    <script src="src/js/gameController.js"></script>
+    <script src="src/js/gameView.js"></script>
+    <script src="src/js/main.js"></script>
+
+
+</body></html>

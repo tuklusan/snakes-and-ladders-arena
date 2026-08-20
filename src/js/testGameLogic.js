@@ -1,28 +1,65 @@
 // Test file for game logic
-// This tests the core game rules without DOM dependencies
+// This tests the core game rules by directly loading the classes
 
-// Mock the assets and DOM dependencies
-global.HTMLAudioElement = class {
-    constructor() {
-        this.currentTime = 0;
+const fs = require('fs');
+const vm = require('vm');
+
+// Create a context that mimics a browser window enough for our classes
+const context = vm.createContext({
+  // We'll need to mock the DOM methods that the view tries to access
+  // But for logic tests, we can avoid creating the view entirely
+  // and just test the model and controller with a mock view
+});
+
+// Load and evaluate the game model first to expose GameModel
+let modelCode = fs.readFileSync('./src/js/gameModel.js', 'utf8');
+// Remove the window attachment part since we don't need it for testing
+modelCode = modelCode.replace(
+//  Attach to window for browser compatibility - export global
+//  if (typeof window !== 'undefined') {
+//      window.GameModel = GameModel;
+//  }
+// , ''
+);
+// Actually, let's just replace it with assigning to a variable we can access
+modelCode = modelCode.replace(
+    '// Attach to window for browser compatibility - export global\n    if (typeof window !== \'undefined\') {\n        window.GameModel = GameModel;\n    }',
+    '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameModel = GameModel;'
+);
+
+vm.runInContext(modelCode, context, { filename: './src/js/gameModel.js', displayErrors: true });
+
+// Load the controller
+let controllerCode = fs.readFileSync('./src/js/gameController.js', 'utf8');
+controllerCode = controllerCode.replace(
+    '// Attach to window for browser compatibility\n    if (typeof window !== \'undefined\') {\n        window.GameController = GameController;\n    }',
+    '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameController = GameController;'
+);
+vm.runInContext(controllerCode, context, { filename: './src/js/gameController.js', displayErrors: true });
+
+// Load the view
+let viewCode = fs.readFileSync('./src/js/gameView.js', 'utf8');
+viewCode = viewCode.replace(
+    '// Attach to window for browser compatibility\n    if (typeof window !== \'undefined\') {\n        window.GameView = GameView;\n    }',
+    '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameView = GameView;'
+);
+vm.runInContext(viewCode, context, { filename: './src/js/gameView.js', displayErrors: true });
+
+// Now we have the constructors on context.window
+const GameModel = context.window.GameModel;
+const GameController = context.window.GameController;
+const GameView = context.window.GameView;
+
+// If they are not there, try to get them from the context directly
+if (!GameModel) {
+    // Try to get from context
+    for (let key in context) {
+        if (key.toLowerCase().includes('gamemodel')) {
+            // This is a hack, but let's see what we have
+            console.log('Found:', key);
+        }
     }
-    play() { return Promise.resolve(); }
-    pause() {}
-};
-
-// Mock Image
-global.HTMLImageElement = class {
-    constructor() {
-        this.src = '';
-        this.onload = null;
-        this.onerror = null;
-    }
-};
-
-// Import the game classes
-import { GameModel } from './gameModel.js';
-import { GameController } from './gameController.js';
-import { GameView } from './gameView.js';
+}
 
 // We'll need to mock the view methods that the controller calls
 const mockView = {

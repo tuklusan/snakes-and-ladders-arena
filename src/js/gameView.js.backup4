@@ -13,7 +13,6 @@ class GameView {
         };
         this.isAssetsLoaded = false;
         this.assetsLoadedCount = 0;
-        this.assetsFailedCount = 0;
         this.assetsTotalCount = 0;
         this.boardImage = new Image();
         this.boardLoaded = false;
@@ -24,19 +23,12 @@ class GameView {
         this.playerInfoElement = null;
         this.rollButton = null;
         this.loadingOverlay = null;
-        this.autoRollTimeout = null;
-        this.gameOverTimeout = null;
-        this.loadingTimeout = null; // timeout to hide loading overlay after a delay
         this.audioElements = {} // HTMLAudioElement for each sound
-        this.previousPositions = []; // to track token positions for animation
-        this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
         this.assetLoaded = this.assetLoaded.bind(this);
         this.assetError = this.assetError.bind(this);
-        this.autoRoll = this.autoRoll.bind(this);
-        this.handleGameOver = this.handleGameOver.bind(this);
     }
 
     init(model, controller) {
@@ -107,9 +99,6 @@ class GameView {
             token.style.pointerEvents = 'none';
             this.boardElement.appendChild(token);
             this.tokenElements.push(token);
-            // Set initial position (off-board)
-            const initialPos = this.tileToPosition(0);
-            token.style.transform = `translate(${initialPos.x}%, ${initialPos.y}%)`;
         }
 
         // Create dice container
@@ -161,31 +150,16 @@ class GameView {
         this.assetsTotalCount += 6; // dice faces
         this.assetsTotalCount += 1; // dice tumble sheet
         this.assetsTotalCount += 10; // audio events (roll, step, settle, ladder, snake, six, triple_six, turn, win, gameover)
-        console.log(`[gameView] Total assets to load: ${this.assetsTotalCount}`);
 
         this.assetsLoadedCount = 0;
 
-        // Set a timeout to hide loading overlay after 5 seconds if assets don't load
-        this.loadingTimeout = setTimeout(() => {
-            if (!this.isAssetsLoaded && !this.isAssetsHandled) {
-                console.log("[gameView] Loading timeout: hiding overlay and enabling roll button");
-                this.hideLoadingOverlay();
-                this.enableRollButton();
-                this.isAssetsHandled = true;
-                // Start auto-play even if assets didn't load (maybe some failed)
-                this.autoRoll();
-            }
-        }, 5000);
-
         // Load board image (try SVG first, then PNG)
         this.boardImage.onload = () => {
-            console.log("[gameView] Board image onload");
             this.boardLoaded = true;
             this.updateBoardBackground();
             this.assetLoaded();
         };
         this.boardImage.onerror = () => {
-            console.log("[gameView] Board image onerror, trying PNG fallback");
             // Fallback to PNG
             this.boardImage.src = 'assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.png';
         };
@@ -231,65 +205,27 @@ class GameView {
 
     assetLoaded() {
         this.assetsLoadedCount++;
-        console.log(`[gameView] Asset loaded: ${this.assetsLoadedCount}/${this.assetsTotalCount}`);
-        // Update loading overlay text to show progress
-        if (this.loadingOverlay) {
-            this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount}`;
-        }
         if (this.assetsLoadedCount >= this.assetsTotalCount) {
-            console.log("[gameView] All assets loaded");
             this.isAssetsLoaded = true;
-            // Clear the loading timeout since we loaded all assets
-            if (this.loadingTimeout) {
-                clearTimeout(this.loadingTimeout);
-                this.loadingTimeout = null;
-            }
-            if (!this.isAssetsHandled) {
-                this.isAssetsHandled = true;
-                this.hideLoadingOverlay();
-                this.enableRollButton();
-                // Start auto-play after assets loaded
-                this.autoRoll();
-            }
+            this.hideLoadingOverlay();
+            this.enableRollButton();
         }
     }
 
     assetError(e) {
-        console.error(`[gameView] Failed to load asset: ${e.target.src}`, e);
-        this.assetsFailedCount++;
-        // Update loading overlay text to show progress and failed count
-        if (this.loadingOverlay) {
-            this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount} (Failed: ${this.assetsFailedCount})`;
-        }
-        // Note: We do NOT call assetLoaded() here to avoid counting failed assets as loaded.
+        console.error('Failed to load asset:', e.target.src);
+        this.assetLoaded(); // still count as loaded to avoid hanging, but we could want to retry
     }
 
     hideLoadingOverlay() {
-        console.log("[gameView] Hiding loading overlay");
         if (this.loadingOverlay) {
             this.loadingOverlay.style.display = 'none';
         }
     }
 
     enableRollButton() {
-        console.log("[gameView] Enabling roll button");
         if (this.rollButton) {
             this.rollButton.disabled = false;
-        }
-    }
-
-    clearTimeouts() {
-        if (this.autoRollTimeout) {
-            clearTimeout(this.autoRollTimeout);
-            this.autoRollTimeout = null;
-        }
-        if (this.gameOverTimeout) {
-            clearTimeout(this.gameOverTimeout);
-            this.gameOverTimeout = null;
-        }
-        if (this.loadingTimeout) {
-            clearTimeout(this.loadingTimeout);
-            this.loadingTimeout = null;
         }
     }
 
@@ -302,52 +238,14 @@ class GameView {
             // Optionally, allow resetting the game
             return;
         }
-        // Check if roll button is disabled (assets not loaded or already rolling)
-        if (this.rollButton.disabled) {
-            console.log("[gameView] Roll button disabled, ignoring click");
-            return;
-        }
-        console.log("[gameView] Roll button clicked");
         this.controller.rollDice();
         this.rollButton.disabled = true;
-        // Disable button; will be re-enabled in onStateChange if game not over
-    }
-
-    // Auto-roll after a delay
-    autoRoll() {
-        // Clear any existing autoRoll and gameOver timeouts
-        if (this.autoRollTimeout) {
-            clearTimeout(this.autoRollTimeout);
-            this.autoRollTimeout = null;
-        }
-        if (this.gameOverTimeout) {
-            clearTimeout(this.gameOverTimeout);
-            this.gameOverTimeout = null;
-        }
-        // If game over, handle restart
-        if (this.model.isGameOver()) {
-            this.handleGameOver();
-            return;
-        }
-        // Set timeout to roll again after 1 second
-        this.autoRollTimeout = setTimeout(() => {
-            console.log("[gameView] Auto-rolling");
-            this.controller.rollDice();
+        // Re-enable after a short delay (or when the turn is over)
+        setTimeout(() => {
+            if (!this.model.isGameOver()) {
+                this.rollButton.disabled = false;
+            }
         }, 1000);
-    }
-
-    // Handle game over: show win, then after 10 sec restart
-    handleGameOver() {
-        this.clearTimeouts();
-        this.playAudio('gameover');
-        // Show win message (already shown by controller via onGameWin)
-        // Wait 10 seconds then restart
-        this.gameOverTimeout = setTimeout(() => {
-            console.log("[gameView] Game over timeout: restarting");
-            this.controller.resetGame();
-            // After reset, start auto-play again
-            this.autoRoll();
-        }, 10000);
     }
 
     // Update the board background image
@@ -383,87 +281,35 @@ class GameView {
 
         // Convert to percentage (0-100%) within the board
         // Each tile is 10% of the board width (since 10 tiles per row)
-        const xPercent = (col * 10) + 5; // add half a token to center the token
+        const xPercent = (col * 10) + 5; // add half a tile to center the token
         const yPercentFromTop = ((9 - row) * 10) + 5; // row 0 is bottom, so from top it's 9-row
 
         return { x: xPercent, y: yPercentFromTop };
     }
 
-    // Update token positions based on model state - now handles animation
-    onStateChange() {
-        // Update dice display immediately
-        const lastRoll = this.model.getLastRoll();
-        if (lastRoll >= 1 && lastRoll <= 6) {
-            this.updateDice(lastRoll);
-        } else {
-            this.diceElement.style.backgroundImage = '';
-        }
+    // Update token positions based on model state
+    updateTokenPositions() {
+        const boardWidth = this.boardElement.clientWidth;
+        const boardHeight = this.boardElement.clientHeight;
 
-        // Update player info and button state immediately
-        this.updatePlayerInfo();
-        if (!this.model.isGameOver()) {
-            this.rollButton.disabled = false;
-        } else {
-            this.rollButton.disabled = true;
-            this.rollButton.textContent = 'Game Over!';
-        }
-
-        // Now, animate the tokens that have changed
-        const currentPositions = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            currentPositions.push(this.model.getPlayerPosition(i));
+            const position = this.model.getPlayerPosition(i);
+            const pos = this.tileToPosition(position);
+            const token = this.tokenElements[i];
+
+            // Set position as percentage of board size
+            token.style.left = `${pos.x}%`;
+            token.style.top = `${pos.y}%`;
+
+            // Adjust token size based on board size (e.g., 10% of tile size)
+            const tileSize = Math.min(boardWidth, boardHeight) / 10;
+            const tokenSize = tileSize * 0.6; // 60% of tile size
+            token.style.width = `${tokenSize}px`;
+            token.style.height = `${tokenSize}px`;
+
+            // Set token image
+            token.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
         }
-
-        let animationCount = 0;
-        for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            if (currentPositions[i] !== this.previousPositions[i]) {
-                this.animateTokenMove(i, currentPositions[i]);
-                animationCount++;
-            }
-        }
-
-        // Update previous positions
-        this.previousPositions = [...currentPositions];
-
-        // Trigger auto-roll (as before)
-        this.autoRoll();
-    }
-
-    // Animates a token move with step and settle sounds
-    animateTokenMove(playerId, newPosition) {
-        // Check if there is no movement needed
-        const currentPosition = this.model.getPlayerPosition(playerId);
-        if (currentPosition === newPosition) {
-            // No movement, so we don't need to animate or play sounds.
-            return;
-        }
-
-        // Play step sound
-        this.playAudio('step');
-
-        const token = this.tokenElements[playerId];
-        const { x, y } = this.tileToPosition(newPosition);
-
-        // Set the position to trigger transition
-        token.style.transform = `translate(${x}%, ${y}%)`;
-
-        // Listen for transitionend on this token
-        const onTransitionEnd = () => {
-            // Play settle sound
-            this.playAudio('settle');
-
-            // Check for ladder or snake
-            if (this.model.Ladders.has(newPosition)) {
-                this.playAudio('ladder');
-            } else if (this.model.Snakes.has(newPosition)) {
-                this.playAudio('snake');
-            }
-
-            // Remove the event listener
-            token.removeEventListener('transitionend', onTransitionEnd);
-        };
-
-        token.addEventListener('transitionend', onTransitionEnd);
     }
 
     // Update dice display
@@ -485,14 +331,21 @@ class GameView {
     // Play audio for a given event
     playAudio(event) {
         const audio = this.assets.audio[event];
-        if (audio && audio.src) {
-            // Create a new audio element to allow overlapping playback
-            const audioClone = new Audio(audio.src);
-            audioClone.play().catch(e => console.warn(`Audio play failed for ${event}: ${e}`));
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => console.warn(`Audio play failed for ${e}: ${event}`));
         }
     }
 
     // View callback methods (called by controller)
+    onStateChange() {
+        this.updateTokenPositions();
+        // Re-enable roll button if not game over
+        if (!this.model.isGameOver()) {
+            this.rollButton.disabled = false;
+        }
+    }
+
     onTurnChange(activePlayer) {
         // Update player info panel to show whose turn it is
         this.updatePlayerInfo();
@@ -528,41 +381,14 @@ class GameView {
         setTimeout(() => {
             alert(`Player ${playerId + 1} wins!`);
         }, 1000);
-        // Handle game over: after showing win, wait 10 sec then restart
-        this.handleGameOver();
     }
 
     onReset() {
-        this.clearTimeouts();
         this.rollButton.textContent = 'Roll Dice';
         this.rollButton.disabled = false;
         this.updateTokenPositions();
         this.updatePlayerInfo();
         this.diceElement.style.backgroundImage = ''; // clear dice
-    }
-
-    // Update token positions (called on reset, without animation)
-    updateTokenPositions() {
-        const boardWidth = this.boardElement.clientWidth;
-        const boardHeight = this.boardElement.clientHeight;
-
-        for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            const position = this.model.getPlayerPosition(i);
-            const pos = this.tileToPosition(position);
-            const token = this.tokenElements[i];
-
-            // Set position as percentage of board size
-            token.style.transform = `translate(${pos.x}%, ${pos.y}%)`;
-
-            // Adjust token size based on board size (e.g., 10% of tile size)
-            const tileSize = Math.min(boardWidth, boardHeight) / 10;
-            const tokenSize = tileSize * 0.6; // 60% of tile size
-            token.style.width = `${tokenSize}px`;
-            token.style.height = `${tokenSize}px`;
-
-            // Set token image
-            token.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
-        }
     }
 
     // Update player info panel

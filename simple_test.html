@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Simple Test</title>
+    <style>
+        #test-div {
+            width: 200px;
+            height: 200px;
+            background-color: red;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Test</h1>
+    <div id="test-div"></div>
+    <div id="status">Waiting for JS...</div>
+    
+    <script>
+        console.log("Inline script running");
+        document.getElementById("status").textContent = "Inline script executed";
+        
+        // Change the div color to show JS is working
+        document.getElementById("test-div").style.backgroundColor = "green";
+        document.getElementById("test-div").textContent = "JS is working!";
+        document.getElementById("test-div").style.color = "white";
+        document.getElementById("test-div").style.display = "flex";
+        document.getElementById("test-div").style.alignItems = "center";
+        document.getElementById("test-div").style.justifyContent = "center";
+        document.getElementById("test-div").style.fontWeight = "bold";
+    </script>
+</body>
+</html>

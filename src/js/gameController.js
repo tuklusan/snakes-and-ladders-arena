@@ -1,9 +1,11 @@
 // Game Controller - Implements game logic and rules
+console.log("gameController.js loaded");
 class GameController {
     constructor(model, view) {
         this.model = model;
         this.view = view;
         this.bindEvents();
+        this.turnStartPlayerPositions = []; // to snapshot player positions at start of turn for triple six penalty
     }
 
     bindEvents() {
@@ -15,9 +17,15 @@ class GameController {
 
     // This method is called by the view when the user requests to roll the dice
     rollDice() {
+        if (this.model.isGameOver()) {
+            // Optionally, allow resetting the game
+            return;
+        }
         // Generate a random dice roll (1-6)
         const dieRoll = Math.floor(Math.random() * 6) + 1;
         console.log(`Dice roll: ${dieRoll}`);
+        // Store the last roll for the view to display
+        this.model.setLastRoll(dieRoll);
         this.processTurn(dieRoll);
     }
 
@@ -30,6 +38,11 @@ class GameController {
         if (consecutive_sixes === 0) {
             turn_start_position = this.model.getPlayerPosition(activePlayer);
             this.model.setTurnStartPosition(turn_start_position);
+            // Snapshot all player positions for potential rollback on triple six
+            this.turnStartPlayerPositions = [];
+            for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
+                this.turnStartPlayerPositions.push(this.model.getPlayerPosition(i));
+            }
         }
 
         // Update consecutive sixes
@@ -45,6 +58,10 @@ class GameController {
         if (consecutive_sixes === 3) {
             // Rollback all movement executed during this multi-roll turn
             this.model.setPlayerPosition(activePlayer, turn_start_position);
+            // Also rollback all player positions to the start of the turn
+            for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
+                this.model.setPlayerPosition(i, this.turnStartPlayerPositions[i]);
+            }
             this.model.setConsecutiveSixes(0);
             // Advance turn
             this.advanceTurn();
@@ -131,12 +148,10 @@ class GameController {
         this.model.resetGame();
         this.view.onReset();
     }
+
 }
 
-// Export for use in other modules (ES modules)
-export { GameController };
-
-// Also attach to window for browser compatibility (if not using modules)
+// Attach to window for browser compatibility
 if (typeof window !== 'undefined') {
     window.GameController = GameController;
 }
