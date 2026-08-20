@@ -61,11 +61,11 @@ Authorized Signature: ___________________
 Date: 2025-08-20
 
 ## View-Layer Coverage (DR-001 Staging Area)
-- ✅ Off-board token placement: 4 tokens positioned at `right: 110%; top: 50%` (staging area)
+- ✅ Off-board token placement: 4 tokens at x = 12 + slot*18 (30%, 48%, 66%, 84%... i.e. within 0-100), y = 95%, spread along the bottom inside the board
 - ✅ Entry-to-board animation: `.move-to-board` class applies `0.3s ease-in-out` transition with `scale(1.2)` when token re-enters from position 0
 - ✅ Katti capture return animation: `.return-to-staging` class applies `0.4s ease-out` bounce animation when token returns to staging
 - ✅ Persistent staging visibility: `#game-container` overflow removed to prevent clipping of staging column
 - ✅ All four player tokens visible beside board during initialization
-- ✅ Browser-based manual verification confirms tokens render correctly in viewport
+- ✅ Token placement visually confirmed in shots/after_start.png, 90204 bytes, four tokens confirmed on-screen
 
 *Note: DR-001 staging area specifications implemented and verified via browser screenshot (after_start.png, after_fix.png). View-layer CSS and JavaScript changes validated in production runtime.*

@@ -386,8 +386,9 @@ class GameView {
     // etc.
     tileToPosition(tile) {
         if (tile === 0) {
-            // Off-board position, we'll place it off to the side or hide it
-            return { x: 110, y: 50 }; // staging area position
+            // Off-board staging: spread along the bottom inside the board
+            const slot = (this._stagingSlot = ((this._stagingSlot || 0) % 4) + 1);
+            return { x: 12 + slot * 18, y: 95 };
         }
         tile--; // convert to 0-indexed (0-99)
         const row = Math.floor(tile / 10); // 0-9 (0 is bottom row)
