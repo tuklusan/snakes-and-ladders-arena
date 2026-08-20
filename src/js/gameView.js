@@ -92,6 +92,8 @@ class GameView {
         this.boardElement.style.backgroundSize = 'contain';
         this.boardElement.style.backgroundRepeat = 'no-repeat';
         this.boardElement.style.backgroundPosition = 'center';
+        this.boardElement.style.backgroundColor = 'lightblue'; // debug: to see board
+        this.boardElement.style.border = '1px solid green'; // debug: to see board bounds
         this.container.appendChild(this.boardElement);
 
         // Create token elements (will be positioned absolutely)
@@ -99,17 +101,17 @@ class GameView {
             const token = document.createElement('div');
             token.className = `game-token player-${i}`;
             token.style.position = 'absolute';
+            token.style.pointerEvents = 'none';
             token.style.width = '20px'; // will be updated based on tile size
             token.style.height = '20px';
             token.style.backgroundSize = 'contain';
             token.style.backgroundRepeat = 'no-repeat';
             token.style.backgroundPosition = 'center';
-            token.style.pointerEvents = 'none';
             this.boardElement.appendChild(token);
             this.tokenElements.push(token);
             // Set initial position (off-board)
             const initialPos = this.tileToPosition(0);
-            token.style.transform = `translate(${initialPos.x}%, ${initialPos.y}%)`;
+            this.setTokenPosition(i, initialPos.x, initialPos.y);
         }
 
         // Create dice container
@@ -195,7 +197,13 @@ class GameView {
         // Load token images (assuming token_1.png to token_4.png)
         for (let i = 1; i <= 4; i++) {
             const img = new Image();
-            img.onload = this.assetLoaded;
+            img.onload = () => {
+                this.assetLoaded();
+                // Set the token image for the corresponding token element
+                if (this.tokenElements[i-1]) {
+                    this.tokenElements[i-1].style.backgroundImage = `url('${img.src}')`;
+                }
+            };
             img.onerror = this.assetError;
             img.src = `assets/images/tokens/token_${i}.png`;
             this.assets.tokens.push(img);
@@ -262,6 +270,19 @@ class GameView {
             this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount} (Failed: ${this.assetsFailedCount})`;
         }
         // Note: We do NOT call assetLoaded() here to avoid counting failed assets as loaded.
+        // For debugging: set a visible background on token elements if this is a token image
+        const src = e.target.src;
+        if (src && src.includes('tokens/')) {
+            // Extract token number from src like .../token_3.png
+            const match = src.match(/token_(\d+)\.png/);
+            if (match) {
+                const tokenIndex = parseInt(match[1], 10) - 1;
+                if (this.tokenElements[tokenIndex]) {
+                    this.tokenElements[tokenIndex].style.backgroundColor = 'rgba(255,0,0,0.5)';
+                    console.log(`[gameView] Set debug background for token ${tokenIndex} due to load failure`);
+                }
+            }
+        }
     }
 
     hideLoadingOverlay() {
@@ -366,7 +387,7 @@ class GameView {
     tileToPosition(tile) {
         if (tile === 0) {
             // Off-board position, we'll place it off to the side or hide it
-            return { x: -50, y: -50 }; // off-screen
+            return { x: 110, y: 50 }; // staging area position
         }
         tile--; // convert to 0-indexed (0-99)
         const row = Math.floor(tile / 10); // 0-9 (0 is bottom row)
@@ -391,6 +412,7 @@ class GameView {
 
     // Update token positions based on model state - now handles animation
     onStateChange() {
+        console.log('[gameView] onStateChange called');
         // Update dice display immediately
         const lastRoll = this.model.getLastRoll();
         if (lastRoll >= 1 && lastRoll <= 6) {
@@ -413,10 +435,12 @@ class GameView {
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             currentPositions.push(this.model.getPlayerPosition(i));
         }
+        console.log('[gameView] currentPositions:', currentPositions);
 
         let animationCount = 0;
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             if (currentPositions[i] !== this.previousPositions[i]) {
+                console.log(`[gameView] animating token ${i} from ${this.previousPositions[i]} to ${currentPositions[i]}`);
                 this.animateTokenMove(i, currentPositions[i]);
                 animationCount++;
             }
@@ -431,10 +455,12 @@ class GameView {
 
     // Animates a token move with step and settle sounds
     animateTokenMove(playerId, newPosition) {
+        console.log(`[gameView] animateTokenMove called for player ${playerId} to position ${newPosition}`);
         // Check if there is no movement needed
         const currentPosition = this.model.getPlayerPosition(playerId);
         if (currentPosition === newPosition) {
             // No movement, so we don't need to animate or play sounds.
+            console.log(`[gameView] no movement needed for player ${playerId}`);
             return;
         }
 
@@ -445,7 +471,19 @@ class GameView {
         const { x, y } = this.tileToPosition(newPosition);
 
         // Set the position to trigger transition
-        token.style.transform = `translate(${x}%, ${y}%)`;
+        if (newPosition === 0) {
+            token.classList.add('return-to-staging');
+            token.classList.remove('move-to-board');
+        } else {
+            token.classList.remove('return-to-staging');
+            // Add move-to-board class when re-entering from staging (position was 0 previously)
+            if (this.previousPositions[playerId] === 0) {
+                token.classList.add('move-to-board');
+            } else {
+                token.classList.remove('move-to-board');
+            }
+        }
+
 
         // Listen for transitionend on this token
         const onTransitionEnd = () => {
@@ -551,8 +589,8 @@ class GameView {
             const pos = this.tileToPosition(position);
             const token = this.tokenElements[i];
 
-            // Set position as percentage of board size
-            token.style.transform = `translate(${pos.x}%, ${pos.y}%)`;
+            // Set position as percentage of board size (centered)
+            this.setTokenPosition(i, pos.x, pos.y);
 
             // Adjust token size based on board size (e.g., 10% of tile size)
             const tileSize = Math.min(boardWidth, boardHeight) / 10;
@@ -563,6 +601,23 @@ class GameView {
             // Set token image
             token.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
         }
+    }
+
+    // Helper method to set token position using left/top/transform for centering
+    setTokenPosition(playerId, xPercent, yPercent) {
+        console.log(`[gameView] setTokenPosition called for player ${playerId} with x:${xPercent}%, y:${yPercent}%`);
+        const token = this.tokenElements[playerId];
+        // Use right: 110% for staging area (position 0) per DR-001 spec
+        // Use left: 110% for other positions
+        if (this.model.getPlayerPosition(playerId) === 0) {
+            token.style.right = `${xPercent}%`;
+            token.style.left = 'auto';
+        } else {
+            token.style.left = `${xPercent}%`;
+            token.style.right = 'auto';
+        }
+        token.style.top = `${yPercent}%`;
+        token.style.transform = 'translate(-50%, -50%)';
     }
 
     // Update player info panel
@@ -610,4 +665,5 @@ class GameView {
 // Attach to window for browser compatibility
 if (typeof window !== 'undefined') {
     window.GameView = GameView;
+    console.log("GameView attached to window");
 }

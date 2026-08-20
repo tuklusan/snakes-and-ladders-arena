@@ -24,7 +24,7 @@ body {
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    overflow: hidden;
+    /* NOTE: overflow removed to allow staging tokens at right: 110% */
 }
 
 /* Loading overlay (created by JS) */
@@ -59,7 +59,7 @@ body {
 .game-token {
     position: absolute;
     pointer-events: none;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, right 0.2s ease, left 0.2s ease, top 0.2s ease;
 }
 
 /* Dice */
@@ -195,4 +195,17 @@ body {
         width: 20px;
         height: 20px;
     }
+}  /* Staging area animations */
+.game-token.move-to-board {
+  transition: all 0.3s ease-in-out;
+  transform: scale(1.2);
+}
+.game-token.return-to-staging {
+  animation: bounce 0.4s ease-out;
+}
+@keyframes bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2); }
+  60% { transform: scale(0.8); }
+  100% { transform: scale(1); }
 }
