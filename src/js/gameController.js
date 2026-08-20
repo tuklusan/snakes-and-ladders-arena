@@ -67,6 +67,7 @@ class GameController {
             this.advanceTurn();
             // Notify view of the penalty (we'll let the view handle audio/visuals)
             this.view.onTripleSixPenalty();
+            this.view.onStateChange();
             return; // Turn ends
         }
 
@@ -118,6 +119,7 @@ class GameController {
             this.model.setGameOver(true);
             this.model.setWinner(activePlayer);
             this.view.onGameWin(activePlayer);
+            this.view.onStateChange();
             return;
         }
 

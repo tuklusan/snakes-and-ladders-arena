@@ -45,6 +45,7 @@ class GameView {
         this.createDOM();
         this.loadAssets();
         this.bindEvents();
+        window.addEventListener('resize', () => this.onWindowResize());
     }
 
     createDOM() {
@@ -98,17 +99,14 @@ class GameView {
             token.className = `game-token player-${i}`;
             token.style.position = 'absolute';
             token.style.pointerEvents = 'none';
-            token.style.width = '20px'; // will be updated based on tile size
-            token.style.height = '20px';
             token.style.backgroundSize = 'contain';
             token.style.backgroundRepeat = 'no-repeat';
             token.style.backgroundPosition = 'center';
             this.boardElement.appendChild(token);
             this.tokenElements.push(token);
-            // Set initial position (off-board)
-            const initialPos = this.tileToPosition(0);
-            this.setTokenPosition(i, initialPos.x, initialPos.y);
         }
+        // Size tokens after all DOM is created
+        this.sizeTokens();
 
         // Create dice container
         this.diceElement = document.createElement('div');
@@ -195,6 +193,13 @@ class GameView {
             this.boardLoaded = true;
             this.updateBoardBackground();
             this.assetLoaded();
+            // Board is loaded - make it playable even if other assets are still loading
+            if (!this.isAssetsHandled) {
+                this.isAssetsHandled = true;
+                this.hideLoadingOverlay();
+                this.enableRollButton();
+                this.autoRoll();
+            }
         };
         this.boardImage.onerror = () => {
             console.log("[gameView] Board image onerror, trying PNG fallback");
@@ -451,6 +456,9 @@ class GameView {
         }
         console.log('[gameView] currentPositions:', currentPositions);
 
+        // Size tokens based on board width after first layout
+        this.sizeTokens();
+
         let animationCount = 0;
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             if (currentPositions[i] !== this.previousPositions[i]) {
@@ -465,6 +473,11 @@ class GameView {
 
         // Trigger auto-roll (as before)
         this.autoRoll();
+    }
+
+    // Resize tokens when window changes size
+    onWindowResize() {
+        this.sizeTokens();
     }
 
     // Animates a token move with step and settle sounds
@@ -619,6 +632,23 @@ class GameView {
 
             // Set token image
             token.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
+        }
+    }
+
+    // Resize tokens based on board width
+    sizeTokens() {
+        const boardWidth = this.boardElement.clientWidth;
+        if (boardWidth === 0) {
+            // Not ready yet; try again on next animation frame
+            requestAnimationFrame(() => this.sizeTokens());
+            return;
+        }
+        const cellWidth = boardWidth / 10;
+        const tokenDiameter = cellWidth * 0.7;
+        for (let i = 0; i < this.tokenElements.length; i++) {
+            const token = this.tokenElements[i];
+            token.style.width = `${tokenDiameter}px`;
+            token.style.height = `${tokenDiameter}px`;
         }
     }
 

@@ -1,84 +1,114 @@
-# DEFECT REGISTER — Client Acceptance Round
+# DEFECT REGISTER — Round 2
+Source: AI-overseer continuous-session visual analysis (shots/live1_strip.png,
+shots/long1_strip.png, shots/late.png) captured from ONE persistent browser on
+Xvfb, plus quantitative pixel analysis.
 
-Source: client live browser session at http://10.0.0.161:8000, plus AI-overseer
-visual analysis of a six-frame session filmstrip.
-Raised to: CEO, for allocation via CTO to Programmer and Tester.
+## CLOSED — verified by the overseer, do not regress
+- DR-101 token size: FIXED. Tokens are now clearly visible and correctly scaled.
+- DR-102 blocking modals: FIXED. The LIVE src/js/gameView.js contains zero
+  alert/confirm/prompt. (The earlier count of 8 was the overseer's measurement
+  error: it counted gameView.js.backup, .backup2, .backup3, .backup4.)
+- Auto-restart exists: gameView.js handles game-over and calls
+  controller.resetGame() after a delay.
+- Katti capture verified working in a live session: Player 4 landed on tile 84
+  and sent Player 1 from 84 back to 0.
+- Rule engine: 11/11 in testGameLogicNode.js.
 
-## Evidence available to the company
-- shots/filmstrip.png       six-frame contact sheet across one session
-- shots/film/f01..f06.png   individual frames, virtual clock 3s to 30s
+## DR-105  CLOSED-INVALID - superseded by DR-108
+The letterboxing diagnosis was withdrawn, and the follow-up animation diagnosis
+was also wrong. Static placement is self-consistent; the real fault is DR-108.
+Do not spend any further effort on tileToPosition arithmetic.
 
-## DR-101  Player tokens are far too small
-SEVERITY: HIGH   STATUS: OPEN
+## DR-106  Stale backup files pollute the source tree   SEVERITY: LOW   STATUS: OPEN
+src/js/ contains gameView.js.backup, .backup2, .backup3, .backup4. These caused
+a false defect report (see DR-102 note above) because a grep for alert( matched
+them. Delete them; git history is the backup.
+ACCEPTANCE: ls src/js/*.backup* returns nothing.
 
-Observed in every frame of the filmstrip and confirmed by the client:
-"the pieces start off very small, waiting at the bottom, but even after
-entering the board they are still tiny."
+## DR-107  Prove the infinite self-running loop   SEVERITY: HIGH   STATUS: OPEN
+Nobody has yet observed a single game run through to a win AND automatically
+start a fresh game. The client requires an arena that runs forever unattended.
+REQUIRED: TESTER produces evidence of at least TWO consecutive completed games
+in ONE browser session, with no human input, showing: a player reaching tile
+100, a win announced without any blocking dialog, and the board resetting to a
+new game.
+MEASURED CONSTRAINT: under headless chromium with --virtual-time-budget the
+game does NOT advance - tokens stay in staging at every budget from 15s to
+160s. Headless virtual time therefore CANNOT prove DR-107. Use a real
+persistent browser on Xvfb :99 (see ~/session_capture.sh).
 
-Root cause: tokens are created with hardcoded 20px width and height in
-gameView.js around line 105. The only resize logic lives inside
-updateTokenPositions(), which is invoked ONLY from onReset(). During normal
-play it never executes, so tokens remain 20px permanently.
+ACCEPTANCE: a log file capturing at least two "game over / winner" events from
+a single continuous run, plus screenshots from the same page instance before
+and after a reset.
 
-Required: a sizeTokens() method using boardElement.clientWidth divided by 10
-for the cell size and roughly 0.7 of that for the token; invoked after first
-layout (requestAnimationFrame or board image onload so clientWidth is not
-zero), from onStateChange(), and on window resize.
+## DR-108  THE BOARD ARTWORK IS NOT THE GAME   SEVERITY: CRITICAL   STATUS: OPEN
 
-Acceptance: a token's rendered width must be at least 50 percent of one grid
-cell width.
+This supersedes DR-105 entirely. DR-105 is CLOSED-INVALID: the coordinate maths
+was never the problem, which is why four rounds of patching it failed.
 
-## DR-102  Blocking modal dialogs stop the autonomous arena
-SEVERITY: HIGH   STATUS: OPEN
+MEASURED, from two independent sources that agree:
 
-Client screenshot shows the game frozen behind a browser modal reading
-"Triple Six! Penalty: Turn reverted and turn passed to next player." with an
-OK button. The arena is specified to run autonomously with no human input.
-The alert function suspends the JavaScript event loop until dismissed.
+1. Raster measurement of assets/images/board/..._Corrected.png (4953x6605):
+       h-lines(10): 260 1022 1694 2366 3112 3870 4582 5234 5842 6453
+       v-lines(8):   98  710 1332 2044 2726 3478 4170 4876
+   That is 7 COLUMNS x 9 ROWS. Cell size ~683 x ~688 px, i.e. SQUARE.
 
-A search for the alert function in src/js currently returns 8 occurrences.
+2. The SVG source, which is authoritative. viewBox "0 0 210 297", board rect
+   x=4.5062 y=25.983 w=204.067 h=262.005.
+       As 10x10 the cells would be 20.4 x 26.2  -> NOT square.
+       As  7x9  the cells are     29.2 x 29.1  -> SQUARE. Confirms 7x9.
+   The SVG contains ZERO numeric text elements: the board has no tile numbers.
 
-Required: zero uses of alert, confirm or prompt anywhere in src/js. Replace
-with a non-blocking on-page message element that clears itself via setTimeout
-while the game loop keeps running.
+THEREFORE the printed board has 63 cells. The rules engine in src/js/gameModel.js
+is a standard 100-tile game (Ladders 2->38 ... 87->94, Snakes 16->6 ... 99->80,
+comment: "Using a common Indian Snakes and Ladders configuration as placeholder").
 
-Acceptance: searching src/js for the alert function must return zero matches.
+No formula can map 100 tiles onto 63 printed cells. Tokens will always land
+between or across printed cells. Everything the client reported follows from
+this single fact.
 
-NOTE FOR TESTER: headless Chromium auto-dismisses modals, so this defect is
-INVISIBLE to every headless screenshot test. It must be verified by source
-inspection, not by screenshot.
+A SECOND, INDEPENDENT MISMATCH: even with perfect placement, the snakes and
+ladders DRAWN on the board are decorative and do not correspond to the model's
+jump table. A player who hits the ladder at 2->38 would climb where no ladder is
+drawn, and would slide down snakes that are not there.
 
-## DR-103  Slow asset loading
-SEVERITY: LOW   STATUS: OPEN
+ALSO NOTE: the grid insets previously given in this register (GL 0.30, GR 99.68,
+GT 3.33, GB 98.65) are WRONG - they were the outer edge of the image, not the
+grid. The true board rect is left 2.14%, right 99.32%, top 8.75%, bottom 96.97%.
+The top was out by 5.4%, more than half a cell. Discard the old numbers.
 
-Filmstrip frame f01 at 3s virtual time still displays
-"Loading game assets... 12/22". The board is not interactive until roughly 7s.
+REQUIRED RESOLUTION - CTO decides between these two, and says which and why:
+  OPTION A (preferred): STOP USING A PICTURE FOR THE GRID. Render the 10x10
+    grid, the tile numbers, and the snakes and ladders in the DOM or on a
+    canvas, generated FROM the model's own Ladders and Snakes maps. The board
+    then cannot disagree with the rules, now or after any future rule change.
+    Keep a decorative background if you like, but the grid must be generated.
+  OPTION B: replace the asset with a genuine numbered 10x10 board AND rewrite
+    gameModel's Ladders/Snakes maps to match exactly what that image draws.
+    If you choose B you must prove every one of the 21 jumps matches the art.
 
-Required: investigate whether the 22 assets can be loaded in parallel, or
-whether the board can render before all audio is fetched.
+ACCEPTANCE:
+  - A test that asserts the rendered grid has exactly 100 addressable cells.
+  - For all 100 tiles, the token centre lands within 25% of a cell of that
+    tile's centre, measured against the RENDERED grid.
+  - For each of the 21 entries in Ladders/Snakes, the drawn connector starts at
+    the head tile and ends at the tail tile.
+  - Tile numbers are visible and follow boustrophedon order, 1 bottom-left.
 
-Acceptance: playable board visible by 3s virtual time.
+## DR-109  THE ARENA FREEZES   SEVERITY: CRITICAL   STATUS: OPEN
 
-## DR-104  Session continuity unverified
-SEVERITY: MEDIUM   STATUS: OPEN
+Continuous capture on Xvfb :98, 18 frames at 6s (shots/ovs1/). Frames 8 to 18
+are BYTE-IDENTICAL (md5 1bb7376faab3ee0a40bafa8015c16826, 11 frames, 66+
+seconds of no change whatsoever).
 
-The overseer filmstrip uses one page load per frame, so it samples six
-independent games rather than one continuous session. Nobody has yet observed
-a single uninterrupted game running through to a win.
+State at freeze: Player 1 tile 38, Player 2 tile 25, Player 3 tile 4, Player 4
+tile 0. Player 4's name is highlighted, so it is Player 4's turn. Player 4 is
+still off-board at tile 0. The dice shows 6. Nothing moves again, ever.
 
-Required: TESTER to produce evidence of ONE continuous session in which a
-player reaches tile 100 and the win is announced without a blocking dialog.
-Suggested approach: a headless run with a long virtual-time budget that logs
-each roll and the final positions to a file, plus periodic screenshots taken
-from the same page instance.
+This defeats the client's core requirement of an arena that runs forever with no
+human input. Prime suspect: the turn loop stops scheduling the next roll in some
+state reachable from an off-board player, possibly the entry rule or the
+consecutive-sixes path. Find the state machine dead end.
 
-Acceptance: a log showing a single game progressing to a declared winner.
-
-## Already verified FIXED by the overseer — do not regress
-- Tokens now render INSIDE the grid on all rows, using
-  GRID_TOP + ((9 - row) * cell) + (cell / 2).
-- Board div aspect matches the 4953x6605 portrait PNG (paddingBottom 133.35%).
-- Token transition slowed to 1.0s; class transition 1.5s.
-- Debug styling removed: lightblue background, green border, red 2px frame.
-- Token colour order correct, Player 1 red leftmost.
-- Rule engine passes 11 of 11 in testGameLogicNode.js.
+ACCEPTANCE: DR-107's two-consecutive-completed-games evidence, which cannot pass
+while this defect exists.
