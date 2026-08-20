@@ -458,8 +458,8 @@ class GameView {
     animateTokenMove(playerId, newPosition) {
         console.log(`[gameView] animateTokenMove called for player ${playerId} to position ${newPosition}`);
         // Check if there is no movement needed
-        const currentPosition = this.model.getPlayerPosition(playerId);
-        if (currentPosition === newPosition) {
+        const previousPosition = this.previousPositions[playerId];
+        if (previousPosition === newPosition) {
             // No movement, so we don't need to animate or play sounds.
             console.log(`[gameView] no movement needed for player ${playerId}`);
             return;
@@ -484,6 +484,9 @@ class GameView {
                 token.classList.remove('move-to-board');
             }
         }
+
+        // Actually move the token to the computed position
+        this.setTokenPosition(playerId, x, y);
 
 
         // Listen for transitionend on this token
@@ -608,15 +611,9 @@ class GameView {
     setTokenPosition(playerId, xPercent, yPercent) {
         console.log(`[gameView] setTokenPosition called for player ${playerId} with x:${xPercent}%, y:${yPercent}%`);
         const token = this.tokenElements[playerId];
-        // Use right: 110% for staging area (position 0) per DR-001 spec
-        // Use left: 110% for other positions
-        if (this.model.getPlayerPosition(playerId) === 0) {
-            token.style.right = `${xPercent}%`;
-            token.style.left = 'auto';
-        } else {
-            token.style.left = `${xPercent}%`;
-            token.style.right = 'auto';
-        }
+        // Always use left for on-board positions
+        token.style.left = `${xPercent}%`;
+        token.style.right = 'auto';
         token.style.top = `${yPercent}%`;
         token.style.transform = 'translate(-50%, -50%)';
     }
