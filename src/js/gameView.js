@@ -88,12 +88,10 @@ class GameView {
         this.boardElement.id = 'game-board';
         this.boardElement.style.position = 'relative';
         this.boardElement.style.width = '100%';
-        this.boardElement.style.paddingBottom = '100%'; // 1:1 aspect ratio, adjust if board is not square
+        this.boardElement.style.paddingBottom = '133.35%'; // match portrait board aspect ratio
         this.boardElement.style.backgroundSize = 'contain';
         this.boardElement.style.backgroundRepeat = 'no-repeat';
         this.boardElement.style.backgroundPosition = 'center';
-        this.boardElement.style.backgroundColor = 'lightblue'; // debug: to see board
-        this.boardElement.style.border = '1px solid green'; // debug: to see board bounds
         this.container.appendChild(this.boardElement);
 
         // Create token elements (will be positioned absolutely)
@@ -385,10 +383,13 @@ class GameView {
     // Row 2: 21-30 left to right
     // etc.
     tileToPosition(tile) {
+        const GRID_TOP = 3.33;      // % from top of board image
+        const GRID_HEIGHT = 95.34;  // % of board image height
+        const cell = GRID_HEIGHT / 10;
         if (tile === 0) {
-            // Off-board staging: spread along the bottom inside the board
+            // Off-board staging: spread along the bottom inside the board area
             const slot = (this._stagingSlot = ((this._stagingSlot || 0) % 4) + 1);
-            return { x: 12 + slot * 18, y: 95 };
+            return { x: 12 + slot * 18, y: GRID_TOP + (9.5 * cell) };
         }
         tile--; // convert to 0-indexed (0-99)
         const row = Math.floor(tile / 10); // 0-9 (0 is bottom row)
@@ -406,7 +407,7 @@ class GameView {
         // Convert to percentage (0-100%) within the board
         // Each tile is 10% of the board width (since 10 tiles per row)
         const xPercent = (col * 10) + 5; // add half a token to center the token
-        const yPercentFromTop = ((9 - row) * 10) + 5; // row 0 is bottom, so from top it's 9-row
+        const yPercentFromTop = 3.33 + (9 - row) * 95.34 / 9; // inset y to match grid that occupies 95.34% of height (top at 3.33%, bottom at 98.67%)
 
         return { x: xPercent, y: yPercentFromTop };
     }
