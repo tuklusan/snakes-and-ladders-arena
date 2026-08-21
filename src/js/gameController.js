@@ -31,6 +31,7 @@ class GameController {
 
     processTurn(dieRoll) {
         const activePlayer = this.model.getActivePlayer();
+        this.model.setLastMover(activePlayer);
         let consecutive_sixes = this.model.getConsecutiveSixes();
         let turn_start_position = this.model.getTurnStartPosition();
 

@@ -29,6 +29,7 @@ class GameModel {
         this.game_over = false;
         this.winner = null;
         this.lastRoll = 0; // last dice roll (0 means no roll yet)
+        this.lastMover = null; // ID of the player who last moved
     }
 
     // Getters
@@ -99,6 +100,14 @@ class GameModel {
 
     setLastRoll(roll) {
         this.lastRoll = roll;
+    }
+
+    getLastMover() {
+        return this.lastMover;
+    }
+
+    setLastMover(playerId) {
+        this.lastMover = playerId;
     }
 }
 

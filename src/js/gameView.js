@@ -643,7 +643,7 @@ class GameView {
 
         // Determine if this is a step-by-step move (active player's normal move)
         const dieRoll = this.model.getLastRoll();
-        const isActivePlayer = playerId === this.model.getActivePlayer();
+        const isMover = playerId === this.model.getLastMover();
         const intermediatePos = this._calculateIntermediatePosition(previousPosition, dieRoll, playerId);
         const hasJump = (intermediatePos !== previousPosition && intermediatePos !== newPosition) &&
             (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
@@ -653,7 +653,7 @@ class GameView {
         //   - the move is forward (newPosition > previousPosition) [or for leaving staging?]
         //   - and the intermediate position is different from previous (i.e., the die roll caused movement)
         //   - and the intermediate position is on the board (1-100) or we are leaving staging (from 0 to 1)
-        const isStepByStep = isActivePlayer &&
+        const isStepByStep = isMover &&
             ((previousPosition === 0 && newPosition === 1) || // leaving staging
              (previousPosition > 0 && newPosition > 0 && newPosition > previousPosition)); // moving forward on board
 
