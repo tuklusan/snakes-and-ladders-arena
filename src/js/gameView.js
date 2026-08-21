@@ -587,14 +587,13 @@ class GameView {
                 console.log(`[gameView] animating token ${i} from ${this.previousPositions[i]} to ${currentPositions[i]}`);
                 const promise = this.animateTokenMove(i, currentPositions[i]);
                 animationPromises.push(promise);
-                animationCount++;
             }
         }
 
         // Update previous positions
         this.previousPositions = [...currentPositions];
 
-        if (animationCount === 0) {
+        if (animationPromises.length === 0) {
             this.autoRoll();
             return;
         }
