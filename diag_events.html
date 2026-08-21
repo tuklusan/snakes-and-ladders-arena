@@ -1,0 +1,46 @@
+<!doctype html><meta charset=utf-8><title>events</title>
+<style>body{margin:0;font:12px monospace}#f{width:1280px;height:560px;border:0}
+#out{background:#111;color:#0f0;padding:6px;white-space:pre;font:12px monospace}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>tracing...</pre>
+<script>
+var prev=null, prevRoll=null, prevActive=null, prevOver=false, log=[], t0=Date.now();
+function cls(i,a,b,roll,mover,m){
+  // classify a position change a -> b for player i
+  if(b===a) return null;
+  if(a===0 && b===1) return "ENTER (rolled "+roll+")";
+  if(b===0) return "SENT TO STAGING  <-- capture or rollback";
+  var lad=m.Ladders, sna=m.Snakes;
+  var land=a+roll;
+  if(lad && lad.get && lad.get(land)===b) return "LADDER "+land+"->"+b+" (rolled "+roll+")";
+  if(sna && sna.get && sna.get(land)===b) return "SNAKE  "+land+"->"+b+" (rolled "+roll+")";
+  if(b===a+roll) return "step +"+roll;
+  if(b<a) return "BACKWARD "+a+"->"+b+"  <-- UNEXPLAINED";
+  return "JUMP "+a+"->"+b+" (rolled "+roll+")  <-- UNEXPLAINED";
+}
+setInterval(function(){
+  var w=document.getElementById("f").contentWindow;
+  try{
+    var m=w.gameModel; if(!m) return;
+    var pos=m.pawn_positions.slice();
+    var roll=m.lastRoll, active=m.active_player, over=!!m.game_over;
+    var mover=(m.getLastMover?m.getLastMover():null);
+    if(prev){
+      for(var i=0;i<pos.length;i++){
+        if(pos[i]!==prev[i]){
+          var c=cls(i,prev[i],pos[i],prevRoll,mover,m);
+          if(c) log.push("t="+(((Date.now()-t0)/1000)|0)+"s P"+(i+1)+" "+prev[i]+"->"+pos[i]+"  "+c
+                         +"   [roll="+prevRoll+" activeWas=P"+(prevActive+1)+"]");
+        }
+      }
+      if(over&&!prevOver) log.push("--- GAME OVER, winner P"+((m.winner|0)+1)+" ---");
+      if(!over&&prevOver) log.push("--- RESET ---");
+    }
+    prev=pos; prevRoll=roll; prevActive=active; prevOver=over;
+  }catch(e){}
+  var bad=log.filter(function(l){return l.indexOf("UNEXPLAINED")>=0||l.indexOf("capture or rollback")>=0;});
+  document.getElementById("out").textContent=
+     "elapsed "+(((Date.now()-t0)/1000)|0)+"s   events="+log.length+"   suspicious="+bad.length
+     +"\n--- SUSPICIOUS ---\n"+bad.slice(-12).join("\n")
+     +"\n--- RECENT ---\n"+log.slice(-16).join("\n");
+},100);
+</script>

@@ -1,0 +1,35 @@
+<!doctype html><meta charset=utf-8><title>align</title>
+<style>body{margin:0;font:13px monospace}#f{width:1280px;height:640px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>testing...</pre>
+<script>
+document.getElementById("f").addEventListener("load",function(){ setTimeout(run,4000); });
+function run(){
+  var fr=document.getElementById("f"), d=fr.contentDocument, w=fr.contentWindow;
+  var L=[];
+  if(!w.gameView||!w.gameModel){document.getElementById("out").textContent="NO GLOBALS";return;}
+  var tok=d.querySelectorAll(".game-token")[0];
+  if(!tok){document.getElementById("out").textContent="NO TOKEN";return;}
+  tok.style.transition="none";
+  var worst=0, worstTile=0, fails=[];
+  for(var n=1;n<=100;n++){
+    var cell=d.querySelector('[data-tile="'+n+'"]');
+    if(!cell){ fails.push("tile "+n+" NO CELL"); continue; }
+    try{ w.gameView.positionTokenOnTile(0,n); }catch(e){ fails.push("tile "+n+" ERR "+e.message); continue; }
+    var cr=cell.getBoundingClientRect(), tr=tok.getBoundingClientRect();
+    var cx=cr.left+cr.width/2, cy=cr.top+cr.height/2;
+    var tx=tr.left+tr.width/2, ty=tr.top+tr.height/2;
+    var dxCells=(tx-cx)/cr.width, dyCells=(ty-cy)/cr.height;
+    var err=Math.max(Math.abs(dxCells),Math.abs(dyCells));
+    if(err>worst){worst=err;worstTile=n;}
+    if(err>0.25 && fails.length<14)
+      fails.push("tile "+n+" off by ("+dxCells.toFixed(2)+","+dyCells.toFixed(2)+") cells"
+                 +"  cellCentre=("+cx.toFixed(0)+","+cy.toFixed(0)+") token=("+tx.toFixed(0)+","+ty.toFixed(0)+")");
+  }
+  L.push("STATIC PLACEMENT SWEEP, all 100 tiles");
+  L.push("worst error "+worst.toFixed(3)+" cells (tile "+worstTile+")");
+  L.push(fails.length? ("FAILURES: "+fails.length) : "ALL 100 TILES PASS");
+  L.push.apply(L,fails);
+  document.getElementById("out").textContent=L.join("\n");
+}
+</script>

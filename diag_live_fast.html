@@ -1,0 +1,80 @@
+<!doctype html><meta charset=utf-8><title>live</title>
+<style>body{margin:0;font:13px monospace}#f{width:1280px;height:620px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>running...</pre>
+<script>
+var iframe = document.getElementById("f");
+iframe.addEventListener("load",function(){ 
+  console.log("iframe loaded, URL:", this.src);
+  try {
+    console.log("iframe contentWindow:", this.contentWindow);
+    console.log("iframe contentDocument title:", this.contentDocument?.title);
+  } catch(e) {
+    console.log("error accessing iframe content:", e);
+  }
+  setTimeout(main,1000); 
+});
+iframe.addEventListener("error",function(e){
+  console.log("iframe error:", e);
+});
+function main(){
+  var fr=document.getElementById("f"), d=fr.contentDocument, w=fr.contentWindow;
+  var out=document.getElementById("out");
+  if(!w.gameController||!w.gameModel||!w.gameView){out.textContent="NO GLOBALS";return;}
+  var m=w.gameModel, v=w.gameView, c=w.gameController;
+  console.log("main: got globals");
+  // stop the self-driving loop so this is deterministic
+  try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
+  var cells={},cw=40;
+  for(var n=1;n<=100;n++){var el=d.querySelector('[data-tile="'+n+'"]');
+    if(el){var r=el.getBoundingClientRect();cells[n]={x:r.left+r.width/2,y:r.top+r.height/2};cw=r.width;}}
+  function near(x,y){var b=null,bd=1e9;
+    for(var k in cells){var dx=cells[k].x-x,dy=cells[k].y-y,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;b=+k;}}
+    return {t:b,d:Math.sqrt(bd)};}
+  var tok=d.querySelectorAll(".game-token")[0];
+
+  // Real scenario: player 0 on 26, everyone else parked away, force a die roll of 2.
+  m.pawn_positions[0]=26; m.pawn_positions[1]=5; m.pawn_positions[2]=6; m.pawn_positions[3]=7;
+  m.active_player=0; m.consecutive_sixes=0; m.game_over=false;
+  v.previousPositions=[26,5,6,7];
+  try{ v.positionTokenOnTile(0,26); }catch(e){}
+  // force dieRoll = 2  ->  Math.floor(r*6)+1 === 2  ->  r in [1/6, 2/6)
+  var realRandom=w.Math.random;
+  w.Math.random=function(){ return 0.2; };
+
+  var seq=[], t0=performance.now();
+  var samp=setInterval(function(){
+    var r=tok.getBoundingClientRect();
+    var h=near(r.left+r.width/2, r.top+r.height/2);
+    if(h.d<cw*0.45){ if(!seq.length||seq[seq.length-1]!==h.t) seq.push(h.t); }
+  },25);
+
+  var moverAfter=null, activeAfter=null, err=null;
+  try{ c.rollDice(); }catch(e){ err=e.message; }
+  try{ moverAfter=(m.getLastMover?m.getLastMover():"NO getLastMover"); }catch(e){ moverAfter="ERR"; }
+  activeAfter=m.active_player;
+
+  setTimeout(function(){
+    clearInterval(samp);
+    w.Math.random=realRandom;
+    var L=[];
+    L.push("REAL CONTROLLER PATH: player 0 on tile 26, forced die roll 2");
+    L.push("expected: land 28 (ladder foot) then climb 28->84");
+    L.push("");
+    L.push("controller error : "+(err||"none"));
+    L.push("model position   : "+m.pawn_positions[0]);
+    L.push("lastRoll         : "+m.lastRoll);
+    L.push("getLastMover()   : "+moverAfter+"   (must be 0)");
+    L.push("active_player now: "+activeAfter+"   (advanced, so it must NOT be used for stepping)");
+    L.push("");
+    L.push("observed tile sequence:");
+    L.push("  "+seq.join(" "));
+    var w27=seq.indexOf(27)>=0, w28=seq.indexOf(28)>=0;
+    L.push("");
+    L.push("visited 27: "+w27+"   visited 28: "+w28+"   ended 84: "+(seq[seq.length-1]===84));
+    L.push(( w27 && w28 ) ? "PASS - walked through the real controller path"
+                          : "FAIL - TELEPORT still happening on the real path");
+    out.textContent=L.join("\n");
+  }, 2000); // Reduced from 9000 to 2000
+}
+</script>

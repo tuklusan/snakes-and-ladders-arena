@@ -1,0 +1,25 @@
+<!doctype html><meta charset=utf-8>
+<iframe id=f src="index.html" width="1280" height="700" style="border:0"></iframe><pre id=out>x</pre>
+<script>
+setTimeout(function(){
+ var d=document.getElementById("f").contentDocument, w=document.getElementById("f").contentWindow, L=[];
+ var v=w.gameView;
+ if(!v){document.getElementById("out").textContent="no view";return;}
+ v.messageElement.textContent="Triple Six! Penalty test";
+ v.messageElement.style.display="block";
+ var mr=v.messageElement.getBoundingClientRect();
+ L.push("message  T="+mr.top.toFixed(0)+" B="+mr.bottom.toFixed(0)+" L="+mr.left.toFixed(0)+" W="+mr.width.toFixed(0));
+ var p=d.getElementById("player-info"); if(p){var pr=p.getBoundingClientRect();
+   L.push("panel    T="+pr.top.toFixed(0)+" B="+pr.bottom.toFixed(0));
+   L.push("overlaps panel: "+(mr.top<pr.bottom&&mr.bottom>pr.top));}
+ var b=d.getElementById("game-board"); if(b){var br=b.getBoundingClientRect();
+   L.push("board    T="+br.top.toFixed(0)+" B="+br.bottom.toFixed(0));}
+ L.push("viewport height: "+w.innerHeight);
+ L.push("below fold: "+(mr.bottom>w.innerHeight));
+ var cx=mr.left+mr.width/2, cy=mr.top+mr.height/2;
+ var top=d.elementFromPoint(cx,cy);
+ L.push("element at message centre: "+(top?(top.id||top.className||top.tagName):"none"));
+ L.push("is the message itself on top: "+(top===v.messageElement));
+ document.getElementById("out").textContent=L.join("\n");
+},4500);
+</script>

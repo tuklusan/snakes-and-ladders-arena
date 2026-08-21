@@ -1,6 +1,6 @@
 <!doctype html><meta charset=utf-8><title>accept</title>
 <style>html,body{margin:0}#f{border:0;display:block}</style>
-<iframe id=f src="http://localhost:8000/index.html" width="1280" height="600"></iframe>
+<iframe id=f src="index.html" width="1280" height="600"></iframe>
 <pre id=out>pending</pre>
 <script>
 function run(){
@@ -73,5 +73,5 @@ function run(){
  }catch(e){L.push("ERROR "+e.message);}
  document.getElementById("out").textContent=L.join("\n");
 }
-document.getElementById("f").addEventListener("load",()=>setTimeout(run,30000));
+document.getElementById("f").addEventListener("load",()=>setTimeout(run,3500));
 </script>
