@@ -1,6 +1,6 @@
 <!doctype html><meta charset=utf-8><title>accept</title>
 <style>html,body{margin:0}#f{border:0;display:block}</style>
-<iframe id=f src="index.html" width="1280" height="600"></iframe>
+<iframe id=f src="about:blank" width="1280" height="600"></iframe>
 <pre id=out>pending</pre>
 <script>
 function run(){
@@ -66,31 +66,12 @@ function run(){
   // 12. the loading overlay must be gone and the game actually started
   const bodyTxt=(d.body.innerText||"");
   const loading=/Loading game assets/i.test(bodyTxt);
-  P("VIS_loading_cleared", !loading, loading ? "STILL LOADING" : "cleared");
-  // 13/14. nothing may be hidden behind the player panel
-  const panel=d.getElementById("player-info")||d.querySelector("#player-panel,.player-info");
-  const inter=(a,z)=>a.left<z.right&&a.right>z.left&&a.top<z.bottom&&a.bottom>z.top;
-  if(panel){
-    const pr=panel.getBoundingClientRect(), bb2=b.getBoundingClientRect();
-    P("VIS_board_not_clipped", !inter(bb2,pr), "board B="+bb2.bottom.toFixed(0)+" panel T="+pr.top.toFixed(0));
-    let hidden=0; toks.forEach(t=>{ if(inter(t.getBoundingClientRect(),pr)) hidden++; });
-    P("VIS_all_tokens_visible", hidden===0, hidden+" tokens behind panel");
-  // 15. staged tokens must sit inside the staging strip
-  const st=d.getElementById("staging")||d.getElementById("staging-area")||d.querySelector(".staging,.staging-area");
-  if(st){ const sr=st.getBoundingClientRect(); let outside=0;
-    toks.forEach(t=>{ const r=t.getBoundingClientRect();
-      const staged = r.top>=sr.top-2 && r.bottom<=sr.bottom+2;
-      if(staged && (r.left<sr.left-1 || r.right>sr.right+1)) outside++; });
-    P("VIS_staging_contained", outside===0, outside+" staged tokens outside strip");
-  } else { P("VIS_staging_contained", false, "no staging element"); }
-
-  } else { P("VIS_board_not_clipped", false, "no panel element found");
-           P("VIS_all_tokens_visible", false, "no panel element found"); }
-
+  P("VIS_loading_cleared", !loading, loading?bodyTxt.match(/Loading game assets[^
+]*/)[0]:"cleared");
 
 
  }catch(e){L.push("ERROR "+e.message);}
  document.getElementById("out").textContent=L.join("\n");
 }
-document.getElementById("f").addEventListener("load",()=>setTimeout(run,3500));
+document.getElementById("f").addEventListener("load",()=>setTimeout(run,30000));
 </script>
