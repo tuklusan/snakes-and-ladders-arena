@@ -70,12 +70,10 @@ class GameView {
         // Handle tile 0 (off-board staging)
         if (tile === 0) {
             const stagingRect = this.stagingElement.getBoundingClientRect();
-            // Staging area: within the staging element, spread horizontally
-            const stagingWidth = stagingRect.width;
-            const padding = 20; // padding from left and right of staging area
-            const availableWidth = stagingWidth - 2 * padding;
-            const step = availableWidth / 3; // for 4 tokens, 3 gaps
-            const x = stagingRect.left - containerRect.left + padding + playerId * step + step / 2;
+            const containerRect = this.container.getBoundingClientRect();
+            const stripLeft = stagingRect.left - containerRect.left;
+            const stripWidth = stagingRect.width;
+            const x = stripLeft + (playerId + 0.5) * (stripWidth / 4);
             const y = stagingRect.top - containerRect.top + stagingRect.height / 2;
             return { x, y };
         }
