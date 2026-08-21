@@ -379,8 +379,8 @@ class GameView {
             const audio = new Audio();
             audio.src = `assets/audio/${event}.ogg`;
             audio.preload = 'auto';
-            audio.onload = this.assetLoaded;
-            audio.onerror = this.assetError;
+            audio.addEventListener('loadeddata', this.assetLoaded, { once: true });
+            audio.addEventListener('error', this.assetError, { once: true });
             this.assets.audio[event] = audio;
         });
     }
@@ -388,9 +388,9 @@ class GameView {
     assetLoaded() {
         this.assetsLoadedCount++;
         console.log(`[gameView] Asset loaded: ${this.assetsLoadedCount}/${this.assetsTotalCount}`);
-        // Update loading overlay text to show progress
+        // Update loading overlay text to show progress and failed count
         if (this.loadingOverlay) {
-            this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount}`;
+            this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount} (Failed: ${this.assetsFailedCount})`;
         }
         if (this.assetsLoadedCount >= this.assetsTotalCount) {
             console.log("[gameView] All assets loaded");
@@ -413,11 +413,7 @@ class GameView {
     assetError(e) {
         console.error(`[gameView] Failed to load asset: ${e.target.src}`, e);
         this.assetsFailedCount++;
-        // Update loading overlay text to show progress and failed count
-        if (this.loadingOverlay) {
-            this.loadingOverlay.innerHTML = `Loading game assets... ${this.assetsLoadedCount}/${this.assetsTotalCount} (Failed: ${this.assetsFailedCount})`;
-        }
-        // Note: We do NOT call assetLoaded() here to avoid counting failed assets as loaded.
+        this.assetLoaded();   // count this asset as resolved
         // For debugging: set a visible background on token elements if this is a token image
         const src = e.target.src;
         if (src && src.includes('tokens/')) {
