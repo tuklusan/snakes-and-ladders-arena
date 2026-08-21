@@ -35,15 +35,8 @@ setInterval(function(){
         +"JS_ERRORS: "+errors.length+"\n"
         +(errors.length?("  "+errors.slice(0,4).join("\n  ")+"\n"):"")
         +"\nPROGRESS_"+(progressing?"PASS":"FAIL")+"   ERRORS_"+(errors.length===0?"PASS":"FAIL");
-      // Add board dimensions
-      var gv = w.gameViewInstance;
-      if (gv && gv.boardElement) {
-        s += "\nBOARD_WIDTH: "+gv.boardElement.clientWidth;
-        s += "\nBOARD_HEIGHT: "+gv.boardElement.clientHeight;
-      }
     }
   }catch(e){ s="ERR "+e.message; }
   document.getElementById("out").textContent=s;
- console.log(s);
 },500);
 </script>

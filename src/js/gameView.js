@@ -38,6 +38,10 @@ class GameView {
         this.assetError = this.assetError.bind(this);
         this.autoRoll = this.autoRoll.bind(this);
         this.handleGameOver = this.handleGameOver.bind(this);
+        // Expose instance for debugging
+        if (typeof window !== 'undefined') {
+            window.gameViewInstance = this;
+        }
     }
 
     _delay(ms) {
@@ -208,15 +212,20 @@ class GameView {
         this.loadingOverlay.innerHTML = 'Loading game assets...';
         this.container.appendChild(this.loadingOverlay);
 
+        // Fixed layout to fit in 600px container without overlapping
+        const boardSizeValue = 'min(380px, 100%)';
+        const boardTop = '10px';
+        const gap = '10px';
+
         // Create board container
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
         this.boardElement.style.position = 'absolute';
         this.boardElement.style.left = '50%';
         this.boardElement.style.transform = 'translateX(-50%)';
-        this.boardElement.style.width = '420px';
-        this.boardElement.style.height = '420px';
-        this.boardElement.style.top = '10px';
+        this.boardElement.style.width = boardSizeValue;
+        this.boardElement.style.height = boardSizeValue;
+        this.boardElement.style.top = boardTop;
         this.boardElement.style.backgroundColor = '#f8f9fa';
         this.boardElement.style.display = 'grid';
         this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
@@ -262,9 +271,9 @@ class GameView {
         this.stagingElement.style.position = 'absolute';
         this.stagingElement.style.left = '50%';
         this.stagingElement.style.transform = 'translateX(-50%)';
-        this.stagingElement.style.width = '420px';
+        this.stagingElement.style.width = boardSizeValue;
         this.stagingElement.style.height = '40px';
-        this.stagingElement.style.top = '440px'; // 10px (board top) + 420px (board height) + 10px margin = 440px
+        this.stagingElement.style.top = `calc(${boardTop} + ${boardSizeValue} + ${gap})`;
         this.stagingElement.style.backgroundColor = 'rgba(0,0,0,0.1)'; // for debugging, can be removed
         this.stagingElement.style.display = 'flex';
         this.stagingElement.style.justifyContent = 'space-around';
@@ -318,9 +327,9 @@ class GameView {
         this.playerInfoElement = document.createElement('div');
         this.playerInfoElement.id = 'player-info';
         this.playerInfoElement.style.position = 'absolute';
-        this.playerInfoElement.style.top = '520px'; // below the message
         this.playerInfoElement.style.left = '10px';
         this.playerInfoElement.style.right = '10px';
+        this.playerInfoElement.style.top = `calc(${boardTop} + ${boardSizeValue} + ${gap} + 40px + ${gap})`;
         this.playerInfoElement.style.height = '80px';
         this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
         this.playerInfoElement.style.color = '#fff';
@@ -727,15 +736,18 @@ class GameView {
                 this.playAudio(this.model.Ladders.has(intermediatePos) ? 'ladder' : 'snake');
                 // Animation loop
                 await new Promise((resolve, reject) => {
+                    // Create SVG point once for reuse
+                    const pt = this.svgElement.createSVGPoint();
                     const step = (timestamp) => {
                         const elapsed = timestamp - startTime;
                         const t = Math.min(elapsed / duration, 1);
                         const point = path.getPointAtLength(t * length);
-                        // Convert SVG viewBox point to board pixels
-                        // The SVG viewBox is 0-100, the board container is 420x420
-                        // So each viewBox unit = 4.2 pixels
-                        const x = point.x * 4.2; // because 100 viewBox units = 420px
-                        const y = point.y * 4.2;
+                        pt.x = point.x;
+                        pt.y = point.y;
+                        const screenPt = pt.matrixTransform(this.svgElement.getScreenCTM());
+                        const containerRect = this.container.getBoundingClientRect();
+                        const x = screenPt.x - containerRect.left;
+                        const y = screenPt.y - containerRect.top;
                         this.setTokenPositionFromPixel(x, y, token);
                         if (t < 1) {
                             requestAnimationFrame(step);
