@@ -40,6 +40,10 @@ class GameView {
         this.handleGameOver = this.handleGameOver.bind(this);
     }
 
+    _delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     // Helper function to get the center of a tile in viewBox coordinates (0-100)
     getViewBoxCenter(tile) {
         const tileZero = tile - 1;
@@ -171,7 +175,7 @@ class GameView {
     }
 
     createDOM() {
-        console.log("gameView.createDOM called");
+        console.log("gameView.createDOM called at", new Date().toISOString());
         // Get main container
         this.container = document.getElementById('game-container');
         if (!this.container) {
@@ -577,11 +581,12 @@ class GameView {
         // Size tokens based on board width after first layout
         this.sizeTokens();
 
-        let animationCount = 0;
+        let animationPromises = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             if (currentPositions[i] !== this.previousPositions[i]) {
                 console.log(`[gameView] animating token ${i} from ${this.previousPositions[i]} to ${currentPositions[i]}`);
-                this.animateTokenMove(i, currentPositions[i]);
+                const promise = this.animateTokenMove(i, currentPositions[i]);
+                animationPromises.push(promise);
                 animationCount++;
             }
         }
@@ -589,8 +594,26 @@ class GameView {
         // Update previous positions
         this.previousPositions = [...currentPositions];
 
-        // Trigger auto-roll (as before)
-        this.autoRoll();
+        if (animationCount === 0) {
+            this.autoRoll();
+            return;
+        }
+
+        // Watchdog: if animations take too long, we still want to proceed.
+        const watchdogId = setTimeout(() => {
+            console.log('[gameView] Watchdog triggered: calling autoRoll after timeout');
+            this.autoRoll();
+        }, 3000); // 3 seconds
+
+        // Wait for all animations to complete
+        Promise.all(animationPromises).then(() => {
+            clearTimeout(watchdogId);
+            this.autoRoll();
+        }).catch(() => {
+            // In case of error, we still want to proceed.
+            clearTimeout(watchdogId);
+            this.autoRoll();
+        });
     }
 
     // Resize tokens when window changes size
@@ -599,66 +622,198 @@ class GameView {
         this.drawSnakesAndLadders();
     }
 
-    // Animates a token move with step and settle sounds using CSS transitions
-    animateTokenMove(playerId, newPosition) {
+    // Animates a token move. Returns a promise that resolves when the animation completes.
+    async animateTokenMove(playerId, newPosition) {
         console.log(`[gameView] animateTokenMove called for player ${playerId} to position ${newPosition}`);
         // Check if there is no movement needed
         const previousPosition = this.previousPositions[playerId];
         if (previousPosition === newPosition) {
             // No movement, so we don't need to animate or play sounds.
             console.log(`[gameView] no movement needed for player ${playerId}`);
-            return;
+            return Promise.resolve();
         }
 
-        // Play step sound
-        this.playAudio('step');
+        // Determine if this is a step-by-step move (active player's normal move)
+        const dieRoll = this.model.getLastRoll();
+        const isActivePlayer = playerId === this.model.getActivePlayer();
+        const intermediatePos = this._calculateIntermediatePosition(previousPosition, dieRoll, playerId);
+        const hasJump = (intermediatePos !== previousPosition && intermediatePos !== newPosition) &&
+            (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
 
+        // We will animate step-by-step only if:
+        //   - the player is the active player
+        //   - the move is forward (newPosition > previousPosition) [or for leaving staging?]
+        //   - and the intermediate position is different from previous (i.e., the die roll caused movement)
+        //   - and the intermediate position is on the board (1-100) or we are leaving staging (from 0 to 1)
+        const isStepByStep = isActivePlayer &&
+            ((previousPosition === 0 && newPosition === 1) || // leaving staging
+             (previousPosition > 0 && newPosition > 0 && newPosition > previousPosition)); // moving forward on board
+
+        if (isStepByStep) {
+            await this._animateStepByStep(previousPosition, newPosition, playerId, dieRoll);
+        } else {
+            await this._animateDirectMove(previousPosition, newPosition, playerId);
+        }
+    }
+
+    // Helper to compute the intermediate position after die roll but before jump
+    _calculateIntermediatePosition(start, dieRoll, playerId) {
+        // Replicate the controller's movement logic for a given start and dieRoll.
+        if (start === 0) {
+            // Off-board pawns require a 1 or a 6 to enter Tile 1
+            if (dieRoll === 1 || dieRoll === 6) {
+                return 1;
+            } else {
+                return start; // didn't move
+            }
+        } else {
+            // Exact landing rule: overshooting tile 100 voids movement
+            if (start + dieRoll <= 100) {
+                return start + dieRoll;
+            } else {
+                return start; // didn't move
+            }
+        }
+    }
+
+    // Animates a move step-by-step along the board, then along the jump path if applicable.
+    async _animateStepByStep(startTile, endTile, playerId, dieRoll) {
+        console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
-        const startPos = this.getTokenPositionFromTile(previousPosition, playerId);
-        const endPos = this.getTokenPositionFromTile(newPosition, playerId);
-        if (!startPos || !endPos) {
-            console.error(`[gameView] Could not compute positions for animateTokenMove`);
-            return;
+        const intermediatePos = this._calculateIntermediatePosition(startTile, dieRoll, playerId);
+        const hasJump = (intermediatePos !== startTile && intermediatePos !== endTile) &&
+            (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
+
+        // Part 1: move from startTile to intermediatePos one tile at a time
+        let current = startTile;
+        while (current !== intermediatePos) {
+            // Determine next tile: since we are moving forward, next = current + 1
+            const nextTile = current + 1;
+            // Move token to nextTile
+            const pos = this.getTokenPositionFromTile(nextTile, playerId);
+            if (!pos) {
+                console.error(`[gameView] Could not compute position for tile ${nextTile}`);
+                break;
+            }
+            this.setTokenPositionFromPixel(pos.x, pos.y, token);
+            // Play step sound for each hop
+            this.playAudio('step');
+            // Wait for a short duration (150-250ms)
+            await this._delay(200); // fixed 200ms for now, can be random
+            current = nextTile;
         }
 
-        // Set initial position
-        this.setTokenPositionFromPixel(startPos.x, startPos.y, token);
-        // Trigger reflow to ensure the transition works
-        void token.offsetHeight;
-        // Set end position (CSS transition will animate the change)
-        this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
+        // Part 2: if there is a jump, follow the SVG path from intermediatePos to endTile
+        if (hasJump) {
+            console.log(`[gameView] has jump from ${intermediatePos} to ${endTile}`);
+            // Find the SVG path element for this jump
+            const pathSelector = `[data-jump="${intermediatePos}-${endTile}"]`;
+            const path = this.svgElement.querySelector(pathSelector);
+            if (!path) {
+                console.error(`[gameView] SVG path not found for jump ${intermediatePos}-${endTile}`);
+                // Fallback: direct move
+                const pos = this.getTokenPositionFromTile(endTile, playerId);
+                if (pos) {
+                    this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                }
+                this.playAudio(this.model.Ladders.has(intermediatePos) ? 'ladder' : 'snake');
+                await this._delay(100); // small delay to simulate sound
+            } else {
+                // Animate along the path
+                const length = path.getTotalLength();
+                // We'll animate from t=0 to t=1 over 600-900ms
+                const duration = Math.random() * 300 + 600; // 600-900ms
+                const startTime = performance.now();
+                // Play the appropriate sound
+                this.playAudio(this.model.Ladders.has(intermediatePos) ? 'ladder' : 'snake');
+                // Animation loop
+                await new Promise((resolve, reject) => {
+                    const step = (timestamp) => {
+                        const elapsed = timestamp - startTime;
+                        const t = Math.min(elapsed / duration, 1);
+                        const point = path.getPointAtLength(t * length);
+                        // Convert SVG viewBox point to board pixels
+                        // The SVG viewBox is 0-100, the board container is 420x420
+                        // So each viewBox unit = 4.2 pixels
+                        const x = point.x * 4.2; // because 100 viewBox units = 420px
+                        const y = point.y * 4.2;
+                        this.setTokenPositionFromPixel(x, y, token);
+                        if (t < 1) {
+                            requestAnimationFrame(step);
+                        } else {
+                            resolve();
+                        }
+                    };
+                    requestAnimationFrame(step);
+                });
+            }
+        } else {
+            // No jump, we are already at intermediatePos (which equals endTile)
+            // But we need to move the token to the endTile position (if not already there)
+            const pos = this.getTokenPositionFromTile(endTile, playerId);
+            if (pos) {
+                this.setTokenPositionFromPixel(pos.x, pos.y, token);
+            }
+        }
+
+        // Play settle sound after the entire move
+        this.playAudio('settle');
 
         // Update classes for staging/board (optional, keeps existing behavior)
-        if (newPosition === 0) {
+        if (endTile === 0) {
             token.classList.add('return-to-staging');
             token.classList.remove('move-to-board');
         } else {
             token.classList.remove('return-to-staging');
             // Add move-to-board class when re-entering from staging (position was 0 previously)
-            if (this.previousPositions[playerId] === 0) {
+            if (startTile === 0) {
                 token.classList.add('move-to-board');
             } else {
                 token.classList.remove('move-to-board');
             }
         }
+    }
 
-        // Listen for transitionend on this token
-        const onTransitionEnd = () => {
-            // Play settle sound
-            this.playAudio('settle');
-
-            // Check for ladder or snake
-            if (this.model.Ladders.has(newPosition)) {
-                this.playAudio('ladder');
-            } else if (this.model.Snakes.has(newPosition)) {
-                this.playAudio('snake');
+    // Animates a direct move using CSS transition (for non-step-by-step moves).
+    // Returns a promise that resolves when the transition ends.
+    _animateDirectMove(startTile, endTile, playerId) {
+        console.log(`[gameView] _animateDirectMove from ${startTile} to ${endTile} for player ${playerId}`);
+        return new Promise((resolve) => {
+            const token = this.tokenElements[playerId];
+            const startPos = this.getTokenPositionFromTile(startTile, playerId);
+            const endPos = this.getTokenPositionFromTile(endTile, playerId);
+            if (!startPos || !endPos) {
+                console.error(`[gameView] Could not compute positions for direct move`);
+                resolve();
+                return;
             }
 
-            // Remove the event listener
-            token.removeEventListener('transitionend', onTransitionEnd);
-        };
+            // Set initial position
+            this.setTokenPositionFromPixel(startPos.x, startPos.y, token);
+            // Trigger reflow to ensure the transition works
+            void token.offsetHeight;
+            // Set end position (CSS transition will animate the change)
+            this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
 
-        token.addEventListener('transitionend', onTransitionEnd);
+            // Listen for transitionend on this token
+            const onTransitionEnd = () => {
+                // Play settle sound
+                this.playAudio('settle');
+
+                // Check for ladder or snake at the end position (if applicable)
+                if (this.model.Ladders.has(endTile)) {
+                    this.playAudio('ladder');
+                } else if (this.model.Snakes.has(endTile)) {
+                    this.playAudio('snake');
+                }
+
+                // Remove the event listener
+                token.removeEventListener('transitionend', onTransitionEnd);
+                resolve();
+            };
+
+            token.addEventListener('transitionend', onTransitionEnd);
+        });
     }
 
     // Update dice display

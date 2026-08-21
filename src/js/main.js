@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Show error in the container instead of a blocking alert
         const container = document.getElementById('game-container');
         if (container) {
-            container.innerHTML = `<div style="color:red; padding:20px;">Error: ${e}</div>`;
+            container.innerHTML = `<div style="color:red; padding:20px;">Error: ${e}</div><div style="color:red; padding:20px;">Stack: ${e.stack}</div>`;
         }
         console.error(e);
     }
