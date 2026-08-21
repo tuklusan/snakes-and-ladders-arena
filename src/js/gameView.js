@@ -30,6 +30,7 @@ class GameView {
         this.audioElements = {} // HTMLAudioElement for each sound
         this.previousPositions = []; // to track token positions for animation
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
+        this.svgElement = null; // SVG overlay for snakes and ladders
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
@@ -37,6 +38,128 @@ class GameView {
         this.assetError = this.assetError.bind(this);
         this.autoRoll = this.autoRoll.bind(this);
         this.handleGameOver = this.handleGameOver.bind(this);
+    }
+
+    // Helper function to get the center of a tile in viewBox coordinates (0-100)
+    getViewBoxCenter(tile) {
+        const tileZero = tile - 1;
+        const logicalRow = Math.floor(tileZero / 10); // 0 = bottom row, 9 = top row
+        const colInRow = tileZero % 10;
+        const col = (logicalRow % 2 === 0) ? colInRow : (9 - colInRow);
+        const x = (col * 10) + 5;
+        const y = ((9 - logicalRow) * 10) + 5; // because logicalRow 0 -> y=95
+        return {x, y};
+    }
+
+    // Helper function to get the cell element for a given tile number
+    getCellElement(tile) {
+        return this.boardElement.querySelector(`[data-tile="${tile}"]`);
+    }
+
+    // Helper function to get the bounding box of the cell element for a given tile number
+    getCellRect(tile) {
+        const cell = this.getCellElement(tile);
+        if (!cell) return null;
+        return cell.getBoundingClientRect();
+    }
+
+    // Helper function to get the center of a cell element in pixels relative to the board
+    getTokenPositionFromTile(tile) {
+        // Handle tile 0 (off-board staging)
+        if (tile === 0) {
+            const boardRect = this.boardElement.getBoundingClientRect();
+            // These constants are from the old tileToPosition
+            const GRID_TOP = 3.33;      // % from top of board image
+            const GRID_HEIGHT = 95.34;  // % of board image height
+            const cell = GRID_HEIGHT / 10;
+            const slot = (this._stagingSlot = ((this._stagingSlot || 0) % 4) + 1);
+            const xPercent = 12 + slot * 18;
+            const yPercent = GRID_TOP + (9.5 * cell);
+            const x = boardRect.width * (xPercent / 100);
+            const y = boardRect.height * (yPercent / 100);
+            return { x, y };
+        }
+        const cell = this.getCellElement(tile);
+        if (!cell) return null;
+        const rect = cell.getBoundingClientRect();
+        const boardRect = this.boardElement.getBoundingClientRect();
+        return {
+            x: rect.left - boardRect.left + rect.width / 2,
+            y: rect.top - boardRect.top + rect.height / 2
+        };
+    }
+
+    // Set token position using pixel values
+    setTokenPositionFromPixel(x, y, token) {
+        token.style.left = x + 'px';
+        token.style.top = y + 'px';
+        token.style.transform = 'translate(-50%, -50%)';
+    }
+
+    // Position a token on a given tile
+    positionTokenOnTile(playerId, tile) {
+        const pos = this.getTokenPositionFromTile(tile);
+        if (pos) {
+            this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[playerId]);
+        }
+    }
+
+    // Draw snakes and ladders on the SVG overlay
+    drawSnakesAndLadders() {
+        // Clear any existing paths from this.svgElement (while keeping the SVG element itself)
+        while (this.svgElement.firstChild) {
+            this.svgElement.removeChild(this.svgElement.firstChild);
+        }
+
+        // Helper function to compute the viewBox center for a tile
+        const getViewBoxCenter = (tile) => {
+            const tileZero = tile - 1;
+            const logicalRow = Math.floor(tileZero / 10); // 0 = bottom row, 9 = top row
+            const colInRow = tileZero % 10;
+            const col = (logicalRow % 2 === 0) ? colInRow : (9 - colInRow);
+            const x = (col * 10) + 5;
+            const y = ((9 - logicalRow) * 10) + 5; // because logicalRow 0 -> y=95
+            return {x, y};
+        };
+
+        // Draw ladders
+        for (const [start, end] of this.model.Ladders) {
+            const startCenter = getViewBoxCenter(start);
+            const endCenter = getViewBoxCenter(end);
+            // For ladder, we'll draw a straight line with dash array to simulate rungs
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} L ${endCenter.x} ${endCenter.y}`);
+            path.setAttribute('stroke', '#2ecc71'); // green
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-dasharray', '4,2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(path);
+        }
+
+        // Draw snakes
+        for (const [start, end] of this.model.Snakes) {
+            const startCenter = getViewBoxCenter(start);
+            const endCenter = getViewBoxCenter(end);
+            // For snake, we'll draw a curved path (quadratic Bezier)
+            const mx = (startCenter.x + endCenter.x) / 2;
+            const my = (startCenter.y + endCenter.y) / 2;
+            const dx = endCenter.x - startCenter.x;
+            const dy = endCenter.y - startCenter.y;
+            const length = Math.sqrt(dx*dx + dy*dy);
+            const offset = 20; // arbitrary offset for control point
+            const nx = (-dy / length) * offset;
+            const ny = (dx / length) * offset;
+            const controlX = mx + nx;
+            const controlY = my + ny;
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} Q ${controlX} ${controlY} ${endCenter.x} ${endCenter.y}`);
+            path.setAttribute('stroke', '#e74c3c'); // red
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('fill', 'none');
+            path.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(path);
+        }
     }
 
     init(model, controller) {
@@ -85,13 +208,47 @@ class GameView {
         // Create board container
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
+        // Removed backgroundImage and paddingBottom; will be set via updateBoardBackground
         this.boardElement.style.position = 'relative';
-        this.boardElement.style.width = '100%';
-        this.boardElement.style.paddingBottom = '133.35%'; // match portrait board aspect ratio
-        this.boardElement.style.backgroundSize = 'contain';
-        this.boardElement.style.backgroundRepeat = 'no-repeat';
-        this.boardElement.style.backgroundPosition = 'center';
+        this.boardElement.style.width = 'min(500px, 100%, calc(100vh - 120px))';
+        this.boardElement.style.aspectRatio = '1 / 1';
+        this.boardElement.style.backgroundColor = '#f8f9fa';
+        this.boardElement.style.display = 'grid';
+        this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
+        this.boardElement.style.gridTemplateRows = 'repeat(10, 1fr)';
         this.container.appendChild(this.boardElement);
+
+        // Create 100 cell elements
+        for (let row = 0; row < 10; row++) {
+            for (let col = 0; col < 10; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                // Compute tile number in boustrophedon order with tile 1 at bottom-left
+                const logicalRow = 9 - row; // 0 = bottom row, 9 = top row
+                let tile;
+                if (logicalRow % 2 === 0) {
+                    tile = logicalRow * 10 + col + 1;
+                } else {
+                    tile = logicalRow * 10 + (9 - col) + 1;
+                }
+                cell.dataset.tile = tile;
+                cell.textContent = tile;
+                this.boardElement.appendChild(cell);
+            }
+        }
+
+        // Create SVG overlay for snakes and ladders
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.style.position = 'absolute';
+        svg.style.top = 0;
+        svg.style.left = 0;
+        svg.style.width = '100%';
+        svg.style.height = '100%';
+        svg.style.pointerEvents = 'none';
+        svg.setAttribute('viewBox', '0 0 100 100');
+        this.boardElement.appendChild(svg);
+        this.svgElement = svg;
+        this.drawSnakesAndLadders();
 
         // Create token elements (will be positioned absolutely)
         for (let i = 0; i < 4; i++) {
@@ -166,7 +323,7 @@ class GameView {
 
     loadAssets() {
         // Calculate total assets to load
-        this.assetsTotalCount = 1; // board
+        this.assetsTotalCount = 0; // no board image
         this.assetsTotalCount += 4; // tokens
         this.assetsTotalCount += 6; // dice faces
         this.assetsTotalCount += 1; // dice tumble sheet
@@ -186,28 +343,6 @@ class GameView {
                 this.autoRoll();
             }
         }, 5000);
-
-        // Load board image (try SVG first, then PNG)
-        this.boardImage.onload = () => {
-            console.log("[gameView] Board image onload");
-            this.boardLoaded = true;
-            this.updateBoardBackground();
-            this.assetLoaded();
-            // Board is loaded - make it playable even if other assets are still loading
-            if (!this.isAssetsHandled) {
-                this.isAssetsHandled = true;
-                this.hideLoadingOverlay();
-                this.enableRollButton();
-                this.autoRoll();
-            }
-        };
-        this.boardImage.onerror = () => {
-            console.log("[gameView] Board image onerror, trying PNG fallback");
-            // Fallback to PNG
-            this.boardImage.src = 'assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.png';
-        };
-        // Try SVG first
-        this.boardImage.src = 'assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.svg';
 
         // Load token images (assuming token_1.png to token_4.png)
         for (let i = 1; i <= 4; i++) {
@@ -386,48 +521,13 @@ class GameView {
         }, 10000);
     }
 
-    // Update the board background image
+    // Update the board background color
     updateBoardBackground() {
-        if (this.boardLoaded) {
-            this.boardElement.style.backgroundImage = `url('${this.boardImage.src}')`;
-        }
+        this.boardElement.style.backgroundColor = '#f8f9fa';
     }
 
-    // Convert tile number to x, y coordinates (in percentage of board size)
-    // Assuming standard boustrophedon layout: 
-    // Row 0 (bottom): 1-10 left to right
-    // Row 1: 11-20 right to left
-    // Row 2: 21-30 left to right
-    // etc.
-    tileToPosition(tile) {
-        const GRID_TOP = 3.33;      // % from top of board image
-        const GRID_HEIGHT = 95.34;  // % of board image height
-        const cell = GRID_HEIGHT / 10;
-        if (tile === 0) {
-            // Off-board staging: spread along the bottom inside the board area
-            const slot = (this._stagingSlot = ((this._stagingSlot || 0) % 4) + 1);
-            return { x: 12 + slot * 18, y: GRID_TOP + (9.5 * cell) };
-        }
-        tile--; // convert to 0-indexed (0-99)
-        const row = Math.floor(tile / 10); // 0-9 (0 is bottom row)
-        const colInRow = tile % 10; // 0-9
-
-        let col;
-        if (row % 2 === 0) {
-            // Even row (0,2,4,6,8): left to right
-            col = colInRow;
-        } else {
-            // Odd row (1,3,5,7,9): right to left
-            col = 9 - colInRow;
-        }
-
-        // Convert to percentage (0-100%) within the board
-        // Each tile is 10% of the board width (since 10 tiles per row)
-        const xPercent = (col * 10) + 5; // add half a token to center the token
-        const yPercentFromTop = GRID_TOP + ((9 - row) * cell) + (cell / 2);
-
-        return { x: xPercent, y: yPercentFromTop };
-    }
+    // Note: The old tileToPosition function has been removed.
+// We now use getTokenPositionFromTile for pixel-based positioning.
 
     // Update token positions based on model state - now handles animation
     onStateChange() {
@@ -478,9 +578,10 @@ class GameView {
     // Resize tokens when window changes size
     onWindowResize() {
         this.sizeTokens();
+        this.drawSnakesAndLadders();
     }
 
-    // Animates a token move with step and settle sounds
+    // Animates a token move with step and settle sounds using CSS transitions
     animateTokenMove(playerId, newPosition) {
         console.log(`[gameView] animateTokenMove called for player ${playerId} to position ${newPosition}`);
         // Check if there is no movement needed
@@ -495,9 +596,21 @@ class GameView {
         this.playAudio('step');
 
         const token = this.tokenElements[playerId];
-        const { x, y } = this.tileToPosition(newPosition);
+        const startPos = this.getTokenPositionFromTile(previousPosition);
+        const endPos = this.getTokenPositionFromTile(newPosition);
+        if (!startPos || !endPos) {
+            console.error(`[gameView] Could not compute positions for animateTokenMove`);
+            return;
+        }
 
-        // Set the position to trigger transition
+        // Set initial position
+        this.setTokenPositionFromPixel(startPos.x, startPos.y, token);
+        // Trigger reflow to ensure the transition works
+        void token.offsetHeight;
+        // Set end position (CSS transition will animate the change)
+        this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
+
+        // Update classes for staging/board (optional, keeps existing behavior)
         if (newPosition === 0) {
             token.classList.add('return-to-staging');
             token.classList.remove('move-to-board');
@@ -510,10 +623,6 @@ class GameView {
                 token.classList.remove('move-to-board');
             }
         }
-
-        // Actually move the token to the computed position
-        this.setTokenPosition(playerId, x, y);
-
 
         // Listen for transitionend on this token
         const onTransitionEnd = () => {
