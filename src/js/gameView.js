@@ -63,26 +63,30 @@ class GameView {
         return cell.getBoundingClientRect();
     }
 
-    // Helper function to get the center of a cell element in pixels relative to the board
+    // Helper function to get the center of a cell element in pixels relative to the container
     getTokenPositionFromTile(tile, playerId) {
+        const containerRect = this.container.getBoundingClientRect();
+
         // Handle tile 0 (off-board staging)
         if (tile === 0) {
-            const boardRect = this.boardElement.getBoundingClientRect();
-            // Staging area: below the board, spread horizontally
-            const stagingY = boardRect.height + 20; // 20px below the board
-            const stagingXStart = 20; // 20px from left
-            const stagingXStep = (boardRect.width - 40) / 3; // for 4 tokens, 3 gaps
-            const x = stagingXStart + playerId * stagingXStep;
-            const y = stagingY;
+            const stagingRect = this.stagingElement.getBoundingClientRect();
+            // Staging area: within the staging element, spread horizontally
+            const stagingWidth = stagingRect.width;
+            const padding = 20; // padding from left and right of staging area
+            const availableWidth = stagingWidth - 2 * padding;
+            const step = availableWidth / 3; // for 4 tokens, 3 gaps
+            const x = stagingRect.left - containerRect.left + padding + playerId * step + step / 2;
+            const y = stagingRect.top - containerRect.top + stagingRect.height / 2;
             return { x, y };
         }
+
+        // For tiles 1-100, get the cell element and compute its center relative to container
         const cell = this.getCellElement(tile);
         if (!cell) return null;
         const rect = cell.getBoundingClientRect();
-        const boardRect = this.boardElement.getBoundingClientRect();
         return {
-            x: rect.left - boardRect.left + rect.width / 2,
-            y: rect.top - boardRect.top + rect.height / 2
+            x: rect.left - containerRect.left + rect.width / 2,
+            y: rect.top - containerRect.top + rect.height / 2
         };
     }
 
@@ -181,8 +185,8 @@ class GameView {
         this.container.style.width = '100%';
         this.container.style.maxWidth = '800px';
         this.container.style.margin = '0 auto';
-        this.container.style.height = 'auto';
-        this.container.style.padding = '20px';
+        this.container.style.height = '600px';
+        this.container.style.padding = '0';
         this.container.style.boxSizing = 'border-box';
 
         // Create loading overlay
@@ -205,10 +209,12 @@ class GameView {
         // Create board container
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
-        // Removed backgroundImage and paddingBottom; will be set via updateBoardBackground
-        this.boardElement.style.position = 'relative';
-        this.boardElement.style.width = 'min(500px, 100%, calc(100vh - 120px))';
-        this.boardElement.style.aspectRatio = '1 / 1';
+        this.boardElement.style.position = 'absolute';
+        this.boardElement.style.left = '50%';
+        this.boardElement.style.transform = 'translateX(-50%)';
+        this.boardElement.style.width = '420px';
+        this.boardElement.style.height = '420px';
+        this.boardElement.style.top = '10px';
         this.boardElement.style.backgroundColor = '#f8f9fa';
         this.boardElement.style.display = 'grid';
         this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
@@ -248,7 +254,22 @@ class GameView {
         this.svgElement = svg;
         this.drawSnakesAndLadders();
 
-        // Create token elements (will be positioned absolutely)
+        // Create staging area
+        this.stagingElement = document.createElement('div');
+        this.stagingElement.id = 'staging-area';
+        this.stagingElement.style.position = 'absolute';
+        this.stagingElement.style.left = '50%';
+        this.stagingElement.style.transform = 'translateX(-50%)';
+        this.stagingElement.style.width = '420px';
+        this.stagingElement.style.height = '40px';
+        this.stagingElement.style.top = '440px'; // 10px (board top) + 420px (board height) + 10px margin = 440px
+        this.stagingElement.style.backgroundColor = 'rgba(0,0,0,0.1)'; // for debugging, can be removed
+        this.stagingElement.style.display = 'flex';
+        this.stagingElement.style.justifyContent = 'space-around';
+        this.stagingElement.style.alignItems = 'center';
+        this.container.appendChild(this.stagingElement);
+
+        // Create token elements (now as children of container)
         for (let i = 0; i < 4; i++) {
             const token = document.createElement('div');
             token.className = `game-token player-${i}`;
@@ -257,7 +278,7 @@ class GameView {
             token.style.backgroundSize = 'contain';
             token.style.backgroundRepeat = 'no-repeat';
             token.style.backgroundPosition = 'center';
-            this.boardElement.appendChild(token);
+            this.container.appendChild(token);
             this.tokenElements.push(token);
         }
         // Size tokens after all DOM is created
@@ -276,28 +297,13 @@ class GameView {
         this.diceElement.style.backgroundPosition = 'center';
         this.container.appendChild(this.diceElement);
 
-        // Create player info panel
-        this.playerInfoElement = document.createElement('div');
-        this.playerInfoElement.id = 'player-info';
-        this.playerInfoElement.style.position = 'absolute';
-        this.playerInfoElement.style.bottom = '10px';
-        this.playerInfoElement.style.left = '10px';
-        this.playerInfoElement.style.right = '10px';
-        this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        this.playerInfoElement.style.color = 'white';
-        this.playerInfoElement.style.padding = '10px';
-        this.playerInfoElement.style.borderRadius = '5px';
-        this.playerInfoElement.style.display = 'flex';
-        this.playerInfoElement.style.justifyContent = 'space-around';
-        this.playerInfoElement.style.alignItems = 'center';
-        this.container.appendChild(this.playerInfoElement);
-
         // Create message area for non-blocking alerts
         this.messageElement = document.createElement('div');
         this.messageElement.style.position = 'absolute';
-        this.messageElement.style.bottom = '55px';
+        this.messageElement.style.top = '490px'; // in the gap between staging (480px) and player info (520px)
         this.messageElement.style.left = '10px';
         this.messageElement.style.right = '10px';
+        this.messageElement.style.height = '20px';
         this.messageElement.style.backgroundColor = 'rgba(255,255,0,0.8)';
         this.messageElement.style.color = '#333';
         this.messageElement.style.padding = '8px';
@@ -306,15 +312,35 @@ class GameView {
         this.messageElement.style.display = 'none';
         this.container.appendChild(this.messageElement);
 
+        // Create player info panel
+        this.playerInfoElement = document.createElement('div');
+        this.playerInfoElement.id = 'player-info';
+        this.playerInfoElement.style.position = 'absolute';
+        this.playerInfoElement.style.top = '520px'; // below the message
+        this.playerInfoElement.style.left = '10px';
+        this.playerInfoElement.style.right = '10px';
+        this.playerInfoElement.style.height = '80px';
+        this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        this.playerInfoElement.style.color = '#fff';
+        this.playerInfoElement.style.padding = '12px';
+        this.playerInfoElement.style.borderRadius = '8px';
+        this.playerInfoElement.style.display = 'flex';
+        this.playerInfoElement.style.justifyContent = 'space-around';
+        this.playerInfoElement.style.alignItems = 'center';
+        this.container.appendChild(this.playerInfoElement);
+
         // Create roll button
         this.rollButton = document.createElement('button');
         this.rollButton.id = 'roll-button';
         this.rollButton.textContent = 'Roll Dice';
+        this.rollButton.style.position = 'absolute';
+        this.rollButton.style.bottom = '20px';
+        this.rollButton.style.left = '50%';
+        this.rollButton.style.transform = 'translateX(-50%)';
         this.rollButton.style.padding = '10px 20px';
         this.rollButton.style.fontSize = '16px';
         this.rollButton.style.cursor = 'pointer';
         this.rollButton.style.display = 'block';
-        this.rollButton.style.margin = '20px auto';
         this.rollButton.disabled = true; // disabled until assets load
         this.container.appendChild(this.rollButton);
     }
