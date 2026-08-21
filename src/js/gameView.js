@@ -64,19 +64,16 @@ class GameView {
     }
 
     // Helper function to get the center of a cell element in pixels relative to the board
-    getTokenPositionFromTile(tile) {
+    getTokenPositionFromTile(tile, playerId) {
         // Handle tile 0 (off-board staging)
         if (tile === 0) {
             const boardRect = this.boardElement.getBoundingClientRect();
-            // These constants are from the old tileToPosition
-            const GRID_TOP = 3.33;      // % from top of board image
-            const GRID_HEIGHT = 95.34;  // % of board image height
-            const cell = GRID_HEIGHT / 10;
-            const slot = (this._stagingSlot = ((this._stagingSlot || 0) % 4) + 1);
-            const xPercent = 12 + slot * 18;
-            const yPercent = GRID_TOP + (9.5 * cell);
-            const x = boardRect.width * (xPercent / 100);
-            const y = boardRect.height * (yPercent / 100);
+            // Staging area: below the board, spread horizontally
+            const stagingY = boardRect.height + 20; // 20px below the board
+            const stagingXStart = 20; // 20px from left
+            const stagingXStep = (boardRect.width - 40) / 3; // for 4 tokens, 3 gaps
+            const x = stagingXStart + playerId * stagingXStep;
+            const y = stagingY;
             return { x, y };
         }
         const cell = this.getCellElement(tile);
@@ -98,7 +95,7 @@ class GameView {
 
     // Position a token on a given tile
     positionTokenOnTile(playerId, tile) {
-        const pos = this.getTokenPositionFromTile(tile);
+        const pos = this.getTokenPositionFromTile(tile, playerId);
         if (pos) {
             this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[playerId]);
         }
@@ -245,6 +242,7 @@ class GameView {
         svg.style.width = '100%';
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
+        svg.style.zIndex = '0';
         svg.setAttribute('viewBox', '0 0 100 100');
         this.boardElement.appendChild(svg);
         this.svgElement = svg;
@@ -269,14 +267,14 @@ class GameView {
         this.diceElement = document.createElement('div');
         this.diceElement.id = 'dice-container';
         this.diceElement.style.position = 'absolute';
-        this.diceElement.style.top = '10px';
-        this.diceElement.style.right = '10px';
+        this.diceElement.style.top = '20px';
+        this.diceElement.style.right = '20px';
         this.diceElement.style.width = '60px';
         this.diceElement.style.height = '60px';
         this.diceElement.style.backgroundSize = 'contain';
         this.diceElement.style.backgroundRepeat = 'no-repeat';
         this.diceElement.style.backgroundPosition = 'center';
-        this.boardElement.appendChild(this.diceElement);
+        this.container.appendChild(this.diceElement);
 
         // Create player info panel
         this.playerInfoElement = document.createElement('div');
@@ -596,8 +594,8 @@ class GameView {
         this.playAudio('step');
 
         const token = this.tokenElements[playerId];
-        const startPos = this.getTokenPositionFromTile(previousPosition);
-        const endPos = this.getTokenPositionFromTile(newPosition);
+        const startPos = this.getTokenPositionFromTile(previousPosition, playerId);
+        const endPos = this.getTokenPositionFromTile(newPosition, playerId);
         if (!startPos || !endPos) {
             console.error(`[gameView] Could not compute positions for animateTokenMove`);
             return;
@@ -724,14 +722,17 @@ class GameView {
     updateTokenPositions() {
         const boardWidth = this.boardElement.clientWidth;
         const boardHeight = this.boardElement.clientHeight;
+        console.log('[DEBUG] updateTokenPositions called, boardWidth:', boardWidth, 'boardHeight:', boardHeight);
 
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             const position = this.model.getPlayerPosition(i);
-            const pos = this.tileToPosition(position);
+            const pos = this.getTokenPositionFromTile(position, i);
+            if (!pos) continue;
             const token = this.tokenElements[i];
+            console.log(`[DEBUG] Player ${i} position ${position}: pos.x=${pos.x}, pos.y=${pos.y}`);
 
-            // Set position as percentage of board size (centered)
-            this.setTokenPosition(i, pos.x, pos.y);
+            // Set position in pixels
+            this.setTokenPositionFromPixel(pos.x, pos.y, token);
 
             // Adjust token size based on board size (e.g., 10% of tile size)
             const tileSize = Math.min(boardWidth, boardHeight) / 10;

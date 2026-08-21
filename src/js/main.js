@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Initialize the view with model and controller
         view.init(model, controller);
 
+        // Reset the game to set initial state
+        controller.resetGame();
+
         // Expose for debugging (optional)
         window.gameModel = model;
         window.gameController = controller;

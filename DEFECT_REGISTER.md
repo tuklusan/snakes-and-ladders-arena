@@ -42,6 +42,10 @@ a single continuous run, plus screenshots from the same page instance before
 and after a reset.
 
 ## DR-108  THE BOARD ARTWORK IS NOT THE GAME   SEVERITY: CRITICAL   STATUS: OPEN
+*** ROUND 3 DECIDED THIS (OPTION A, see DR_WORK_ORDER_3.md) BUT NEVER BUILT IT.
+*** gameView.js still uses backgroundImage at line 392 and paddingBottom
+*** 133.35% at line 90. No grid-generation code exists. BUILD IT IN ROUND 4,
+*** TOGETHER WITH DR-110 — they are one piece of work.
 
 This supersedes DR-105 entirely. DR-105 is CLOSED-INVALID: the coordinate maths
 was never the problem, which is why four rounds of patching it failed.
@@ -95,7 +99,7 @@ ACCEPTANCE:
     the head tile and ends at the tail tile.
   - Tile numbers are visible and follow boustrophedon order, 1 bottom-left.
 
-## DR-109  THE ARENA FREEZES   SEVERITY: CRITICAL   STATUS: OPEN
+## DR-109  THE ARENA FREEZES   SEVERITY: CRITICAL   STATUS: FIX COMMITTED (d83f046), under re-verification
 
 Continuous capture on Xvfb :98, 18 frames at 6s (shots/ovs1/). Frames 8 to 18
 are BYTE-IDENTICAL (md5 1bb7376faab3ee0a40bafa8015c16826, 11 frames, 66+
@@ -112,3 +116,44 @@ consecutive-sixes path. Find the state machine dead end.
 
 ACCEPTANCE: DR-107's two-consecutive-completed-games evidence, which cannot pass
 while this defect exists.
+
+## DR-110  THE APP MUST FIT IN 600 PX OF HEIGHT   SEVERITY: HIGH   STATUS: OPEN
+
+CLIENT REQUIREMENT, verbatim intent: the board is too long for the screen.
+Everything must be scaled down so the whole app fits a viewport whose maximum
+height is 600 px. Roughly half of current size.
+
+Current state: the board is forced to portrait 3:4 by
+    gameView.js line 90:  this.boardElement.style.paddingBottom = '133.35%'
+so at 760 px wide it is 1013 px tall, and the app needs ~1300 px of height. That
+is why it does not fit.
+
+THIS IS THE SAME WORK AS DR-108 — DO THEM TOGETHER, ONCE.
+DR-108 replaces the 7x9 picture with a GENERATED 10x10 grid. A real 10x10 grid
+is SQUARE (1:1), not 3:4, so it is inherently far shorter. Generating the board
+is what makes it fit. Do not fix the height on the old picture and then rebuild
+the board — that is the same layout work done twice.
+
+TARGET LAYOUT
+  - The whole app must fit within 600 px total height, with NO vertical page
+    scrolling, at a viewport of 1280x600.
+  - Budget: board ~480-500 px square, player panel and dice ~100-120 px.
+  - The board is SQUARE. 10 columns x 10 rows of equal square cells.
+  - Everything scales from the board size, not from hard-coded pixels:
+    token diameter ~ cell*0.7, tile-number font ~ cell*0.22, dice ~ cell*1.2.
+    Derive them from the measured cell size at layout time, as sizeTokens()
+    already does for tokens.
+  - It must still look correct at 1280x800 and 1280x1000 — fit means "fits
+    within", not "assumes exactly 600".
+
+ACCEPTANCE, measured not asserted:
+  1. At viewport 1280x600, document.documentElement.scrollHeight <= 600.
+     No vertical scrollbar.
+  2. The board element is square within 2 percent.
+  3. The rendered grid exposes exactly 100 addressable cells (DR-108).
+  4. All four tokens are visible and at least 20 px across.
+  5. Tile numbers are legible: font-size >= 9 px.
+  6. The same page still fits, without overlap, at 1280x800.
+
+The overseer's harness diag_sweep.html already measures grid geometry from the
+DOM. Extend it rather than writing a new one.

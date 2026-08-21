@@ -47,7 +47,7 @@ body {
 #game-board {
     position: relative;
     width: 100%;
-    padding-bottom: 100%; /* 1:1 aspect ratio */
+    
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -208,4 +208,11 @@ body {
   30% { transform: scale(1.2); }
   60% { transform: scale(0.8); }
   100% { transform: scale(1); }
+}
+
+/* Cell borders and z-index */
+.cell {
+    position: relative;
+    z-index: 1;
+    border: 1px solid #bbb;
 }
