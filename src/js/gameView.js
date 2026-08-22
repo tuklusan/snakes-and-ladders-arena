@@ -548,7 +548,7 @@ class GameView {
 
     // Update token positions based on model state - now handles animation
     onStateChange() {
-        console.log('[gameView] onStateChange called');
+        console.log(`[gameView] move start at ${Date.now()}`);
         // Update dice display with tumble animation
         const lastRoll = this.model.getLastRoll();
         if (lastRoll >= 1 && lastRoll <= 6) {
@@ -582,25 +582,41 @@ class GameView {
         // Update previous positions
         this.previousPositions = [...currentPositions];
 
-        if (animationPromises.length === 0) {
+        // Single-fire guard for autoRoll
+        let settled = false;
+        let watchdogId = null;
+        const proceed = () => {
+            if (settled) return;
+            settled = true;
+            if (watchdogId !== null) {
+                clearTimeout(watchdogId);
+            }
             this.autoRoll();
+        };
+
+        if (animationPromises.length === 0) {
+            proceed();
             return;
         }
 
-        // Watchdog: if animations take too long, we still want to proceed.
-        const watchdogId = setTimeout(() => {
+        // Watchdog timeout: derived from animation constants
+        //   max hops (6) * hop delay (200ms) = 1200ms
+        //   landing pause (PAUSE_DURATION) = 500ms
+        //   max jump duration (600ms base + 300ms random) = 900ms
+        //   destination pause (PAUSE_DURATION) = 500ms
+        //   total = 1200 + 500 + 900 + 500 = 3100ms
+        const WATCHDOG_TIMEOUT = (6 * 200) + GameView.PAUSE_DURATION + 900 + GameView.PAUSE_DURATION;
+        watchdogId = setTimeout(() => {
             console.log('[gameView] Watchdog triggered: calling autoRoll after timeout');
-            this.autoRoll();
-        }, 3000); // 3 seconds
+            proceed();
+        }, WATCHDOG_TIMEOUT);
 
         // Wait for all animations to complete
         Promise.all(animationPromises).then(() => {
-            clearTimeout(watchdogId);
-            this.autoRoll();
+            proceed();
         }).catch((error) => {
             console.error('[gameView] Animation error:', error);
-            clearTimeout(watchdogId);
-            this.autoRoll();
+            proceed();
         });
     }
 
@@ -665,6 +681,7 @@ class GameView {
     }
 
     // Animates a move step-by-step along the board, then along the jump path if applicable.
+    // Animates a move step-by-step along the board, then along the jump path if applicable.
     async _animateStepByStep(startTile, endTile, playerId, dieRoll) {
         console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
@@ -677,6 +694,7 @@ class GameView {
         while (current !== intermediatePos) {
             // Determine next tile: since we are moving forward, next = current + 1
             const nextTile = current + 1;
+            console.log(`[gameView] hop from ${current} to ${nextTile} start`);
             // Move token to nextTile
             const pos = this.getTokenPositionFromTile(nextTile, playerId);
             if (!pos) {
@@ -694,6 +712,7 @@ class GameView {
         // Pause at the landing tile (intermediatePos) before jumping
         console.log(`[gameView] pausing at landing tile ${intermediatePos} for ${GameView.PAUSE_DURATION}ms`);
         await this._delay(GameView.PAUSE_DURATION);
+        console.log(`[gameView] landing pause end`);
 
         // Part 2: if there is a jump, follow the SVG path from intermediatePos to endTile
         if (hasJump) {
@@ -742,6 +761,7 @@ class GameView {
                     };
                     requestAnimationFrame(step);
                 });
+                console.log(`[gameView] traversal end`);
             }
         } else {
             // No jump, we are already at intermediatePos (which equals endTile)
@@ -758,6 +778,8 @@ class GameView {
         // Pause at the destination tile before finishing
         console.log(`[gameView] pausing at destination tile ${endTile} for ${GameView.PAUSE_DURATION}ms`);
         await this._delay(GameView.PAUSE_DURATION);
+        console.log(`[gameView] destination pause end`);
+        console.log(`[gameView] move complete at ${Date.now()}`);
 
         // Update classes for staging/board (optional, keeps existing behavior)
         if (endTile === 0) {
@@ -778,6 +800,7 @@ class GameView {
     // Returns a promise that resolves when the transition ends.
     _animateDirectMove(startTile, endTile, playerId) {
         console.log(`[gameView] _animateDirectMove from ${startTile} to ${endTile} for player ${playerId}`);
+        console.log(`[gameView] direct move start`);
         return new Promise((resolve) => {
             const token = this.tokenElements[playerId];
             const startPos = this.getTokenPositionFromTile(startTile, playerId);
@@ -793,6 +816,7 @@ class GameView {
                 // Fallback: if we can compute the end position, set the token there (without animation)
                 if (endPos) {
                     this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
+                    console.log(`[gameView] move complete at ${Date.now()}`);
                 }
                 resolve();
                 return;
@@ -816,6 +840,8 @@ class GameView {
                 } else if (this.model.Snakes.has(endTile)) {
                     this.playAudio('snake');
                 }
+
+                console.log(`[gameView] move complete at ${Date.now()}`);
 
                 // Remove the event listener
                 token.removeEventListener('transitionend', onTransitionEnd);
