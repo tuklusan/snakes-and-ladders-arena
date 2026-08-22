@@ -32,6 +32,7 @@ class GameView {
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
         this.svgElement = null; // SVG overlay for snakes and ladders
         this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
+        this.moveId = 0; // unique identifier for each onStateChange call
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
@@ -381,6 +382,8 @@ class GameView {
                 this.hideLoadingOverlay();
                 this.enableRollButton();
                 this.isAssetsHandled = true;
+                // Set the turn indicator for the current active player (even if assets failed)
+                this.onTurnChange(this.model.getActivePlayer());
                 // Start auto-play even if assets didn't load (maybe some failed)
                 this.autoRoll();
             }
@@ -447,6 +450,8 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
+                // Set the turn indicator for the current active player
+                this.onTurnChange(this.model.getActivePlayer());
                 // Start auto-play after assets loaded
                 this.autoRoll();
             }
@@ -556,6 +561,7 @@ class GameView {
     // Update token positions based on model state - now handles animation
     onStateChange() {
         console.log(`[gameView] move start at ${Date.now()}`);
+        const currentMoveId = ++this.moveId;
         // Update dice display with tumble animation
         const lastRoll = this.model.getLastRoll();
         if (lastRoll >= 1 && lastRoll <= 6) {
@@ -594,6 +600,10 @@ class GameView {
         let watchdogId = null;
         const proceed = () => {
             if (settled) return;
+            // Check if this is the latest move
+            if (this.moveId !== currentMoveId) {
+                return;
+            }
             settled = true;
             if (watchdogId !== null) {
                 clearTimeout(watchdogId);
@@ -959,7 +969,10 @@ class GameView {
         this.updatePlayerInfo();
         // Update turn indicator below dice
         if (this.turnIndicator && this.assets.tokens[activePlayer]) {
-            this.turnIndicator.style.backgroundImage = `url('${this.assets.tokens[activePlayer].src}')`;
+            const src = this.assets.tokens[activePlayer].src;
+            console.log('[gameView] turn indicator src:', src);
+            this.turnIndicator.style.backgroundImage = `url('${src}')`;
+            console.log('[gameView] turn indicator backgroundImage:', this.turnIndicator.style.backgroundImage);
         }
         this.playAudio('turn');
     }
