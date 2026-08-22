@@ -48,6 +48,9 @@ class GameView {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
+    // Constants
+    static PAUSE_DURATION = 500;   // ms settle at landing and destination tiles
+
     // Helper function to get the center of a tile in viewBox coordinates (0-100)
     getViewBoxCenter(tile) {
         const tileZero = tile - 1;
@@ -594,8 +597,8 @@ class GameView {
         Promise.all(animationPromises).then(() => {
             clearTimeout(watchdogId);
             this.autoRoll();
-        }).catch(() => {
-            // In case of error, we still want to proceed.
+        }).catch((error) => {
+            console.error('[gameView] Animation error:', error);
             clearTimeout(watchdogId);
             this.autoRoll();
         });
@@ -689,8 +692,8 @@ class GameView {
         }
 
         // Pause at the landing tile (intermediatePos) before jumping
-        console.log(`[gameView] pausing at landing tile ${intermediatePos} for ${PAUSE_DURATION}ms`);
-        await this._delay(PAUSE_DURATION);
+        console.log(`[gameView] pausing at landing tile ${intermediatePos} for ${GameView.PAUSE_DURATION}ms`);
+        await this._delay(GameView.PAUSE_DURATION);
 
         // Part 2: if there is a jump, follow the SVG path from intermediatePos to endTile
         if (hasJump) {
@@ -753,8 +756,8 @@ class GameView {
         this.playAudio('settle');
 
         // Pause at the destination tile before finishing
-        console.log(`[gameView] pausing at destination tile ${endTile} for ${PAUSE_DURATION}ms`);
-        await this._delay(PAUSE_DURATION);
+        console.log(`[gameView] pausing at destination tile ${endTile} for ${GameView.PAUSE_DURATION}ms`);
+        await this._delay(GameView.PAUSE_DURATION);
 
         // Update classes for staging/board (optional, keeps existing behavior)
         if (endTile === 0) {
