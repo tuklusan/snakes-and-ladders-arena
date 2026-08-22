@@ -736,7 +736,20 @@ class GameView {
                 await new Promise((resolve, reject) => {
                     // Create SVG point once for reuse
                     const pt = this.svgElement.createSVGPoint();
+                    let animationFinished = false;
+                    let rafId = null;
+                    const timeoutId = setTimeout(() => {
+                        if (!animationFinished) {
+                            animationFinished = true;
+                            if (rafId) cancelAnimationFrame(rafId);
+                            resolve();
+                        }
+                    }, duration + 100);
                     const step = (timestamp) => {
+                        if (animationFinished) {
+                            // already timed out, just return
+                            return;
+                        }
                         const elapsed = timestamp - startTime;
                         const t = Math.min(elapsed / duration, 1);
                         const point = path.getPointAtLength(t * length);
@@ -749,12 +762,14 @@ class GameView {
                         this.setTokenPositionFromPixel(x, y, token);
                         console.log(`[gameView] jump animation at t=${t} -> (${x},${y})`);
                         if (t < 1) {
-                            requestAnimationFrame(step);
+                            rafId = requestAnimationFrame(step);
                         } else {
+                            animationFinished = true;
+                            clearTimeout(timeoutId);
                             resolve();
                         }
                     };
-                    requestAnimationFrame(step);
+                    rafId = requestAnimationFrame(step);
                 });
                 console.log(`[gameView] traversal end`);
             }
