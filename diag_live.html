@@ -23,7 +23,7 @@ function main(){
   var out=document.getElementById("out");
   var m=w.gameModel, v=w.gameView, c=w.gameController;
   try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
-  v.autoRoll=function(){};   // hard-stop the arena loop for a deterministic test
+  // autoRoll left intact - real display, real timers   // hard-stop the arena loop for a deterministic test
   var cells={},cw=40;
   for(var n=1;n<=100;n++){var el=d.querySelector('[data-tile="'+n+'"]');
     if(el){var r=el.getBoundingClientRect();cells[n]={x:r.left+r.width/2,y:r.top+r.height/2};cw=r.width;}}

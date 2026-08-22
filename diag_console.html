@@ -1,0 +1,48 @@
+<!doctype html><meta charset=utf-8><title>console</title>
+<style>body{margin:0;font:13px monospace}#f{width:1300px;height:380px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre;font:13px monospace}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>listening...</pre>
+<script>
+// Fails on ANY error the game throws during real play. This is the check that
+// would have caught PAUSE_DURATION with nobody needing to suspect it: the error
+// was always being thrown, the watchdog just swallowed it.
+var errors=[], warns=[], started=Date.now(), hooked=false;
+function hook(){
+  var fr=document.getElementById("f"), w=fr.contentWindow;
+  if(!w || hooked) return;
+  try{
+    w.addEventListener("error", function(e){
+      errors.push("ERROR: "+(e.message||e.error)+" @"+(e.filename||"?")+":"+(e.lineno||"?"));
+    });
+    w.addEventListener("unhandledrejection", function(e){
+      var r=e.reason; errors.push("UNHANDLED REJECTION: "+((r&&r.message)||r));
+    });
+    var ce=w.console.error, cw=w.console.warn;
+    w.console.error=function(){ errors.push("console.error: "+[].join.call(arguments," ")); return ce.apply(this,arguments); };
+    w.console.warn =function(){ warns.push("console.warn: "+[].join.call(arguments," ")); return cw.apply(this,arguments); };
+    hooked=true;
+  }catch(e){}
+}
+document.getElementById("f").addEventListener("load",hook);
+hook();
+setInterval(function(){
+  hook();
+  var t=((Date.now()-started)/1000)|0;
+  var uniq=[], seen={};
+  for(var i=0;i<errors.length;i++){ var k=errors[i].slice(0,120);
+    if(!seen[k]){seen[k]=1;uniq.push(errors[i]);} }
+  var L=[];
+  L.push("CONSOLE WATCH  elapsed "+t+"s   hooked="+hooked);
+  L.push("errors="+errors.length+"  distinct="+uniq.length+"  warnings="+warns.length);
+  L.push("");
+  L.push(errors.length===0 ? "PASS - no errors thrown during play"
+                           : "FAIL - the game is throwing during play");
+  L.push("");
+  L.push("--- distinct errors ---");
+  L.push(uniq.slice(0,12).join("\n") || "(none)");
+  L.push("");
+  L.push("--- warnings (first 4) ---");
+  L.push(warns.slice(0,4).join("\n") || "(none)");
+  document.getElementById("out").textContent=L.join("\n");
+},500);
+</script>

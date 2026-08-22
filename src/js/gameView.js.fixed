@@ -28,7 +28,7 @@ class GameView {
         this.gameOverTimeout = null;
         this.loadingTimeout = null; // timeout to hide loading overlay after a delay
         this.audioElements = {} // HTMLAudioElement for each sound
-        this.previousPositions = [0,0,0,0]; // to track token positions for animation
+        this.previousPositions = []; // to track token positions for animation
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
         this.svgElement = null; // SVG overlay for snakes and ladders
 
@@ -783,17 +783,7 @@ class GameView {
             const startPos = this.getTokenPositionFromTile(startTile, playerId);
             const endPos = this.getTokenPositionFromTile(endTile, playerId);
             if (!startPos || !endPos) {
-                if (!startPos && !endPos) {
-                    console.error(`[gameView] Could not compute start or end position for direct move: startTile=${startTile}, endTile=${endTile}, playerId=${playerId}`);
-                } else if (!startPos) {
-                    console.error(`[gameView] Could not compute start position for direct move: startTile=${startTile}, endTile=${endTile}, playerId=${playerId}`);
-                } else {
-                    console.error(`[gameView] Could not compute end position for direct move: startTile=${startTile}, endTile=${endTile}, playerId=${playerId}`);
-                }
-                // Fallback: if we can compute the end position, set the token there (without animation)
-                if (endPos) {
-                    this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
-                }
+                console.error(`[gameView] Could not compute positions for direct move`);
                 resolve();
                 return;
             }
@@ -934,7 +924,6 @@ class GameView {
     onReset() {
         this.clearTimeouts();
         // Roll button removed for fully automatic arena
-        this.previousPositions = [0,0,0,0];
         this.updateTokenPositions();
         this.updatePlayerInfo();
         this.diceElement.style.backgroundImage = ''; // clear dice

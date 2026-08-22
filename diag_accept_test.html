@@ -66,8 +66,7 @@ function run(){
   // 12. the loading overlay must be gone and the game actually started
   const bodyTxt=(d.body.innerText||"");
   const loading=/Loading game assets/i.test(bodyTxt);
-  P("VIS_loading_cleared", !loading, loading?bodyTxt.match(/Loading game assets[^
-]*/)[0]:"cleared");
+  P("VIS_loading_cleared", !loading, loading ? "STILL LOADING" : "cleared");
 
 
  }catch(e){L.push("ERROR "+e.message);}
