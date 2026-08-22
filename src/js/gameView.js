@@ -22,7 +22,7 @@ class GameView {
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
         this.playerInfoElement = null;
-        this.rollButton = null;
+        this.turnIndicator = null;
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
         this.gameOverTimeout = null;
@@ -106,6 +106,9 @@ class GameView {
     // Position a token on a given tile
     positionTokenOnTile(playerId, tile) {
         const pos = this.getTokenPositionFromTile(tile, playerId);
+        if (tile === 26 && playerId === 0) {
+            console.log();
+        }
         if (pos) {
             this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[playerId]);
         }
@@ -308,6 +311,19 @@ class GameView {
         this.diceElement.style.backgroundPosition = 'center';
         this.container.appendChild(this.diceElement);
 
+        // Create turn indicator (placed below dice)
+        this.turnIndicator = document.createElement('div');
+        this.turnIndicator.id = 'turn-indicator';
+        this.turnIndicator.style.position = 'absolute';
+        this.turnIndicator.style.top = '90px'; // below dice (dice at 20px, 60px high, so 20+60+10=90px)
+        this.turnIndicator.style.right = '20px';
+        this.turnIndicator.style.width = '30px';
+        this.turnIndicator.style.height = '30px';
+        this.turnIndicator.style.backgroundSize = 'contain';
+        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
+        this.turnIndicator.style.backgroundPosition = 'center';
+        this.container.appendChild(this.turnIndicator);
+
         // Create message area for non-blocking alerts
         this.messageElement = document.createElement('div');
         this.messageElement.style.position = 'absolute';
@@ -340,20 +356,7 @@ class GameView {
         this.playerInfoElement.style.alignItems = 'center';
         this.container.appendChild(this.playerInfoElement);
 
-        // Create roll button
-        this.rollButton = document.createElement('button');
-        this.rollButton.id = 'roll-button';
-        this.rollButton.textContent = 'Roll Dice';
-        this.rollButton.style.position = 'absolute';
-        this.rollButton.style.bottom = '20px';
-        this.rollButton.style.left = '50%';
-        this.rollButton.style.transform = 'translateX(-50%)';
-        this.rollButton.style.padding = '10px 20px';
-        this.rollButton.style.fontSize = '16px';
-        this.rollButton.style.cursor = 'pointer';
-        this.rollButton.style.display = 'block';
-        this.rollButton.disabled = true; // disabled until assets load
-        this.container.appendChild(this.rollButton);
+        
     }
 
     loadAssets() {
@@ -440,7 +443,6 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
-                this.enableRollButton();
                 // Start auto-play after assets loaded
                 this.autoRoll();
             }
@@ -473,13 +475,6 @@ class GameView {
         }
     }
 
-    enableRollButton() {
-        console.log("[gameView] Enabling roll button");
-        if (this.rollButton) {
-            this.rollButton.disabled = false;
-        }
-    }
-
     clearTimeouts() {
         if (this.autoRollTimeout) {
             clearTimeout(this.autoRollTimeout);
@@ -496,23 +491,11 @@ class GameView {
     }
 
     bindEvents() {
-        this.rollButton.addEventListener('click', this.handleRollClick);
+        // Roll button removed for fully automatic arena
     }
 
     handleRollClick() {
-        if (this.model.isGameOver()) {
-            // Optionally, allow resetting the game
-            return;
-        }
-        // Check if roll button is disabled (assets not loaded or already rolling)
-        if (this.rollButton.disabled) {
-            console.log("[gameView] Roll button disabled, ignoring click");
-            return;
-        }
-        console.log("[gameView] Roll button clicked");
-        this.controller.rollDice();
-        this.rollButton.disabled = true;
-        // Disable button; will be re-enabled in onStateChange if game not over
+        // Roll button removed for fully automatic arena - do nothing
     }
 
     // Auto-roll after a delay
@@ -563,22 +546,16 @@ class GameView {
     // Update token positions based on model state - now handles animation
     onStateChange() {
         console.log('[gameView] onStateChange called');
-        // Update dice display immediately
+        // Update dice display with tumble animation
         const lastRoll = this.model.getLastRoll();
         if (lastRoll >= 1 && lastRoll <= 6) {
-            this.updateDice(lastRoll);
+            this.animateDiceRoll(lastRoll);
         } else {
             this.diceElement.style.backgroundImage = '';
         }
 
-        // Update player info and button state immediately
+        // Update player info immediately
         this.updatePlayerInfo();
-        if (!this.model.isGameOver()) {
-            this.rollButton.disabled = false;
-        } else {
-            this.rollButton.disabled = true;
-            this.rollButton.textContent = 'Game Over!';
-        }
 
         // Now, animate the tokens that have changed
         const currentPositions = [];
@@ -711,6 +688,10 @@ class GameView {
             current = nextTile;
         }
 
+        // Pause at the landing tile (intermediatePos) before jumping
+        console.log(`[gameView] pausing at landing tile ${intermediatePos} for ${PAUSE_DURATION}ms`);
+        await this._delay(PAUSE_DURATION);
+
         // Part 2: if there is a jump, follow the SVG path from intermediatePos to endTile
         if (hasJump) {
             console.log(`[gameView] has jump from ${intermediatePos} to ${endTile}`);
@@ -749,6 +730,7 @@ class GameView {
                         const x = screenPt.x - containerRect.left;
                         const y = screenPt.y - containerRect.top;
                         this.setTokenPositionFromPixel(x, y, token);
+                        console.log(`[gameView] jump animation at t=${t} -> (${x},${y})`);
                         if (t < 1) {
                             requestAnimationFrame(step);
                         } else {
@@ -767,8 +749,12 @@ class GameView {
             }
         }
 
-        // Play settle sound after the entire move
+        // Play settle sound after reaching the destination tile
         this.playAudio('settle');
+
+        // Pause at the destination tile before finishing
+        console.log(`[gameView] pausing at destination tile ${endTile} for ${PAUSE_DURATION}ms`);
+        await this._delay(PAUSE_DURATION);
 
         // Update classes for staging/board (optional, keeps existing behavior)
         if (endTile === 0) {
@@ -831,16 +817,50 @@ class GameView {
     updateDice(face) {
         // Static dice face
         this.diceElement.style.backgroundImage = `url('${this.assets.diceFaces[face-1].src}')`;
+        this.diceElement.style.backgroundSize = 'contain';
+        this.diceElement.style.backgroundRepeat = 'no-repeat';
+        this.diceElement.style.backgroundPosition = 'center';
     }
 
     // Play dice roll animation (tumble) and then show the result
     animateDiceRoll(face, callback) {
-        // For simplicity, we'll just show the static face after a short delay
-        // In a more advanced version, we would use the tumble sheet and CSS animation
-        setTimeout(() => {
-            this.updateDice(face);
-            if (callback) callback();
-        }, 500); // simulate roll time
+        // Play roll sound
+        this.playAudio('roll');
+
+        // Check if tumble sheet is loaded
+        if (!this.assets.diceTumbleSheet || !this.assets.diceTumbleSheet.complete) {
+            // Fallback to static face after a short delay
+            setTimeout(() => {
+                this.updateDice(face);
+                if (callback) callback();
+            }, 500);
+            return;
+        }
+
+        // Set up the tumble sheet
+        this.diceElement.style.backgroundImage = `url('${this.assets.diceTumbleSheet.src}')`;
+        this.diceElement.style.backgroundSize = '720px 60px'; // assuming 12 frames of 60x60
+        this.diceElement.style.backgroundRepeat = 'no-repeat';
+
+        const totalFrames = 12;
+        const totalDuration = 800; // ms, within 700-900
+        const frameDuration = totalDuration / totalFrames;
+
+        let currentFrame = 0;
+
+        const animate = () => {
+            this.diceElement.style.backgroundPosition = `-${currentFrame * 60}px 0`;
+            currentFrame++;
+            if (currentFrame < totalFrames) {
+                setTimeout(animate, frameDuration);
+            } else {
+                // After tumble, show the static face
+                this.updateDice(face);
+                if (callback) callback();
+            }
+        };
+
+        animate();
     }
 
     // Play audio for a given event
@@ -857,14 +877,18 @@ class GameView {
     onTurnChange(activePlayer) {
         // Update player info panel to show whose turn it is
         this.updatePlayerInfo();
+        // Update turn indicator below dice
+        if (this.turnIndicator && this.assets.tokens[activePlayer]) {
+            this.turnIndicator.style.backgroundImage = `url('${this.assets.tokens[activePlayer].src}')`;
+        }
         this.playAudio('turn');
     }
 
     onExtraRoll() {
         // Indicate extra roll (maybe change button text or add a visual cue)
-        this.rollButton.textContent = 'Extra Roll!';
+        // Roll button removed for fully automatic arena
         setTimeout(() => {
-            this.rollButton.textContent = 'Roll Dice';
+            // Roll button removed for fully automatic arena
         }, 1000);
         this.playAudio('six');
     }
@@ -885,8 +909,7 @@ class GameView {
 
     onGameWin(playerId) {
         this.playAudio('win');
-        this.rollButton.disabled = true;
-        this.rollButton.textContent = 'Game Over!';
+        // Roll button removed for fully automatic arena
         // Show non-blocking win message
         this.messageElement.textContent = `Player ${playerId + 1} wins!`;
         this.messageElement.style.display = 'block';
@@ -897,8 +920,7 @@ class GameView {
 
     onReset() {
         this.clearTimeouts();
-        this.rollButton.textContent = 'Roll Dice';
-        this.rollButton.disabled = false;
+        // Roll button removed for fully automatic arena
         this.updateTokenPositions();
         this.updatePlayerInfo();
         this.diceElement.style.backgroundImage = ''; // clear dice

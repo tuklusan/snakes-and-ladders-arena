@@ -82,6 +82,21 @@ function run(){
       const staged = r.top>=sr.top-2 && r.bottom<=sr.bottom+2;
       if(staged && (r.left<sr.left-1 || r.right>sr.right+1)) outside++; });
     P("VIS_staging_contained", outside===0, outside+" staged tokens outside strip");
+  // 16. there must be NO roll button (fully automatic arena)
+  var rb=d.getElementById("roll-button");
+  if(!rb){ var bl=d.querySelectorAll("button");
+    for(var q=0;q<bl.length;q++){ if(/roll/i.test(bl[q].textContent||"")){ rb=bl[q]; break; } } }
+  P("VIS_no_roll_button", !rb, rb?("found: "+(rb.id||rb.textContent)):"none");
+  // 17. turn indicator must be visible below dice
+  var ind=d.getElementById("turn-indicator")||d.querySelector(".turn-indicator");
+  var okI=false, whyI="missing";
+  if(ind){ var ir=ind.getBoundingClientRect(), ic=w.getComputedStyle(ind);
+    var paint=(ic.backgroundImage&&ic.backgroundImage!=="none")||
+              (ic.backgroundColor&&ic.backgroundColor!=="rgba(0, 0, 0, 0)");
+    okI = ir.width>6 && ir.height>6 && !!paint;
+    whyI = Math.round(ir.width)+"x"+Math.round(ir.height)+" painted="+!!paint; }
+  P("VIS_turn_indicator", okI, whyI);
+
   } else { P("VIS_staging_contained", false, "no staging element"); }
 
   } else { P("VIS_board_not_clipped", false, "no panel element found");

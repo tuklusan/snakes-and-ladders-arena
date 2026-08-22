@@ -70,9 +70,9 @@ function main(){
     var w27=seq.indexOf(27)>=0, w28=seq.indexOf(28)>=0;
     L.push("");
     L.push("visited 27: "+w27+"   visited 28: "+w28+"   ended 84: "+(seq[seq.length-1]===84));
-    L.push((w27&&w28) ? "PASS - walked through the real controller path"
+    L.push((w27&&w28&&seq[seq.length-1]===84) ? "PASS - walked through the real controller path"
                       : "FAIL - TELEPORT still happening on the real path");
     out.textContent=L.join("\n");
-  }, 25000);
+  }, 70000);
 }
 </script>
