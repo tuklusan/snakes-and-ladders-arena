@@ -91,6 +91,9 @@ class GameController {
             }
         }
 
+        // Store intermediate position (after die roll, before jumps) for the view
+        this.model.setLastMoveIntermediatePosition(target_pos);
+
         // Entity Traversal (Ladders & Snakes) and Capture only apply if we moved
         if (moved) {
             // Entity Traversal (Ladders & Snakes)

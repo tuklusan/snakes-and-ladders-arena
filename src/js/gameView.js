@@ -640,7 +640,14 @@ class GameView {
         // Determine if this is a step-by-step move (active player's normal move)
         const dieRoll = this.model.getLastRoll();
         const isMover = playerId === this.model.getLastMover();
-        const intermediatePos = this._calculateIntermediatePosition(previousPosition, dieRoll, playerId);
+        let intermediatePos;
+        if (isMover) {
+            // For the active player, use the intermediate position from the model
+            intermediatePos = this.model.getLastMoveIntermediatePosition();
+        } else {
+            // For non-movers (captured tokens, etc.), there is no intermediate tile
+            intermediatePos = newPosition;
+        }
         const hasJump = (intermediatePos !== previousPosition && intermediatePos !== newPosition) &&
             (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
 
@@ -654,38 +661,19 @@ class GameView {
              (previousPosition > 0 && newPosition > 0 && newPosition > previousPosition)); // moving forward on board
 
         if (isStepByStep) {
-            await this._animateStepByStep(previousPosition, newPosition, playerId, dieRoll);
+            await this._animateStepByStep(previousPosition, newPosition, playerId, dieRoll, intermediatePos);
         } else {
             await this._animateDirectMove(previousPosition, newPosition, playerId);
         }
     }
 
-    // Helper to compute the intermediate position after die roll but before jump
-    _calculateIntermediatePosition(start, dieRoll, playerId) {
-        // Replicate the controller's movement logic for a given start and dieRoll.
-        if (start === 0) {
-            // Off-board pawns require a 1 or a 6 to enter Tile 1
-            if (dieRoll === 1 || dieRoll === 6) {
-                return 1;
-            } else {
-                return start; // didn't move
-            }
-        } else {
-            // Exact landing rule: overshooting tile 100 voids movement
-            if (start + dieRoll <= 100) {
-                return start + dieRoll;
-            } else {
-                return start; // didn't move
-            }
-        }
-    }
+    
 
     // Animates a move step-by-step along the board, then along the jump path if applicable.
     // Animates a move step-by-step along the board, then along the jump path if applicable.
-    async _animateStepByStep(startTile, endTile, playerId, dieRoll) {
+    async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos) {
         console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
-        const intermediatePos = this._calculateIntermediatePosition(startTile, dieRoll, playerId);
         const hasJump = (intermediatePos !== startTile && intermediatePos !== endTile) &&
             (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
 

@@ -30,6 +30,7 @@ class GameModel {
         this.winner = null;
         this.lastRoll = 0; // last dice roll (0 means no roll yet)
         this.lastMover = null; // ID of the player who last moved
+        this.lastMoveIntermediatePosition = 0; // intermediate position after die roll, before jump
     }
 
     // Getters
@@ -108,6 +109,14 @@ class GameModel {
 
     setLastMover(playerId) {
         this.lastMover = playerId;
+    }
+
+    getLastMoveIntermediatePosition() {
+        return this.lastMoveIntermediatePosition;
+    }
+
+    setLastMoveIntermediatePosition(position) {
+        this.lastMoveIntermediatePosition = position;
     }
 }
 
