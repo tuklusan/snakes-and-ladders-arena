@@ -3,3 +3,4 @@ shots/
 *.log
 output.txt
 crprofile/
+node_modules/

@@ -7,6 +7,7 @@
 // would have caught PAUSE_DURATION with nobody needing to suspect it: the error
 // was always being thrown, the watchdog just swallowed it.
 var errors=[], warns=[], started=Date.now(), hooked=false;
+var watchdogHits=0, moveDone=0, rolls=0;
 function hook(){
   var fr=document.getElementById("f"), w=fr.contentWindow;
   if(!w || hooked) return;
@@ -17,6 +18,12 @@ function hook(){
     w.addEventListener("unhandledrejection", function(e){
       var r=e.reason; errors.push("UNHANDLED REJECTION: "+((r&&r.message)||r));
     });
+    var cl=w.console.log;
+    w.console.log=function(){ var m=[].join.call(arguments," ");
+      if(/Watchdog triggered/i.test(m)) watchdogHits++;
+      if(/move complete|_animateStepByStep from/i.test(m)) moveDone++;
+      if(/Auto-rolling/i.test(m)) rolls++;
+      return cl.apply(this,arguments); };
     var ce=w.console.error, cw=w.console.warn;
     w.console.error=function(){ errors.push("console.error: "+[].join.call(arguments," ")); return ce.apply(this,arguments); };
     w.console.warn =function(){ warns.push("console.warn: "+[].join.call(arguments," ")); return cw.apply(this,arguments); };
@@ -34,6 +41,10 @@ setInterval(function(){
   var L=[];
   L.push("CONSOLE WATCH  elapsed "+t+"s   hooked="+hooked);
   L.push("errors="+errors.length+"  distinct="+uniq.length+"  warnings="+warns.length);
+  L.push("WATCHDOG FIRINGS: "+watchdogHits+"   (must be 0)");
+  L.push("moves started="+moveDone+"   auto-rolls="+rolls);
+  L.push(watchdogHits===0 ? "GATING PASS - watchdog never fired"
+                          : "GATING FAIL - watchdog is pre-empting real moves");
   L.push("");
   L.push(errors.length===0 ? "PASS - no errors thrown during play"
                            : "FAIL - the game is throwing during play");

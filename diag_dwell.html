@@ -1,0 +1,80 @@
+<!doctype html><meta charset=utf-8><title>dwell</title>
+<style>body{margin:0;font:13px monospace}#f{width:1300px;height:300px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>waiting...</pre>
+<script>
+// Measures how long a token DWELLS on each tile, not merely which tiles it
+// visits. The earlier sampler deduped consecutive samples, so a 20ms pause and
+// a 500ms pause looked identical. This one timestamps every sample.
+var boot=setInterval(function(){
+  var fr=document.getElementById("f"), w=fr.contentWindow;
+  var ready=false;
+  try{ ready=!!(w.gameController&&w.gameModel&&w.gameView
+        && fr.contentDocument.querySelector('[data-tile="28"]')); }catch(e){}
+  if(ready){ clearInterval(boot); run(); }
+},50);
+
+function run(){
+  var fr=document.getElementById("f"), d=fr.contentDocument, w=fr.contentWindow;
+  var m=w.gameModel, v=w.gameView, c=w.gameController;
+  try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
+  v.autoRoll=function(){};                       // one move only, deterministic
+
+  var cells={}, cw=40;
+  for(var n=1;n<=100;n++){ var el=d.querySelector('[data-tile="'+n+'"]');
+    if(el){ var r=el.getBoundingClientRect();
+      cells[n]={x:r.left+r.width/2,y:r.top+r.height/2}; cw=r.width; } }
+  function near(x,y){ var b=null,bd=1e9;
+    for(var k in cells){ var dx=cells[k].x-x,dy=cells[k].y-y,dd=dx*dx+dy*dy;
+      if(dd<bd){bd=dd;b=+k;} } return {t:b,d:Math.sqrt(bd)}; }
+
+  var tok=d.querySelectorAll(".game-token")[0];
+  m.pawn_positions[0]=26; m.pawn_positions[1]=5; m.pawn_positions[2]=6; m.pawn_positions[3]=7;
+  m.active_player=0; m.consecutive_sixes=0; m.game_over=false;
+  v.previousPositions=[26,5,6,7];
+  try{ v.positionTokenOnTile(0,26); }catch(e){}
+  w.Math.random=function(){ return 0.2; };       // die roll 2 -> lands 28 -> ladder 84
+
+  var SAMPLE=20, samples=[], t0=Date.now();
+  var s=setInterval(function(){
+    var r=tok.getBoundingClientRect();
+    var h=near(r.left+r.width/2,r.top+r.height/2);
+    samples.push({t:(h.d<cw*0.45)?h.t:null, ms:Date.now()-t0});
+  },SAMPLE);
+
+  try{ c.rollDice(); }catch(e){}
+
+  setTimeout(function(){
+    clearInterval(s);
+    // collapse into runs and total the time on each tile
+    var runs=[], cur=null;
+    for(var i=0;i<samples.length;i++){
+      var t=samples[i].t;
+      if(!cur||cur.tile!==t){ if(cur)runs.push(cur); cur={tile:t,n:1}; }
+      else cur.n++;
+    }
+    if(cur)runs.push(cur);
+    var L=[];
+    L.push("DWELL MEASUREMENT — tile 26, die roll 2, ladder foot at 28, dest 84");
+    L.push("sample interval "+SAMPLE+"ms, model ended at "+m.pawn_positions[0]);
+    L.push("");
+    L.push("tile   dwell(ms)");
+    var landing=null, dest=null;
+    for(var j=0;j<runs.length;j++){
+      var ms=runs[j].n*SAMPLE;
+      if(runs[j].tile===null) continue;
+      if(ms>=40) L.push(String(runs[j].tile).padStart(4)+"   "+ms);
+      if(runs[j].tile===28) landing=Math.max(landing||0,ms);
+      if(runs[j].tile===84) dest=Math.max(dest||0,ms);
+    }
+    L.push("");
+    L.push("landing tile 28 dwell : "+(landing===null?"NEVER VISITED":landing+"ms"));
+    L.push("destination 84 dwell  : "+(dest===null?"NEVER REACHED":dest+"ms"));
+    L.push("");
+    var ok = landing!==null && landing>=350 && dest!==null;
+    L.push(ok ? "PASS - piece settles on the ladder foot before climbing"
+              : "FAIL - no perceptible pause at the ladder foot, or never reached 84");
+    document.getElementById("out").textContent=L.join("\n");
+  }, 20000);
+}
+</script>
