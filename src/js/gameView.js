@@ -31,6 +31,7 @@ class GameView {
         this.previousPositions = [0,0,0,0]; // to track token positions for animation
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
         this.svgElement = null; // SVG overlay for snakes and ladders
+        this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
@@ -491,6 +492,12 @@ class GameView {
             clearTimeout(this.loadingTimeout);
             this.loadingTimeout = null;
         }
+        // Clear any pending transition timeouts and listeners
+        for (const [token, { listener, timeoutId }] of this.pendingTransitions) {
+            token.removeEventListener('transitionend', listener);
+            clearTimeout(timeoutId);
+        }
+        this.pendingTransitions.clear();
     }
 
     bindEvents() {
@@ -785,7 +792,7 @@ class GameView {
     }
 
     // Animates a direct move using CSS transition (for non-step-by-step moves).
-    // Returns a promise that resolves when the transition ends.
+    // Returns a promise that resolves when the transition ends or after a fallback timeout.
     _animateDirectMove(startTile, endTile, playerId) {
         console.log(`[gameView] _animateDirectMove from ${startTile} to ${endTile} for player ${playerId}`);
         console.log(`[gameView] direct move start`);
@@ -817,8 +824,21 @@ class GameView {
             // Set end position (CSS transition will animate the change)
             this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
 
-            // Listen for transitionend on this token
+            // If there is a pending transition for this token, clean it up
+            const pending = this.pendingTransitions.get(token);
+            if (pending) {
+                token.removeEventListener('transitionend', pending.listener);
+                clearTimeout(pending.timeoutId);
+                this.pendingTransitions.delete(token);
+            }
+
+            const FALLBACK_TIME = 1000; // 1 second fallback
             const onTransitionEnd = () => {
+                // Clear fallback timeout
+                clearTimeout(timeoutId);
+                // Clean up pending entry
+                this.pendingTransitions.delete(token);
+
                 // Play settle sound
                 this.playAudio('settle');
 
@@ -830,11 +850,29 @@ class GameView {
                 }
 
                 console.log(`[gameView] move complete at ${Date.now()}`);
-
-                // Remove the event listener
-                token.removeEventListener('transitionend', onTransitionEnd);
                 resolve();
             };
+
+            const onTimeout = () => {
+                // Remove transitionend listener if still present
+                token.removeEventListener('transitionend', onTransitionEnd);
+                // Clean up pending entry
+                this.pendingTransitions.delete(token);
+
+                console.log(`[gameView] direct move fallback triggered after ${FALLBACK_TIME}ms`);
+                // Play settle sound
+                this.playAudio('settle');
+                // Check for ladder or snake at the end position (if applicable)
+                if (this.model.Ladders.has(endTile)) {
+                    this.playAudio('ladder');
+                } else if (this.model.Snakes.has(endTile)) {
+                    this.playAudio('snake');
+                }
+                resolve();
+            };
+
+            const timeoutId = setTimeout(onTimeout, FALLBACK_TIME);
+            this.pendingTransitions.set(token, { listener: onTransitionEnd, timeoutId });
 
             token.addEventListener('transitionend', onTransitionEnd);
         });
