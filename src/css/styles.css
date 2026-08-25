@@ -79,23 +79,25 @@ body {
 /* Player info panel */
 #player-info {
     position: absolute;
-    bottom: 15px;
-    left: 15px;
-    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
     background: rgba(0,0,0,0.6);
     color: #fff;
     padding: 12px;
     border-radius: 8px;
     display: flex;
-    justify-content: space-around;
+    flex-direction: column;
+    justify-content: flex-start;
     align-items: center;
-    flex-wrap: gap: 10px;
+    min-width: 200px;
+    height: auto;
 }
 
 /* Player info items */
 #player-info > div {
     text-align: center;
     min-width: 60px;
+    margin: 8px 0;
 }
 
 #player-info div div:first-child {
@@ -120,6 +122,13 @@ body {
 }
 
 /* Highlight active player */
+#player-info div.active-player {
+    border: 2px solid #ffeb3b;
+    border-radius: 6px;
+    padding: 4px;
+    background: rgba(255, 235, 59, 0.2);
+}
+
 #player-info div.active-player span:nth-child(2) {
     color: #ffeb3b;
 }

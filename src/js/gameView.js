@@ -22,7 +22,6 @@ class GameView {
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
         this.playerInfoElement = null;
-        this.turnIndicator = null;
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
         this.gameOverTimeout = null;
@@ -317,17 +316,7 @@ class GameView {
         this.container.appendChild(this.diceElement);
 
         // Create turn indicator (placed below dice)
-        this.turnIndicator = document.createElement('div');
-        this.turnIndicator.id = 'turn-indicator';
-        this.turnIndicator.style.position = 'absolute';
-        this.turnIndicator.style.top = '90px'; // below dice (dice at 20px, 60px high, so 20+60+10=90px)
-        this.turnIndicator.style.right = '20px';
-        this.turnIndicator.style.width = '30px';
-        this.turnIndicator.style.height = '30px';
-        this.turnIndicator.style.backgroundSize = 'contain';
-        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
-        this.turnIndicator.style.backgroundPosition = 'center';
-        this.container.appendChild(this.turnIndicator);
+// Removed as turn indicator is now integrated into player info panel
 
         // Create message area for non-blocking alerts
         this.messageElement = document.createElement('div');
@@ -349,16 +338,19 @@ class GameView {
         this.playerInfoElement.id = 'player-info';
         this.playerInfoElement.style.position = 'absolute';
         this.playerInfoElement.style.left = '10px';
-        this.playerInfoElement.style.right = '10px';
-        this.playerInfoElement.style.top = `calc(${boardTop} + ${boardSizeValue} + ${gap} + 40px + ${gap})`;
-        this.playerInfoElement.style.height = '80px';
+        this.playerInfoElement.style.top = '50%';
+        this.playerInfoElement.style.transform = 'translateY(-50%)';
+        this.playerInfoElement.style.width = 'auto';
+        this.playerInfoElement.style.height = 'auto';
         this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
         this.playerInfoElement.style.color = '#fff';
         this.playerInfoElement.style.padding = '12px';
         this.playerInfoElement.style.borderRadius = '8px';
         this.playerInfoElement.style.display = 'flex';
-        this.playerInfoElement.style.justifyContent = 'space-around';
+        this.playerInfoElement.style.flexDirection = 'column';
+        this.playerInfoElement.style.justifyContent = 'flex-start';
         this.playerInfoElement.style.alignItems = 'center';
+        this.playerInfoElement.style.minWidth = '200px';
         this.container.appendChild(this.playerInfoElement);
 
         
@@ -967,13 +959,6 @@ class GameView {
     onTurnChange(activePlayer) {
         // Update player info panel to show whose turn it is
         this.updatePlayerInfo();
-        // Update turn indicator below dice
-        if (this.turnIndicator && this.assets.tokens[activePlayer]) {
-            const src = this.assets.tokens[activePlayer].src;
-            console.log('[gameView] turn indicator src:', src);
-            this.turnIndicator.style.backgroundImage = `url('${src}')`;
-            console.log('[gameView] turn indicator backgroundImage:', this.turnIndicator.style.backgroundImage);
-        }
         this.playAudio('turn');
     }
 
@@ -1088,8 +1073,8 @@ class GameView {
             // Player token indicator (small circle)
             const tokenIndicator = document.createElement('div');
             tokenIndicator.style.display = 'inline-block';
-            tokenIndicator.style.width = '12px';
-            tokenIndicator.style.height = '12px';
+            tokenIndicator.style.width = '24px';
+            tokenIndicator.style.height = '24px';
             tokenIndicator.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
             tokenIndicator.style.backgroundSize = 'contain';
             tokenIndicator.style.marginBottom = '4px';
@@ -1099,18 +1084,22 @@ class GameView {
             const nameSpan = document.createElement('span');
             nameSpan.textContent = `Player ${i+1}`;
             nameSpan.style.display = 'block';
-            if (i === this.model.getActivePlayer()) {
-                nameSpan.style.fontWeight = 'bold';
-                nameSpan.style.color = '#ff0'; // highlight active player
-            }
+            nameSpan.style.fontWeight = 'bold';
+            nameSpan.style.fontSize = '1rem';
             playerDiv.appendChild(nameSpan);
 
             // Player position
             const posSpan = document.createElement('span');
             posSpan.textContent = `Tile: ${this.model.getPlayerPosition(i)}`;
             posSpan.style.display = 'block';
-            posSpan.style.fontSize = '14px';
+            posSpan.style.fontSize = '0.85rem';
+            posSpan.style.opacity = '0.9';
             playerDiv.appendChild(posSpan);
+
+            // Highlight active player
+            if (i === this.model.getActivePlayer()) {
+                playerDiv.classList.add('active-player');
+            }
 
             this.playerInfoElement.appendChild(playerDiv);
         }
