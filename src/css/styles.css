@@ -18,12 +18,16 @@ body {
 #game-container {
     position: relative;
     width: 100%;
-    max-width: 900px;
+    max-width: 1400px;
     margin: 20px auto;
     padding: 20px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
     /* NOTE: overflow removed to allow staging tokens at right: 110% */
 }
 
@@ -46,7 +50,8 @@ body {
 /* Board */
 #game-board {
     position: relative;
-    width: 100%;
+    width: 380px;
+    height: 380px;
     
     background-size: contain;
     background-repeat: no-repeat;
@@ -226,20 +231,22 @@ body {
     border: 1px solid #bbb;
 }
 
-/* Three-column flex container */
-#game-columns {
-    display: flex;
-    height: 100%;
-    gap: 0; /* No gap between columns - panels will touch board */
-}
+
+
+
 
 /* Left margin title panel */
 #left-title-panel {
-    width: 100px; /* Fixed width for title panel */
+    flex: 0 0 100px;
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none; /* Allow clicks to pass through to game */
+}
+
+/* Game board container */
+#game-board-container {
+    flex: 1 1 auto;
 }
 
 #left-title-panel .title-content {
@@ -263,9 +270,14 @@ body {
     font-style: italic;
 }
 
+#game-board-container {
+    flex: 1;
+    position: relative;
+}
+
 /* Right margin commentary panel */
 #right-commentary-panel {
-    width: 300px; /* Fixed width for commentary panel */
+    flex: 0 0 300px;
     display: flex;
     flex-direction: column;
     pointer-events: none; /* Allow clicks to pass through to game */
@@ -309,11 +321,11 @@ body {
 /* Responsive adjustments for panels */
 @media (max-width: 1200px) {
     #left-title-panel {
-        width: 80px;
+        flex: 0 0 80px;
     }
     
     #right-commentary-panel {
-        width: 250px;
+        flex: 0 0 250px;
     }
     
     #game-board-container {
@@ -324,11 +336,11 @@ body {
 
 @media (max-width: 900px) {
     #left-title-panel {
-        width: 60px;
+        flex: 0 0 60px;
     }
     
     #right-commentary-panel {
-        width: 200px;
+        flex: 0 0 200px;
     }
     
     #game-board-container {

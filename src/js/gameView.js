@@ -199,7 +199,7 @@ class GameView {
         // Set its style
         this.container.style.position = 'relative';
         this.container.style.width = '100%';
-        this.container.style.maxWidth = '800px';
+        this.container.style.maxWidth = '1400px';
         this.container.style.margin = '0 auto';
         this.container.style.height = '600px';
         this.container.style.padding = '0';
@@ -223,7 +223,7 @@ class GameView {
         this.container.appendChild(this.loadingOverlay);
 
         // Fixed layout to fit in 600px container without overlapping
-        const boardSizeValue = 'min(380px, 100%)';
+        const boardSizeValue = '380px';
         const boardTop = '10px';
         const gap = '10px';
 
@@ -1083,7 +1083,16 @@ class GameView {
 
     // Resize tokens based on board width
     sizeTokens() {
-        const boardWidth = this.boardElement.clientWidth;
+        let boardWidth = this.boardElement.clientWidth;
+        // If we can't get the board width directly, calculate it from container dimensions
+        if (boardWidth === 0 && this.container) {
+            const containerWidth = this.container.clientWidth;
+            // Account for side panels and gaps: 100px + 300px + 2*16px = 432px
+            const availableWidth = containerWidth - 432;
+            boardWidth = Math.min(380, availableWidth);
+            // Ensure we don't go negative
+            if (boardWidth < 0) boardWidth = 0;
+        }
         if (boardWidth === 0) {
             // Not ready yet; try again on next animation frame
             requestAnimationFrame(() => this.sizeTokens());

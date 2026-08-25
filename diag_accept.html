@@ -112,8 +112,16 @@ function run(){
   P("VIS_panels_no_overlap", bad.length===0, bad.length?bad.join("; "):"board clear of both panels");
   var bad2=[];
   if(dr2&&cr&&ix(dr2,cr)) bad2.push("dice overlaps commentary");
-  if(cm){ var csx=w.getComputedStyle(cm);
-    if(csx.overflowY!=="auto"&&csx.overflowY!=="scroll") bad2.push("commentary overflow-y="+csx.overflowY+" (needs auto/scroll)"); }
+  if(cm){
+    // the scrollable element may be the panel itself or an inner content div
+    var cands=[cm].concat(Array.prototype.slice.call(cm.querySelectorAll("*")));
+    var scrolls=false;
+    for(var si=0;si<cands.length;si++){
+      var oy=w.getComputedStyle(cands[si]).overflowY;
+      if(oy==="auto"||oy==="scroll"){ scrolls=true; break; }
+    }
+    if(!scrolls) bad2.push("no scrollable element inside commentary (need overflow-y auto/scroll)");
+  }
   P("VIS_commentary_scrolls", bad2.length===0, bad2.length?bad2.join("; "):"dice clear, overflow-y ok");
 
 
