@@ -34,6 +34,7 @@ class GameController {
         this.model.setLastMover(activePlayer);
         let consecutive_sixes = this.model.getConsecutiveSixes();
         let turn_start_position = this.model.getTurnStartPosition();
+        let current_pos = this.model.getPlayerPosition(activePlayer);
 
         // Snapshot turn start position if this is the first roll of the turn
         if (consecutive_sixes === 0) {
@@ -68,12 +69,22 @@ class GameController {
             this.advanceTurn();
             // Notify view of the penalty (we'll let the view handle audio/visuals)
             this.view.onTripleSixPenalty();
+            // Create turn record for triple six penalty
+            const record = {
+                mover: activePlayer,
+                roll: dieRoll,
+                from: current_pos,
+                landed: turn_start_position, // landed same as from (no movement)
+                to: turn_start_position,
+                event: 'triple_six',
+                captured: null
+            };
+            this.model.lastTurnRecord = record;
             this.view.onStateChange();
             return; // Turn ends
         }
 
         // Base movement calculation
-        let current_pos = this.model.getPlayerPosition(activePlayer);
         let target_pos = current_pos;
         let moved = false;
 
@@ -92,39 +103,74 @@ class GameController {
         }
 
         // Store intermediate position (after die roll, before jumps) for the view
-        this.model.setLastMoveIntermediatePosition(target_pos);
+        const landedPos = target_pos; // position after die roll, before jumps
+        this.model.setLastMoveIntermediatePosition(landedPos);
 
         // Entity Traversal (Ladders & Snakes) and Capture only apply if we moved
+        let finalPos = target_pos;
+        let capturedPlayerId = null;
+        let event = 'move'; // default, may change
+
         if (moved) {
             // Entity Traversal (Ladders & Snakes)
-            if (this.model.Ladders.has(target_pos)) {
-                target_pos = this.model.Ladders.get(target_pos);
-            } else if (this.model.Snakes.has(target_pos)) {
-                target_pos = this.model.Snakes.get(target_pos);
+            if (this.model.Ladders.has(landedPos)) {
+                finalPos = this.model.Ladders.get(landedPos);
+                event = 'ladder';
+            } else if (this.model.Snakes.has(landedPos)) {
+                finalPos = this.model.Snakes.get(landedPos);
+                event = 'snake';
             }
 
             // Opponent Capture Mechanics (Katti)
-            if (!this.model.SafeZones.has(target_pos)) {
+            if (!this.model.SafeZones.has(finalPos)) {
                 for (let opponent = 0; opponent < this.model.NUM_PLAYERS; opponent++) {
-                    if (opponent !== activePlayer && this.model.getPlayerPosition(opponent) === target_pos) {
+                    if (opponent !== activePlayer && this.model.getPlayerPosition(opponent) === finalPos) {
                         this.model.setPlayerPosition(opponent, 0); // Opponent sent back to off-board
                         // Notify view of capture
-                        this.view.onCapture(opponent, target_pos);
+                        this.view.onCapture(opponent, finalPos);
+                        if (capturedPlayerId === null) {
+                            capturedPlayerId = opponent;
+                        }
                     }
+                }
+                if (capturedPlayerId !== null) {
+                    event = 'capture';
                 }
             }
         }
 
         // Position Commitment
-        this.model.setPlayerPosition(activePlayer, target_pos);
+        this.model.setPlayerPosition(activePlayer, finalPos);
 
         // Terminal State Evaluation
         if (this.model.getPlayerPosition(activePlayer) === 100) {
             this.model.setGameOver(true);
             this.model.setWinner(activePlayer);
+            // Create turn record for win
+            const record = {
+                mover: activePlayer,
+                roll: dieRoll,
+                from: current_pos,
+                landed: landedPos,
+                to: 100,
+                event: 'win',
+                captured: capturedPlayerId !== null ? capturedPlayerId : null
+            };
+            this.model.lastTurnRecord = record;
             this.view.onGameWin(activePlayer);
             this.view.onStateChange();
             return;
+        }
+
+        // Determine event if not already set (ladder/snake/capture)
+        if (event === 'move') {
+            if (!moved) {
+                event = 'no_move';
+            } else if (this.model.Ladders.has(landedPos)) {
+                event = 'ladder';
+            } else if (this.model.Snakes.has(landedPos)) {
+                event = 'snake';
+            }
         }
 
         // Turn Arbitrator
@@ -135,6 +181,18 @@ class GameController {
         } else {
             this.advanceTurn();
         }
+
+        // Create turn record for normal turn
+        const record = {
+            mover: activePlayer,
+            roll: dieRoll,
+            from: current_pos,
+            landed: landedPos,
+            to: finalPos,
+            event: event,
+            captured: capturedPlayerId !== null ? capturedPlayerId : null
+        };
+        this.model.lastTurnRecord = record;
 
         // Notify view that the state has changed (for rendering)
         this.view.onStateChange();

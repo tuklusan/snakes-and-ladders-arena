@@ -1,7 +1,10 @@
 // Game View - Handles rendering and user interface
-console.log("gameView.js loaded");
+console.log("!!! gameView.js LOADED !!!");
+console.log("DEFINITELY RUNNING THIS LINE - SHOULD APPEAR IN CONSOLE");
 class GameView {
     constructor() {
+        console.log("!!! gameView constructor START !!!");
+        console.log("gameView constructor called");
         this.model = null;
         this.controller = null;
         this.assets = {
@@ -33,6 +36,7 @@ class GameView {
         this.svgElement = null; // SVG overlay for snakes and ladders
         this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
         this.moveId = 0; // unique identifier for each onStateChange call
+        this.lastTurnRecord = null; // record of the last turn processed by the controllerach onStateChange call
         this.commentaryBuffer = []; // Array to store commentary messages
         this.maxCommentaryLines = 200; // Maximum lines to keep in buffer
 
@@ -180,15 +184,22 @@ class GameView {
     }
 
     init(model, controller) {
+        console.log("!!! gameView.init START !!!");
+        console.log("gameView.init called");
         this.model = model;
         this.controller = controller;
-        this.createDOM();
+        try {
+            this.createDOM();
+        } catch (e) {
+            console.error("Error in createDOM:", e);
+        }
         this.loadAssets();
         this.bindEvents();
         window.addEventListener('resize', () => this.onWindowResize());
     }
 
     createDOM() {
+        console.log("!!! gameView.createDOM START !!!");
         console.log("gameView.createDOM called at", new Date().toISOString());
         // Get main container
         this.container = document.getElementById('game-container');
@@ -196,58 +207,87 @@ class GameView {
             console.error("Game container not found");
             return;
         }
-        // Set its style
-        this.container.style.position = 'relative';
-        this.container.style.width = '100%';
-        this.container.style.maxWidth = '1400px';
-        this.container.style.margin = '0 auto';
-        this.container.style.height = '600px';
-        this.container.style.padding = '0';
-        this.container.style.boxSizing = 'border-box';
-
-        // Create loading overlay
-        this.loadingOverlay = document.createElement('div');
-        this.loadingOverlay.id = 'loading-overlay';
-        this.loadingOverlay.style.position = 'absolute';
-        this.loadingOverlay.style.top = '0';
-        this.loadingOverlay.style.left = '0';
-        this.loadingOverlay.style.width = '100%';
-        this.loadingOverlay.style.height = '100%';
-        this.loadingOverlay.style.backgroundColor = 'rgba(255,255,255,0.9)';
-        this.loadingOverlay.style.display = 'flex';
-        this.loadingOverlay.style.justifyContent = 'center';
-        this.loadingOverlay.style.alignItems = 'center';
-        this.loadingOverlay.style.fontSize = '24px';
-        this.loadingOverlay.style.zIndex = '1000';
-        this.loadingOverlay.innerHTML = 'Loading game assets...';
-        this.container.appendChild(this.loadingOverlay);
-
-        // Fixed layout to fit in 600px container without overlapping
-        const boardSizeValue = '380px';
-        const boardTop = '10px';
-        const gap = '10px';
-
-        // Get the game board container (already in HTML)
+        
+        // Get the existing panels from HTML
+        this.leftTitlePanel = document.getElementById('left-title-panel');
+        this.leftTitlePanel.style.position = 'relative';
         this.gameBoardContainer = document.getElementById('game-board-container');
-        if (!this.gameBoardContainer) {
-            console.error("Game board container not found");
+        this.rightCommentaryPanel = document.getElementById('right-commentary-panel');
+        this.commentaryElement = document.getElementById('commentary-content');
+
+        console.log("Looking for panels:", {
+            leftTitlePanel: !!this.leftTitlePanel,
+            gameBoardContainer: !!this.gameBoardContainer,
+            rightCommentaryPanel: !!this.rightCommentaryPanel,
+            commentaryElement: !!this.commentaryElement
+        });
+
+        if (!this.leftTitlePanel || !this.gameBoardContainer || !this.rightCommentaryPanel || !this.commentaryElement) {
+            console.error("Required panels not found in HTML");
+            console.log("leftTitlePanel:", this.leftTitlePanel);
+            console.log("gameBoardContainer:", this.gameBoardContainer);
+            console.log("rightCommentaryPanel:", this.rightCommentaryPanel);
+            console.log("commentaryElement:", this.commentaryElement);
             return;
         }
-        
-        // Create board container
+
+        // Set container styles for three-column flex layout
+        this.container.style.position = 'relative';
+        this.container.style.width = '800px';
+        this.container.style.height = '600px';
+        this.container.style.margin = '0 auto';
+        this.container.style.padding = '0';
+        this.container.style.boxSizing = 'border-box';
+        this.container.style.display = 'flex';
+        this.container.style.flexDirection = 'row';
+        this.container.style.alignItems = 'stretch';
+        this.container.style.gap = '0px';
+        this.container.style.overflow = 'hidden';
+        console.log(`[gameView] container width: ${this.container.style.width}, height: ${this.container.style.height}`);
+
+        // Configure the three columns with exact widths
+        this.leftTitlePanel.style.flex = '0 0 60px'; // COLUMN 1: 60px width
+        this.leftTitlePanel.style.display = 'flex';
+        this.leftTitlePanel.style.flexDirection = 'column';
+        this.leftTitlePanel.style.alignItems = 'center';
+        this.leftTitlePanel.style.padding = '4px';
+        this.leftTitlePanel.style.boxSizing = 'border-box';
+
+        this.gameBoardContainer.style.flex = '0 0 380px'; // COLUMN 2: 380px width
+        this.gameBoardContainer.style.display = 'flex';
+        this.gameBoardContainer.style.flexDirection = 'column';
+        this.gameBoardContainer.style.alignItems = 'center';
+        this.gameBoardContainer.style.gap = '20px';
+        this.gameBoardContainer.style.position = 'relative';
+        this.gameBoardContainer.style.padding = '4px';
+        this.gameBoardContainer.style.boxSizing = 'border-box';
+
+        this.rightCommentaryPanel.style.flex = '1 1 auto'; // COLUMN 3: remaining space
+        this.rightCommentaryPanel.style.display = 'flex';
+        this.rightCommentaryPanel.style.flexDirection = 'column';
+        this.rightCommentaryPanel.style.alignItems = 'center';
+        this.rightCommentaryPanel.style.gap = '10px';
+        this.rightCommentaryPanel.style.position = 'relative';
+        this.rightCommentaryPanel.style.padding = '4px';
+        this.rightCommentaryPanel.style.boxSizing = 'border-box';
+
+        // Create board element inside game-board-container
+        console.log("About to create board element");
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
-        this.boardElement.style.position = 'absolute';
-        this.boardElement.style.left = '50%';
-        this.boardElement.style.transform = 'translateX(-50%)';
-        this.boardElement.style.width = boardSizeValue;
-        this.boardElement.style.height = boardSizeValue;
-        this.boardElement.style.top = boardTop;
+        this.boardElement.style.width = '380px';
+        this.boardElement.style.height = '380px';
         this.boardElement.style.backgroundColor = '#f8f9fa';
         this.boardElement.style.display = 'grid';
         this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
         this.boardElement.style.gridTemplateRows = 'repeat(10, 1fr)';
+        console.log("Created board element:", this.boardElement);
         this.gameBoardContainer.appendChild(this.boardElement);
+        console.log("Board element appended to gameBoardContainer. Children count:", this.gameBoardContainer.children.length);
+        console.log("Last child is board element:", this.gameBoardContainer.lastElementChild === this.boardElement);
+
+        // Force layout to ensure dimensions are non-zero in test environments
+        this.boardElement.offsetWidth;
 
         // Create 100 cell elements
         for (let row = 0; row < 10; row++) {
@@ -267,12 +307,13 @@ class GameView {
                 this.boardElement.appendChild(cell);
             }
         }
+        console.log("Created", this.boardElement.children.length, "cell elements");
 
         // Create SVG overlay for snakes and ladders
         const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
         svg.style.position = 'absolute';
-        svg.style.top = 0;
-        svg.style.left = 0;
+        svg.style.top = '0';
+        svg.style.left = '0';
         svg.style.width = '100%';
         svg.style.height = '100%';
         svg.style.pointerEvents = 'none';
@@ -282,22 +323,109 @@ class GameView {
         this.svgElement = svg;
         this.drawSnakesAndLadders();
 
-        // Create staging area
+        // Create staging area below board
         this.stagingElement = document.createElement('div');
         this.stagingElement.id = 'staging-area';
-        this.stagingElement.style.position = 'absolute';
-        this.stagingElement.style.left = '50%';
-        this.stagingElement.style.transform = 'translateX(-50%)';
-        this.stagingElement.style.width = boardSizeValue;
+        this.stagingElement.style.width = '380px';
         this.stagingElement.style.height = '40px';
-        this.stagingElement.style.top = `calc(${boardTop} + ${boardSizeValue} + ${gap})`;
         this.stagingElement.style.backgroundColor = 'rgba(0,0,0,0.1)'; // for debugging, can be removed
         this.stagingElement.style.display = 'flex';
         this.stagingElement.style.justifyContent = 'space-around';
         this.stagingElement.style.alignItems = 'center';
-        this.container.appendChild(this.stagingElement);
+        this.gameBoardContainer.appendChild(this.stagingElement);
 
-        // Create token elements (now as children of container)
+        // Create player info panel below staging (in column 2)
+        this.playerInfoElement = document.createElement('div');
+        this.playerInfoElement.id = 'player-info';
+        this.playerInfoElement.style.display = 'flex';
+        this.playerInfoElement.style.flexDirection = 'row'; // horizontal row for players
+        this.playerInfoElement.style.alignItems = 'center';
+        this.playerInfoElement.style.width = '100%';
+        this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
+        this.playerInfoElement.style.color = '#fff';
+        this.playerInfoElement.style.padding = '8px';
+        this.playerInfoElement.style.borderRadius = '4px';
+        this.playerInfoElement.style.boxSizing = 'border-box';
+        this.playerInfoElement.style.position = 'static';
+        this.playerInfoElement.style.top = 'auto';
+        this.playerInfoElement.style.transform = 'none';
+        this.gameBoardContainer.appendChild(this.playerInfoElement);
+
+        // Debug: log positions
+        const boardRect = this.boardElement.getBoundingClientRect();
+        const stagingRect = this.stagingElement.getBoundingClientRect();
+        const playerInfoRect = this.playerInfoElement.getBoundingClientRect();
+        const gameBoardContainerRect = this.gameBoardContainer.getBoundingClientRect();
+        console.log('[gameView] board rect:', JSON.stringify(boardRect));
+        console.log('[gameView] staging rect:', JSON.stringify(stagingRect));
+        console.log('[gameView] playerInfo rect:', JSON.stringify(playerInfoRect));
+        console.log('[gameView] gameBoardContainer rect:', JSON.stringify(gameBoardContainerRect));
+        console.log('[gameView] DEBUG: Before computed style logs');
+        console.log('[gameView] gameBoardContainer computed style:', window.getComputedStyle(this.gameBoardContainer).cssText);
+        console.log('[gameView] playerInfo computed style:', window.getComputedStyle(this.playerInfoElement).cssText);
+
+        // Create the right column wrapper that will hold the dice, indicator, and commentary panel
+        this.rightColumnWrapper = document.createElement('div');
+        this.rightColumnWrapper.id = 'right-column-wrapper';
+        // Set flex properties to take remaining space (matching original right-commentary-panel)
+        this.rightColumnWrapper.style.flex = '1 1 auto';
+        this.rightColumnWrapper.style.display = 'flex';
+        this.rightColumnWrapper.style.flexDirection = 'column';
+        // Add top margin so dice isn't flush with the top edge
+        this.rightColumnWrapper.style.marginTop = '10px';
+        console.log('[gameView] Created rightColumnWrapper with flex: 1 1 auto and margin-top: 10px');
+
+        // Create dice container
+        this.diceElement = document.createElement('div');
+        this.diceElement.id = 'dice-container';
+        this.diceElement.style.width = '60px';
+        this.diceElement.style.height = '60px';
+        this.diceElement.style.backgroundSize = 'contain';
+        this.diceElement.style.backgroundRepeat = 'no-repeat';
+        this.diceElement.style.backgroundPosition = 'center';
+        this.diceElement.style.alignSelf = 'center'; // Center horizontally in the flex column
+        // Override any absolute positioning from CSS
+        this.diceElement.style.position = 'static';
+        console.log('[gameView] Created diceElement with position: static');
+
+        // Create turn indicator (below dice)
+        this.turnIndicator = document.createElement('div');
+        this.turnIndicator.id = 'turn-indicator';
+        this.turnIndicator.style.width = '30px';
+        this.turnIndicator.style.height = '30px';
+        this.turnIndicator.style.backgroundSize = 'contain';
+        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
+        this.turnIndicator.style.backgroundPosition = 'center';
+        this.turnIndicator.style.alignSelf = 'center'; // Center horizontally in the flex column
+        this.turnIndicator.style.marginTop = '10px'; // Gap between dice and indicator
+        // Override any absolute positioning from CSS
+        this.turnIndicator.style.position = 'static';
+        console.log('[gameView] Created turnIndicator with position: static');
+
+        // Add dice and indicator to the wrapper
+        this.rightColumnWrapper.appendChild(this.diceElement);
+        this.rightColumnWrapper.appendChild(this.turnIndicator);
+
+        // Now we need to insert the wrapper in place of the right-commentary-panel
+        // First, remove the right-commentary-panel from the game container
+        this.container.removeChild(this.rightCommentaryPanel);
+        console.log('[gameView] Removed rightCommentaryPanel from container');
+
+        // Then add the wrapper to the game container
+        this.container.appendChild(this.rightColumnWrapper);
+        console.log('[gameView] Added rightColumnWrapper to container');
+
+        // Finally, add the right-commentary-panel to the wrapper (it will be the third child)
+        this.rightColumnWrapper.appendChild(this.rightCommentaryPanel);
+        console.log('[gameView] Added rightCommentaryPanel to rightColumnWrapper');
+        
+        // Ensure the commentary content can scroll and doesn't prevent the column from shrinking
+        this.commentaryElement.style.minHeight = '0';
+        // Ensure the commentary panel takes remaining space in the wrapper
+        this.rightCommentaryPanel.style.flex = '1 1 auto';
+        console.log('[gameView] Set commentaryElement minHeight: 0 and rightCommentaryPanel flex: 1 1 auto');
+
+        // Create token elements (as children of container, absolutely positioned for game logic)
         for (let i = 0; i < 4; i++) {
             const token = document.createElement('div');
             token.className = `game-token player-${i}`;
@@ -311,71 +439,7 @@ class GameView {
         }
         // Size tokens after all DOM is created
         this.sizeTokens();
-
-        // Create dice container (over board)
-        this.diceElement = document.createElement('div');
-        this.diceElement.id = 'dice-container';
-        this.diceElement.style.position = 'absolute';
-        this.diceElement.style.top = '10px';
-        this.diceElement.style.right = '60px';
-        this.diceElement.style.width = '60px';
-        this.diceElement.style.height = '60px';
-        this.diceElement.style.backgroundSize = 'contain';
-        this.diceElement.style.backgroundRepeat = 'no-repeat';
-        this.diceElement.style.backgroundPosition = 'center';
-        this.diceElement.style.zIndex = '2';
-        this.gameBoardContainer.appendChild(this.diceElement);
-
-        // Create turn indicator (below dice)
-        this.turnIndicator = document.createElement('div');
-        this.turnIndicator.id = 'turn-indicator';
-        this.turnIndicator.style.position = 'absolute';
-        this.turnIndicator.style.top = '80px';
-        this.turnIndicator.style.right = '60px';
-        this.turnIndicator.style.width = '30px';
-        this.turnIndicator.style.height = '30px';
-        this.turnIndicator.style.backgroundSize = 'contain';
-        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
-        this.turnIndicator.style.backgroundPosition = 'center';
-        this.turnIndicator.style.zIndex = '2';
-        this.gameBoardContainer.appendChild(this.turnIndicator);
-
-        // Create message area for non-blocking alerts
-        this.messageElement = document.createElement('div');
-        this.messageElement.style.position = 'absolute';
-        this.messageElement.style.top = '490px'; // in the gap between staging (480px) and player info (520px)
-        this.messageElement.style.left = '10px';
-        this.messageElement.style.right = '10px';
-        this.messageElement.style.height = '20px';
-        this.messageElement.style.backgroundColor = 'rgba(255,255,0,0.8)';
-        this.messageElement.style.color = '#333';
-        this.messageElement.style.padding = '8px';
-        this.messageElement.style.borderRadius = '5px';
-        this.messageElement.style.fontSize = '14px';
-        this.messageElement.style.display = 'none';
-        this.container.appendChild(this.messageElement);
-
-        // Create player info panel
-        this.playerInfoElement = document.createElement('div');
-        this.playerInfoElement.id = 'player-info';
-        this.playerInfoElement.style.position = 'absolute';
-        this.playerInfoElement.style.left = '10px';
-        this.playerInfoElement.style.top = '50%';
-        this.playerInfoElement.style.transform = 'translateY(-50%)';
-        this.playerInfoElement.style.width = 'auto';
-        this.playerInfoElement.style.height = 'auto';
-        this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
-        this.playerInfoElement.style.color = '#fff';
-        this.playerInfoElement.style.padding = '12px';
-        this.playerInfoElement.style.borderRadius = '8px';
-        this.playerInfoElement.style.display = 'flex';
-        this.playerInfoElement.style.flexDirection = 'column';
-        this.playerInfoElement.style.justifyContent = 'flex-start';
-        this.playerInfoElement.style.alignItems = 'center';
-        this.playerInfoElement.style.minWidth = '200px';
-        this.container.appendChild(this.playerInfoElement);
-
-        
+        console.log("DOM creation complete");
     }
 
     loadAssets() {
@@ -445,6 +509,7 @@ class GameView {
     }
 
     assetLoaded() {
+        console.log("[gameView] assetLoaded called");
         this.assetsLoadedCount++;
         console.log(`[gameView] Asset loaded: ${this.assetsLoadedCount}/${this.assetsTotalCount}`);
         // Update loading overlay text to show progress and failed count
@@ -463,17 +528,28 @@ class GameView {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
                 // Start auto-play after assets loaded
-                this.autoRoll();
+                // Also reset the game to ensure token positions are updated with loaded assets
+                setTimeout(() => {
+                    if (this.controller) {
+                        this.controller.resetGame();
+                    }
+                    this.autoRoll();
+                }, 0);
             }
         }
     }
 
     assetError(e) {
-        console.error(`[gameView] Failed to load asset: ${e.target.src}`, e);
+        console.log("[gameView] assetError called", e.target.src);
+        const src = e.target.src;
+        if (src && src.endsWith('ladder.ogg')) {
+            console.warn(`[gameView] Failed to load asset: ${src}`, e);
+        } else {
+            console.error(`[gameView] Failed to load asset: ${src}`, e);
+        }
         this.assetsFailedCount++;
         this.assetLoaded();   // count this asset as resolved
         // For debugging: set a visible background on token elements if this is a token image
-        const src = e.target.src;
         if (src && src.includes('tokens/')) {
             // Extract token number from src like .../token_3.png
             const match = src.match(/token_(\d+)\.png/);
@@ -560,13 +636,63 @@ class GameView {
         }, 10000);
     }
 
+    // Reset the game state for the view
+    onReset() {
+        this.clearTimeouts();
+        this.commentaryBuffer = [];
+        this.commentaryElement.textContent = '';
+        // Reset dice to empty
+        this.diceElement.style.backgroundImage = '';
+        // Reset turn indicator to show active player (after reset, active player is 0)
+        const activePlayer = this.model.getActivePlayer();
+        if (this.turnIndicator && this.assets.tokens[activePlayer]) {
+            const src = this.assets.tokens[activePlayer].src;
+            this.turnIndicator.style.backgroundImage = `url('${src}')`;
+        }
+        // Reset tokens to staging (position 0) without animation
+        for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
+            const pos = this.getTokenPositionFromTile(0, i);
+            if (pos) {
+                this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[i]);
+            }
+        }
+        // Reset previousPositions to all zeros
+        this.previousPositions = [0,0,0,0];
+        // Update player info to show active player
+        this.updatePlayerInfo(activePlayer);
+        // Ensure tokens are sized correctly
+        this.sizeTokens();
+    }
+
+    // Handle extra roll (when a six is rolled and not three sixes)
+    onExtraRoll() {
+        // No-op - turn indicator is updated in onStateChange
+    }
+
+    // Handle triple six penalty
+    onTripleSixPenalty() {
+        // No-op - turn indicator and commentary are updated in onStateChange
+    }
+
+    // Handle capture of an opponent's token
+    onCapture(opponentId, finalPos) {
+        // Play capture sound
+        this.playAudio('capture');
+        // Optionally, add a visual effect or vibration
+    }
+
+    onGameWin(playerId) {
+        // The win commentary is generated in onStateChange via generateCommentary.
+        // This method is required by the contract but does not need to contain any logic.
+    }
+
     // Update the board background color
     updateBoardBackground() {
         this.boardElement.style.backgroundColor = '#f8f9fa';
     }
 
     // Note: The old tileToPosition function has been removed.
-// We now use getTokenPositionFromTile for pixel-based positioning.
+    // We now use getTokenPositionFromTile for pixel-based positioning.
 
     // Update token positions based on model state - now handles animation
     onStateChange() {
@@ -617,6 +743,8 @@ class GameView {
 
         // Update previous positions
         this.previousPositions = [...currentPositions];
+        // Store the last turn record for use in animations
+        this.lastTurnRecord = this.model.getLastTurnRecord();
 
         // Single-fire guard for autoRoll
         let settled = false;
@@ -731,12 +859,25 @@ class GameView {
     async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos) {
         console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
-        const hasJump = (intermediatePos !== startTile && intermediatePos !== endTile) &&
-            (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
+        // Determine if there is a jump based on the last turn record
+        let jumpStart = intermediatePos;
+        let jumpEnd = endTile;
+        let hasJump = false;
+        if (this.lastTurnRecord && 
+            (this.lastTurnRecord.event === 'ladder' || this.lastTurnRecord.event === 'snake') &&
+            this.lastTurnRecord.mover === playerId) {
+            jumpStart = this.lastTurnRecord.landed;
+            jumpEnd = this.lastTurnRecord.to;
+            hasJump = (jumpStart !== jumpEnd);
+        } else {
+            // Fallback to the old method if no record or not a jump
+            hasJump = (intermediatePos !== startTile && intermediatePos !== endTile) &&
+                (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
+        }
 
-        // Part 1: move from startTile to intermediatePos one tile at a time
+        // Part 1: move from startTile to jumpStart one tile at a time
         let current = startTile;
-        while (current !== intermediatePos) {
+        while (current !== jumpStart) {
             // Determine next tile: since we are moving forward, next = current + 1
             const nextTile = current + 1;
             console.log(`[gameView] hop from ${current} to ${nextTile} start`);
@@ -754,25 +895,26 @@ class GameView {
             current = nextTile;
         }
 
-        // Pause at the landing tile (intermediatePos) before jumping
-        console.log(`[gameView] pausing at landing tile ${intermediatePos} for ${GameView.PAUSE_DURATION}ms`);
+        // Pause at the landing tile (jumpStart) before jumping
+        console.log(`[gameView] pausing at landing tile ${jumpStart} for ${GameView.PAUSE_DURATION}ms`);
         await this._delay(GameView.PAUSE_DURATION);
         console.log(`[gameView] landing pause end`);
 
-        // Part 2: if there is a jump, follow the SVG path from intermediatePos to endTile
+        // Part 2: if there is a jump, follow the SVG path from jumpStart to jumpEnd
         if (hasJump) {
-            console.log(`[gameView] has jump from ${intermediatePos} to ${endTile}`);
+            console.log(`[gameView] has jump from ${jumpStart} to ${jumpEnd}`);
             // Find the SVG path element for this jump
-            const pathSelector = `[data-jump="${intermediatePos}-${endTile}"]`;
+            const pathSelector = `[data-jump="${jumpStart}-${jumpEnd}"]`;
             const path = this.svgElement.querySelector(pathSelector);
             if (!path) {
-                console.error(`[gameView] SVG path not found for jump ${intermediatePos}-${endTile}`);
+                console.error(`[gameView] SVG path not found for jump ${jumpStart}-${jumpEnd}`);
                 // Fallback: direct move
-                const pos = this.getTokenPositionFromTile(endTile, playerId);
+                const pos = this.getTokenPositionFromTile(jumpEnd, playerId);
                 if (pos) {
                     this.setTokenPositionFromPixel(pos.x, pos.y, token);
                 }
-                this.playAudio(this.model.Ladders.has(intermediatePos) ? 'ladder' : 'snake');
+                // Play the appropriate sound based on the jumpStart (which is the landed position)
+                this.playAudio(this.model.Ladders.has(jumpStart) ? 'ladder' : 'snake');
                 await this._delay(100); // small delay to simulate sound
             } else {
                 // Animate along the path
@@ -781,7 +923,7 @@ class GameView {
                 const duration = Math.random() * 300 + 600; // 600-900ms
                 const startTime = performance.now();
                 // Play the appropriate sound
-                this.playAudio(this.model.Ladders.has(intermediatePos) ? 'ladder' : 'snake');
+                this.playAudio(this.model.Ladders.has(jumpStart) ? 'ladder' : 'snake');
                 // Animation loop
                 await new Promise((resolve, reject) => {
                     // Create SVG point once for reuse
@@ -824,7 +966,8 @@ class GameView {
                 console.log(`[gameView] traversal end`);
             }
         } else {
-            // No jump, we are already at intermediatePos (which equals endTile)
+            // No jump, we are already at jumpStart (which equals jumpEnd)
+            console.log(`[gameView] no jump, jumpStart=${jumpStart} equals jumpEnd=${jumpEnd}`);
             // But we need to move the token to the endTile position (if not already there)
             const pos = this.getTokenPositionFromTile(endTile, playerId);
             if (pos) {
@@ -959,354 +1102,205 @@ class GameView {
 
         // Check if tumble sheet is loaded
         if (!this.assets.diceTumbleSheet || !this.assets.diceTumbleSheet.complete) {
-            // Fallback to static face after a short delay
-            setTimeout(() => {
-                this.updateDice(face);
-                if (callback) callback();
-            }, 500);
+            // Fallback to static face if tumble sheet not ready
+            this.updateDice(face);
+            if (callback) callback();
             return;
         }
 
-        // Set up the tumble sheet
-        this.diceElement.style.backgroundImage = `url('${this.assets.diceTumbleSheet.src}')`;
-        this.diceElement.style.backgroundSize = '720px 60px'; // assuming 12 frames of 60x60
-        this.diceElement.style.backgroundRepeat = 'no-repeat';
-
-        const totalFrames = 12;
-        const totalDuration = 800; // ms, within 700-900
-        const frameDuration = totalDuration / totalFrames;
-
+        // Play tumble animation
+        const tumbleSheet = this.assets.diceTumbleSheet;
+        const frameWidth = 256; // assuming each frame is 256x256
+        const frameHeight = 256;
+        const frames = 6; // number of frames in the tumble sheet
         let currentFrame = 0;
+        const startTime = performance.now();
+        const duration = 1000; // 1 second for tumble animation
 
-        const animate = () => {
-            this.diceElement.style.backgroundPosition = `-${currentFrame * 60}px 0`;
-            currentFrame++;
-            if (currentFrame < totalFrames) {
-                setTimeout(animate, frameDuration);
-            } else {
-                // After tumble, show the static face
+        const animate = (timestamp) => {
+            const elapsed = timestamp - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const frame = Math.floor(progress * frames);
+            if (frame >= frames) {
+                // Animation ended, show final face
                 this.updateDice(face);
                 if (callback) callback();
+                return;
             }
+            if (frame !== currentFrame) {
+                currentFrame = frame;
+                const offset = -currentFrame * frameWidth;
+                this.diceElement.style.backgroundImage = `url('${tumbleSheet.src}')`;
+                this.diceElement.style.backgroundPosition = `${offset}px 0`;
+                this.diceElement.style.backgroundSize = `${frames * frameWidth}px ${frameHeight}px`;
+                this.diceElement.style.backgroundRepeat = 'no-repeat';
+            }
+            requestAnimationFrame(animate);
         };
-
-        animate();
+        requestAnimationFrame(animate);
     }
 
-    // Play audio for a given event
+    // Play audio
     playAudio(event) {
         const audio = this.assets.audio[event];
-        if (audio && audio.src) {
-            // Create a new audio element to allow overlapping playback
-            const audioClone = new Audio(audio.src);
-            audioClone.play().catch(e => console.warn(`Audio play failed for ${event}: ${e}`));
+        if (audio) {
+            audio.currentTime = 0;
+            audio.play().catch(e => {
+                console.warn(`[gameView] Failed to play audio ${event}:`, e);
+            });
         }
     }
 
-    // View callback methods (called by controller)
-    onTurnChange(activePlayer) {
-        // Update player info panel to show whose turn it is
-        this.updatePlayerInfo(activePlayer);
-        this.playAudio('turn');
-        // DO NOT update turn indicator here - it's updated in onStateChange with the dice
-    }
+    // Generate commentary for the turn that just completed
+    generateCommentary() {
+        const record = this.model.getLastTurnRecord();
+        if (!record) return;
 
-    onExtraRoll() {
-        // Indicate extra roll (maybe change button text or add a visual cue)
-        // Roll button removed for fully automatic arena
-        setTimeout(() => {
-            // Roll button removed for fully automatic arena
-        }, 1000);
-        this.playAudio('six');
-    }
+        // Create commentary line element
+        const line = document.createElement('div');
+        line.style.marginBottom = '4px';
+        line.style.padding = '2px 4px';
+        line.style.borderRadius = '2px';
+        line.style.fontSize = '12px';
+        line.style.lineHeight = '1.4';
 
-    onTripleSixPenalty() {
-        this.playAudio('triple_six');
-        // Show non-blocking message
-        this.messageElement.textContent = 'Triple Six! Penalty: Turn reverted and turn passed to next player.';
-        this.messageElement.style.display = 'block';
-        setTimeout(() => { this.messageElement.textContent = ''; this.messageElement.style.display = 'none'; }, 3000);
-    }
+        // Determine player color
+        const playerColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+        const playerColor = playerColors[record.mover] || '#ffffff';
+        line.style.borderLeft = `3px solid ${playerColor}`;
 
-    onCapture(opponent, targetPos) {
-        this.playAudio('snake'); // or maybe a capture sound? we don't have one, so use snake for now
-        // Optionally show a visual indication
-        console.log(`Player ${opponent} captured at tile ${targetPos}`);
-    }
+        // Format the commentary text
+        const playerNum = record.mover + 1; // Convert to 1-indexed for display
+        let text = `Player ${playerNum} rolled a ${record.roll}`;
 
-    onGameWin(playerId) {
-        this.playAudio('win');
-        // Roll button removed for fully automatic arena
-        // Show non-blocking win message
-        this.messageElement.textContent = `Player ${playerId + 1} wins!`;
-        this.messageElement.style.display = 'block';
-        setTimeout(() => { this.messageElement.textContent = ''; this.messageElement.style.display = 'none'; }, 3000);
-        // Handle game over: after showing win, wait 10 sec then restart
-        this.handleGameOver();
-    }
-
-    onReset() {
-        this.clearTimeouts();
-        // Roll button removed for fully automatic arena
-        this.previousPositions = [0,0,0,0];
-        this.updateTokenPositions();
-        this.updatePlayerInfo(this.model.getActivePlayer());
-        this.diceElement.style.backgroundImage = ''; // clear dice
-    }
-
-    // Update token positions (called on reset, without animation)
-    updateTokenPositions() {
-        const boardWidth = this.boardElement.clientWidth;
-        const boardHeight = this.boardElement.clientHeight;
-        console.log('[DEBUG] updateTokenPositions called, boardWidth:', boardWidth, 'boardHeight:', boardHeight);
-
-        for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            const position = this.model.getPlayerPosition(i);
-            const pos = this.getTokenPositionFromTile(position, i);
-            if (!pos) continue;
-            const token = this.tokenElements[i];
-            console.log(`[DEBUG] Player ${i} position ${position}: pos.x=${pos.x}, pos.y=${pos.y}`);
-
-            // Set position in pixels
-            this.setTokenPositionFromPixel(pos.x, pos.y, token);
-
-            // Adjust token size based on board size (e.g., 10% of tile size)
-            const tileSize = Math.min(boardWidth, boardHeight) / 10;
-            const tokenSize = tileSize * 0.6; // 60% of tile size
-            token.style.width = `${tokenSize}px`;
-            token.style.height = `${tokenSize}px`;
-
-            // Set token image
-            token.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
+        switch (record.event) {
+            case 'no_move':
+                text += ` but couldn't move from ${record.from}`;
+                break;
+            case 'move':
+                if (record.from === 0 && record.to === 1) {
+                    text += ` and entered the board at tile 1`;
+                } else {
+                    text += ` and moved from tile ${record.from} to ${record.to}`;
+                }
+                break;
+            case 'ladder':
+                text += ` and climbed a ladder from ${record.landed} to ${record.to}!`;
+                break;
+            case 'snake':
+                text += ` but landed on a snake at ${record.landed} and slid down to ${record.to}!`;
+                break;
+            case 'capture':
+                const capturedPlayerNum = record.captured + 1;
+                text += ` and captured Player ${capturedPlayerNum}'s token!`;
+                break;
+            case 'win':
+                text += ` and reached tile 100! Player ${playerNum} wins!`;
+                break;
+            case 'triple_six':
+                text += ` but rolled three consecutive sixes! All tokens returned to start.`;
+                break;
+            default:
+                text += ` and moved from ${record.from} to ${record.to}`;
         }
-    }
 
-    // Resize tokens based on board width
-    sizeTokens() {
-        let boardWidth = this.boardElement.clientWidth;
-        // If we can't get the board width directly, calculate it from container dimensions
-        if (boardWidth === 0 && this.container) {
-            const containerWidth = this.container.clientWidth;
-            // Account for side panels and gaps: 100px + 300px + 2*16px = 432px
-            const availableWidth = containerWidth - 432;
-            boardWidth = Math.min(380, availableWidth);
-            // Ensure we don't go negative
-            if (boardWidth < 0) boardWidth = 0;
-        }
-        if (boardWidth === 0) {
-            // Not ready yet; try again on next animation frame
-            requestAnimationFrame(() => this.sizeTokens());
-            return;
-        }
-        const cellWidth = boardWidth / 10;
-        const tokenDiameter = cellWidth * 0.7;
-        for (let i = 0; i < this.tokenElements.length; i++) {
-            const token = this.tokenElements[i];
-            token.style.width = `${tokenDiameter}px`;
-            token.style.height = `${tokenDiameter}px`;
-        }
-    }
-
-    // Add a commentary message to the buffer
-    addCommentary(message, playerId = null) {
-        // Add timestamp
-        const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        const formattedMessage = `[${timestamp}] ${message}`;
+        line.textContent = text;
         
-        // Add to buffer
-        this.commentaryBuffer.push({
-            text: formattedMessage,
-            playerId: playerId,
-            timestamp: Date.now()
-        });
-        
-        // Maintain buffer size
+        // Add to commentary buffer and limit size
+        this.commentaryBuffer.push(line);
         if (this.commentaryBuffer.length > this.maxCommentaryLines) {
-            this.commentaryBuffer.shift(); // Remove oldest entry
+            const removedLine = this.commentaryBuffer.shift();
+            this.commentaryElement.removeChild(removedLine);
         }
         
-        // Update display
-        this.updateCommentaryDisplay();
-    }
-
-    // Update the commentary display
-    updateCommentaryDisplay() {
-        const commentaryDiv = document.getElementById('commentary-content');
-        if (!commentaryDiv) return;
-        
-        // Clear and rebuild
-        commentaryDiv.innerHTML = '';
-        
-        // Add each message
-        this.commentaryBuffer.forEach((entry, index) => {
-            const lineDiv = document.createElement('div');
-            lineDiv.style.marginBottom = '4px';
-            lineDiv.style.padding = '2px 4px';
-            lineDiv.style.borderRadius = '3px';
-            
-            // Add player-specific coloring if playerId is provided
-            if (entry.playerId !== null && entry.playerId >= 0 && entry.playerId <= 3) {
-                lineDiv.classList.add(`commentary-player-${entry.playerId}`);
-            }
-            
-            lineDiv.textContent = entry.text;
-            commentaryDiv.appendChild(lineDiv);
-        });
+        // Add new line to commentary element
+        this.commentaryElement.appendChild(line);
         
         // Auto-scroll to bottom
-        commentaryDiv.scrollTop = commentaryDiv.scrollHeight;
+        this.commentaryElement.scrollTop = this.commentaryElement.scrollHeight;
     }
 
-    // Helper method to set token position using left/top/transform for centering
-    setTokenPosition(playerId, xPercent, yPercent) {
-        console.log(`[gameView] setTokenPosition called for player ${playerId} with x:${xPercent}%, y:${yPercent}%`);
-        const token = this.tokenElements[playerId];
-        // Always use left for on-board positions
-        token.style.left = `${xPercent}%`;
-        token.style.right = 'auto';
-        token.style.top = `${yPercent}%`;
-        token.style.transform = 'translate(-50%, -50%)';
-    }
-
-    // Update player info panel
-    updatePlayerInfo(highlightPlayer) {
-        if (highlightPlayer === undefined) {
-            highlightPlayer = this.model.getActivePlayer();
-        }
-        // Clear current content
+    // Update player info panel to show next player (for highlighting in panel)
+    updatePlayerInfo(activePlayerToShow) {
+        // Clear the player info element
         this.playerInfoElement.innerHTML = '';
-
-        // Create a div for each player
+        
+        // Create a container for the player info
+        const playerInfoContainer = document.createElement('div');
+        playerInfoContainer.style.display = 'flex';
+        playerInfoContainer.style.flexDirection = 'row';
+        playerInfoContainer.style.gap = '8px';
+        playerInfoContainer.style.width = '100%';
+        playerInfoContainer.style.alignItems = 'center';
+        
+        // Add info for each player
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            const playerDiv = document.createElement('div');
-            playerDiv.style.textAlign = 'center';
-
-            // Player token indicator (small circle)
-            const tokenIndicator = document.createElement('div');
-            tokenIndicator.style.display = 'inline-block';
-            tokenIndicator.style.width = '24px';
-            tokenIndicator.style.height = '24px';
-            tokenIndicator.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
-            tokenIndicator.style.backgroundSize = 'contain';
-            tokenIndicator.style.marginBottom = '4px';
-            playerDiv.appendChild(tokenIndicator);
-
-            // Player name (we'll use placeholder names for now)
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = `Player ${i+1}`;
-            nameSpan.style.display = 'block';
-            nameSpan.style.fontWeight = 'bold';
-            nameSpan.style.fontSize = '1rem';
-            playerDiv.appendChild(nameSpan);
-
-            // Player position
-            const posSpan = document.createElement('span');
-            posSpan.textContent = `Tile: ${this.model.getPlayerPosition(i)}`;
-            posSpan.style.display = 'block';
-            posSpan.style.fontSize = '0.85rem';
-            posSpan.style.opacity = '0.9';
-            playerDiv.appendChild(posSpan);
-
-            // Highlight active player
-            if (i === highlightPlayer) {
-                playerDiv.classList.add('active-player');
+            const playerContainer = document.createElement('div');
+            playerContainer.style.display = 'flex';
+            playerContainer.style.flexDirection = 'column';
+            playerContainer.style.alignItems = 'center';
+            playerContainer.style.flex = '1 1 0';
+            
+            // Add player token image
+            if (this.assets.tokens[i]) {
+                const tokenImg = document.createElement('div');
+                tokenImg.style.width = '24px';
+                tokenImg.style.height = '24px';
+                tokenImg.style.backgroundImage = `url('${this.assets.tokens[i].src}')`;
+                tokenImg.style.backgroundSize = 'contain';
+                tokenImg.style.backgroundRepeat = 'no-repeat';
+                tokenImg.style.backgroundPosition = 'center';
+                tokenImg.style.marginBottom = '2px';
+                playerContainer.appendChild(tokenImg);
             }
-
-            this.playerInfoElement.appendChild(playerDiv);
+            
+            // Add player number
+            const playerNumber = document.createElement('div');
+            playerNumber.textContent = `P${i + 1}`;
+            playerNumber.style.fontSize = '12px';
+            playerNumber.style.fontWeight = 'bold';
+            playerNumber.style.color = '#fff';
+            playerNumber.style.marginBottom = '4px'; // Add space between number and tile
+            playerContainer.appendChild(playerNumber);
+            
+            // Add current tile position
+            const playerPosition = document.createElement('div');
+            const position = this.model.getPlayerPosition(i);
+            playerPosition.textContent = `Tile ${position}`;
+            playerPosition.style.fontSize = '10px';
+            playerPosition.style.color = '#ccc';
+            playerContainer.appendChild(playerPosition);
+            
+            // Highlight active player
+            if (i === activePlayerToShow) {
+                playerContainer.style.border = '2px solid #ffeb3b';
+                playerContainer.style.borderRadius = '4px';
+                playerContainer.style.padding = '4px';
+                playerContainer.style.backgroundColor = 'rgba(255, 235, 59, 0.2)';
+            }
+            
+            playerInfoContainer.appendChild(playerContainer);
         }
+        
+        // Add the container to the player info element
+        this.playerInfoElement.appendChild(playerInfoContainer);
     }
 
-    // Generate commentary messages based on game state
-    generateCommentary() {
-        // Get the last turn data from the model
-        const lastMover = this.model.getLastMover();
-        const lastRoll = this.model.getLastRoll();
-        const lastMoveIntermediatePosition = this.model.getLastMoveIntermediatePosition();
-        
-        // If no turn has happened yet, show initial state
-        if (lastMover === null && lastRoll === 0) {
-            this.addCommentary(`Game starting - Player ${this.model.getActivePlayer() + 1} to roll first`, this.model.getActivePlayer());
-            return;
-        }
-
-        const moverName = `Player ${lastMover + 1}`;
-        
-        // Handle triple six penalty detection
-        // Characteristics: lastRoll = 6, player ended up where they started their turn
-        // We approximate this by checking if lastRoll = 6 and the intermediate position 
-        // equals the current position (suggesting they were rolled back)
-        // Note: This isn't perfect but works for most cases
-        let isTripleSixPenalty = false;
-        if (lastRoll === 6 && lastMoveIntermediatePosition > 0) {
-            const moverCurrentPosition = this.model.getPlayerPosition(lastMover);
-            // If they ended up at the intermediate position (suggesting a jump back to start)
-            // and it's a reasonable board position, it might be a triple six penalty
-            // This is a heuristic - not perfect but reasonable
-            if (lastMoveIntermediatePosition === moverCurrentPosition && lastMoveIntermediatePosition >= 1 && lastMoveIntermediatePosition <= 100) {
-                // Additional check: if they were likely on the board before rolling
-                // (this is approximate since we don't have their exact previous position)
-                isTripleSixPenalty = true;
-            }
-        }
-        
-        if (isTripleSixPenalty) {
-            this.addCommentary(`${moverName}: rolls ${lastRoll}, three sixes penalty!`, lastMover);
-            return; // Don't generate additional commentary for this turn
-        }
-        
-        // Handle wins
-        if (this.model.isGameOver()) {
-            const winner = this.model.getWinner();
-            if (winner !== null) {
-                this.addCommentary(`Player ${winner + 1} WINS!`, winner);
-                return; // Don't generate additional commentary for this turn
-            }
-        }
-        
-        // Generate commentary for normal rolls
-        if (lastRoll > 0) {
-            let baseMessage = `${moverName} rolls ${lastRoll}`;
-            
-            // Check if there was movement for this player
-            const moverCurrentPosition = this.model.getPlayerPosition(lastMover);
-            
-            // Check if they moved to the intermediate position
-            if (lastMoveIntermediatePosition > 0 && lastMoveIntermediatePosition !== moverCurrentPosition) {
-                // There was a jump (snake or ladder)
-                const isLadder = this.model.Ladders.has(lastMoveIntermediatePosition);
-                const jumpType = isLadder ? 'ladder' : 'snake';
-                const startPos = lastMoveIntermediatePosition;
-                const endPos = moverCurrentPosition;
-                
-                if (isLadder) {
-                    this.addCommentary(`${baseMessage}, ladder ${startPos} up to ${endPos}`, lastMover);
-                } else {
-                    this.addCommentary(`${baseMessage}, snake ${startPos} down to ${endPos}`, lastMover);
-                }
-            } else if (lastMoveIntermediatePosition > 0) {
-                // They moved to the intermediate position and stayed there (no jump)
-                // Check if they actually moved from their previous position
-                // We'll use a heuristic: if they are on the board now or moved to a valid position,
-                // assume they moved from off-board or made a valid move
-                if (moverCurrentPosition > 0 || lastMoveIntermediatePosition > 0) {
-                    this.addCommentary(`${baseMessage}, moves to ${moverCurrentPosition}`, lastMover);
-                } else {
-                    // They didn't move (e.g., invalid roll)
-                    this.addCommentary(`${baseMessage}, no move`, lastMover);
-                }
-            } else if (lastMoveIntermediatePosition === 0) {
-                // Intermediate position is 0 (off-board) - they didn't leave staging
-                this.addCommentary(`${baseMessage}, no move (still off-board)`, lastMover);
-            } else {
-                // Fallback
-                this.addCommentary(baseMessage, lastMover);
-            }
+    // Size tokens based on board width
+    sizeTokens() {
+        // Set token size to 30px by 30px
+        const tokenSize = 30; // pixels
+        console.log(`[gameView] sizeTokens: setting token size to ${tokenSize}px`);
+        for (const token of this.tokenElements) {
+            token.style.width = tokenSize + 'px';
+            token.style.height = tokenSize + 'px';
+            console.log(`[gameView] token ${this.tokenElements.indexOf(token)} width: ${token.style.width}, height: ${token.style.height}`);
         }
     }
 }
 
 // Attach to window for browser compatibility
+console.log("!!! Attaching GameView to window !!!");
 if (typeof window !== 'undefined') {
     window.GameView = GameView;
-    console.log("GameView attached to window");
 }

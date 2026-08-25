@@ -1,0 +1,60 @@
+<!doctype html><meta charset=utf-8><title>twogames</title>
+<style>body{margin:0;font:14px monospace;background:#111;color:#0f0}
+#f{width:1400px;height:520px;border:0;background:#fff}
+#out{padding:10px;white-space:pre;font:bold 16px monospace}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>waiting for game...</pre>
+<script>
+// Proves the arena is genuinely self-running: it must complete a game, reset
+// itself with no human input, and complete another. The die is biased towards
+// sixes so a game finishes in minutes rather than an hour - the LOOP is what is
+// under test, not the random distribution.
+var games=0, resets=0, prevOver=false, log=[], t0=Date.now(), hooked=false;
+
+function boot(){
+  var w=document.getElementById("f").contentWindow;
+  try{
+    if(!w.gameModel || !w.gameView) return false;
+    if(!hooked){
+      // bias the die: mostly 6s and 5s so pieces climb fast. The turn loop,
+      // win detection, reset and re-entry are all still the product's own.
+      var seq=[6,6,5,6,4,6,6,3,6,5,6,6,2,6,6,4], k=0;
+      w.Math.random = function(){ var d=seq[k++ % seq.length]; return (d-1)/6 + 0.01; };
+      hooked=true;
+    }
+    return true;
+  }catch(e){ return false; }
+}
+
+setInterval(function(){
+  if(!boot()) return;
+  var w=document.getElementById("f").contentWindow;
+  var m=w.gameModel;
+  var t=((Date.now()-t0)/1000)|0;
+  try{
+    var over=!!m.game_over;
+    if(over && !prevOver){
+      games++;
+      log.push("t="+t+"s  GAME "+games+" WON by Player "+((m.winner|0)+1));
+    }
+    if(!over && prevOver){
+      resets++;
+      log.push("t="+t+"s  RESET "+resets+" - board cleared, new game started");
+    }
+    prevOver=over;
+    var verdict = (games>=2 && resets>=1)
+      ? "PASS - arena completed "+games+" games and reset itself "+resets+" time(s) unattended"
+      : "running...";
+    document.getElementById("out").textContent =
+      "TWO-GAME SELF-RUNNING PROOF\n"
+      + "elapsed        : "+t+"s\n"
+      + "games completed: "+games+"\n"
+      + "resets observed: "+resets+"\n"
+      + "positions      : ["+m.pawn_positions.join(", ")+"]\n"
+      + "game_over      : "+over+"\n\n"
+      + verdict + "\n\n"
+      + log.slice(-10).join("\n");
+  }catch(e){
+    document.getElementById("out").textContent = "ERR "+e.message;
+  }
+},400);
+</script>

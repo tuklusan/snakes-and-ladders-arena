@@ -1,3 +1,4 @@
+console.log("Test harness started");
 nsole.log("Test harness started");
 console.log("Starting test harness...");
 const fs = require('fs');
@@ -57,3 +58,4 @@ runTest().then(result => {
   }
   console.log(`PASS: ${pass}, FAIL: ${fail}`);
 });console.log("Test harness ended");
+console.log("Test harness ended");

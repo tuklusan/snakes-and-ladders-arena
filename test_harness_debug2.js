@@ -1,5 +1,4 @@
-nsole.log("Test harness started");
-console.log("Starting test harness...");
+console.log("Test harness starting");
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
 
@@ -28,7 +27,7 @@ async function runTest() {
       }
       iframe.addEventListener('load', () => {
         // After iframe loads, wait a bit for assets to load
-        setTimeout(() => {
+        setTimeout(() => {console.log("After iframe load, waiting for assets...");
           try {
             // Now call the run function (defined in the parent window)
             window.run();
@@ -37,7 +36,7 @@ async function runTest() {
           } catch (e) {
             resolve('ERROR: ' + e.message);
           }
-        }, 5000); // wait for assets to load
+        }, 2000); // wait for assets to load
       });
     });
   } catch (e) {
@@ -56,4 +55,4 @@ runTest().then(result => {
     else if (line.startsWith('FAIL  ')) fail++;
   }
   console.log(`PASS: ${pass}, FAIL: ${fail}`);
-});console.log("Test harness ended");
+});

@@ -1,5 +1,3 @@
-nsole.log("Test harness started");
-console.log("Starting test harness...");
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
 
@@ -16,6 +14,7 @@ async function runTest() {
       runScripts: 'dangerously',
       resources: 'usable',
       pretendToBeVisual: true,
+      url: 'http://localhost:8000/diag_accept_test.html',
     });
     const window = dom.window;
     const document = window.document;
@@ -56,4 +55,4 @@ runTest().then(result => {
     else if (line.startsWith('FAIL  ')) fail++;
   }
   console.log(`PASS: ${pass}, FAIL: ${fail}`);
-});console.log("Test harness ended");
+});

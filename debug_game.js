@@ -4,16 +4,43 @@ const fs = require("fs");
 
 // Load the index.html file
 const html = fs.readFileSync("index.html", "utf8");
+// Inline all scripts to ensure they run in JSDOM
+const gameModelJs = fs.readFileSync("src/js/gameModel.js", "utf8");
+const htmlWithGameModel = html.replace('<script src="src/js/gameModel.js"></script>', `<script>${gameModelJs}</script>`);
+const gameControllerJs = fs.readFileSync("src/js/gameController.js", "utf8");
+const htmlWithGameController = htmlWithGameModel.replace('<script src="src/js/gameController.js"></script>', `<script>${gameControllerJs}</script>`);
+const gameViewJs = fs.readFileSync("src/js/gameView.js", "utf8");
+const htmlWithAllScripts = htmlWithGameController.replace('<script src="src/js/gameView.js"></script>', `<script>${gameViewJs}</script>`);
 
 async function runChecks() {
-  const dom = new JSDOM(html, { runScripts: "dangerously", resources: "usable" });
+  const dom = new JSDOM(htmlWithInlineScript, { runScripts: "dangerously", resources: "usable" });
+  console.log("JSDOM created");
+  console.log("Number of script elements after creation:", dom.window.document.scripts.length);
+  if (dom.window.document.scripts.length > 2) {
+    console.log("Script 2 content preview:", dom.window.document.scripts[2].text.substring(0, 200));
+  }
   const { window } = dom;
   const d = window.document;
 
   // Listen for errors
   window.addEventListener('error', (e) => {
     console.error('JS Error:', e.error);
+    console.error('Error details:', e);
   });
+  // Forward window.console.log to Node.js console
+  const { log, warn, error } = window.console;
+  window.console.log = (...args) => {
+    log.apply(window.console, args);
+    console.log.apply(console, ['[window.console]', ...args]);
+  };
+  window.console.warn = (...args) => {
+    warn.apply(window.console, args);
+    console.warn.apply(console, ['[window.console]', ...args]);
+  };
+  window.console.error = (...args) => {
+    error.apply(window.console, args);
+    console.error.apply(console, ['[window.console]', ...args]);
+  };
 
   // Wait for DOMContentLoaded
   await new Promise((resolve) => {
@@ -23,9 +50,38 @@ async function runChecks() {
       resolve();
     }
   });
+  console.log("DOMContentLoaded fired");
+  console.log("Number of script elements:", d.scripts.length);
+  for (let i = 0; i < d.scripts.length; i++) {
+    console.log("Script", i, d.scripts[i].src);
+  }
+  console.log("window.gameViewInstance:", window.gameViewInstance);
 
   // Wait a bit for the game to initialize
   await new Promise((resolve) => setTimeout(resolve, 2000));
+
+  // Check if gameViewInstance exists
+  console.log("Checking if gameView was instantiated...");
+  if (window.gameViewInstance) {
+    console.log("SUCCESS: gameViewInstance exists:", window.gameViewInstance);
+  } else {
+    console.log("FAILURE: gameViewInstance is undefined");
+    // Check if GameView class exists
+    if (window.GameView) {
+      console.log("GameView class exists:", window.GameView);
+      // Try to instantiate it manually
+      try {
+        const model = new window.GameModel();
+        const view = new window.GameView();
+        console.log("Successfully created GameView instance manually:", view);
+        window.gameViewInstance = view;
+      } catch (e) {
+        console.log("Error creating GameView instance manually:", e);
+      }
+    } else {
+      console.log("GameView class does not exist on window");
+    }
+  }
 
   // Check if gameBoardContainer exists
   const gameBoardContainer = d.getElementById('game-board-container');

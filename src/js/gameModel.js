@@ -31,6 +31,7 @@ class GameModel {
         this.lastRoll = 0; // last dice roll (0 means no roll yet)
         this.lastMover = null; // ID of the player who last moved
         this.lastMoveIntermediatePosition = 0; // intermediate position after die roll, before jump
+        this.lastTurnRecord = null; // record of the last resolved turn
     }
 
     // Getters
@@ -109,6 +110,10 @@ class GameModel {
 
     setLastMover(playerId) {
         this.lastMover = playerId;
+    }
+
+    getLastTurnRecord() {
+        return this.lastTurnRecord;
     }
 
     getLastMoveIntermediatePosition() {

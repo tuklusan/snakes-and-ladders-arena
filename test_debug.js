@@ -1,5 +1,4 @@
-nsole.log("Test harness started");
-console.log("Starting test harness...");
+console.log("Script started");
 const fs = require('fs');
 const { JSDOM } = require('jsdom');
 
@@ -56,4 +55,4 @@ runTest().then(result => {
     else if (line.startsWith('FAIL  ')) fail++;
   }
   console.log(`PASS: ${pass}, FAIL: ${fail}`);
-});console.log("Test harness ended");
+});
