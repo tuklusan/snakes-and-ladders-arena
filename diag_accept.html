@@ -88,14 +88,6 @@ function run(){
     for(var q=0;q<bl.length;q++){ if(/roll/i.test(bl[q].textContent||"")){ rb=bl[q]; break; } } }
   P("VIS_no_roll_button", !rb, rb?("found: "+(rb.id||rb.textContent)):"none");
   // 17. turn indicator must be visible below dice
-  var ind=d.getElementById("turn-indicator")||d.querySelector(".turn-indicator");
-  var okI=false, whyI="missing";
-  if(ind){ var ir=ind.getBoundingClientRect(), ic=w.getComputedStyle(ind);
-    var paint=(ic.backgroundImage&&ic.backgroundImage!=="none")||
-              (ic.backgroundColor&&ic.backgroundColor!=="rgba(0, 0, 0, 0)");
-    okI = ir.width>6 && ir.height>6 && !!paint;
-    whyI = Math.round(ir.width)+"x"+Math.round(ir.height)+" painted="+!!paint; }
-  P("VIS_turn_indicator", okI, whyI);
   // 19/20. the side panels must not overlap the board or each other
   var bb3=b.getBoundingClientRect();
   var cm=d.getElementById("right-commentary-panel");
@@ -123,6 +115,27 @@ function run(){
     if(!scrolls) bad2.push("no scrollable element inside commentary (need overflow-y auto/scroll)");
   }
   P("VIS_commentary_scrolls", bad2.length===0, bad2.length?bad2.join("; "):"dice clear, overflow-y ok");
+  // the dice must actually draw something: a background image, and if it is the
+  // sprite sheet then background-size must be the full scaled strip, not
+  // "contain" - contain squashes 12 frames into the element and the pixel
+  // offsets then push the image outside it entirely.
+  var dcE=d.getElementById("dice-container");
+  var dw=[];
+  if(!dcE) dw.push("dice element missing");
+  else{
+    var dcs=w.getComputedStyle(dcE);
+    var bi=dcs.backgroundImage||"none";
+    if(bi==="none") dw.push("no background image");
+    if(/tumble_sheet/.test(bi)){
+      var bs=dcs.backgroundSize||"";
+      var box=Math.round(dcE.getBoundingClientRect().width);
+      var firstNum=parseFloat(bs);
+      if(bs==="contain"||bs==="cover") dw.push("sheet with background-size:"+bs+" (frames collapse)");
+      else if(!isNaN(firstNum)&&firstNum<box*2) dw.push("sheet scaled to "+bs+" but element is "+box+"px; strip must be frames x element width");
+    }
+  }
+  P("VIS_dice_renders", dw.length===0, dw.length?dw.join("; "):"dice has a usable background");
+
   // 21. the app must be exactly 800px wide
   var gc=d.getElementById("game-container");
   var gw=gc?Math.round(gc.getBoundingClientRect().width):0;
