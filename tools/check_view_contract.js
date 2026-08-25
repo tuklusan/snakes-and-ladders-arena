@@ -19,7 +19,14 @@ const controllerSrc = fs.readFileSync(path.join(root, 'src/js/gameController.js'
 const viewSrc = fs.readFileSync(path.join(root, 'src/js/gameView.js'), 'utf8');
 const modelSrc = fs.readFileSync(path.join(root, 'src/js/gameModel.js'), 'utf8');
 
+function stripComments(src) {
+  // remove /* block */ and // line comments so a commented-out call is not
+  // reported as a live one. This checker had that exact false positive.
+  return src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/.*$/gm, "$1");
+}
+
 function calledOn(src, receiver) {
+  src = stripComments(src);
   const re = new RegExp('this\\.' + receiver + '\\.([a-zA-Z_$][\\w$]*)\\s*\\(', 'g');
   const out = new Set();
   let m;
