@@ -24,7 +24,7 @@ class GameView {
         this.boardElement = null;
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
-        this.playerInfoElement = null;
+        // this.playerInfoElement = null; // Removed per requirement
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
         this.gameOverTimeout = null;
@@ -256,7 +256,7 @@ class GameView {
         // Set container styles for three-column flex layout
         this.container.style.position = 'relative';
         this.container.style.width = '620px';
-        this.container.style.height = '600px';
+        this.container.style.height = '434px';
         this.container.style.margin = '0 auto';
         this.container.style.padding = '0';
         this.container.style.boxSizing = 'border-box';
@@ -284,7 +284,7 @@ class GameView {
         this.gameBoardContainer.style.padding = '4px';
         this.gameBoardContainer.style.boxSizing = 'border-box';
 
-        this.rightCommentaryPanel.style.flex = '1 1 auto'; // COLUMN 3: remaining space
+        this.rightCommentaryPanel.style.flex = '0 0 auto'; // Fixed height, will be set below
         this.rightCommentaryPanel.style.display = 'flex';
         this.rightCommentaryPanel.style.flexDirection = 'column';
         this.rightCommentaryPanel.style.alignItems = 'center';
@@ -292,6 +292,8 @@ class GameView {
         this.rightCommentaryPanel.style.position = 'relative';
         this.rightCommentaryPanel.style.padding = '4px';
         this.rightCommentaryPanel.style.boxSizing = 'border-box';
+        // Set height to align commentary bottom with staging bottom
+        this.rightCommentaryPanel.style.height = '374px';
 
         // Create board element inside game-board-container
         console.log("About to create board element");
@@ -356,35 +358,20 @@ class GameView {
         this.stagingElement.style.alignItems = 'center';
         this.gameBoardContainer.appendChild(this.stagingElement);
 
-        // Create player info panel below staging (in column 2)
-        this.playerInfoElement = document.createElement('div');
-        this.playerInfoElement.id = 'player-info';
-        this.playerInfoElement.style.display = 'flex';
-        this.playerInfoElement.style.flexDirection = 'row'; // horizontal row for players
-        this.playerInfoElement.style.alignItems = 'center';
-        this.playerInfoElement.style.width = '100%';
-        this.playerInfoElement.style.backgroundColor = 'rgba(0,0,0,0.6)';
-        this.playerInfoElement.style.color = '#fff';
-        this.playerInfoElement.style.padding = '8px';
-        this.playerInfoElement.style.borderRadius = '4px';
-        this.playerInfoElement.style.boxSizing = 'border-box';
-        this.playerInfoElement.style.position = 'static';
-        this.playerInfoElement.style.top = 'auto';
-        this.playerInfoElement.style.transform = 'none';
-        this.gameBoardContainer.appendChild(this.playerInfoElement);
+        // Removed playerInfoPanel per requirement - no bottom panel needed
 
         // Debug: log positions
         const boardRect = this.boardElement.getBoundingClientRect();
         const stagingRect = this.stagingElement.getBoundingClientRect();
-        const playerInfoRect = this.playerInfoElement.getBoundingClientRect();
+        // const playerInfoRect = this.playerInfoElement.getBoundingClientRect(); // Removed per requirement
         const gameBoardContainerRect = this.gameBoardContainer.getBoundingClientRect();
         console.log('[gameView] board rect:', JSON.stringify(boardRect));
         console.log('[gameView] staging rect:', JSON.stringify(stagingRect));
-        console.log('[gameView] playerInfo rect:', JSON.stringify(playerInfoRect));
+        // console.log('[gameView] playerInfo rect:', JSON.stringify(playerInfoRect)); // Removed per requirement
         console.log('[gameView] gameBoardContainer rect:', JSON.stringify(gameBoardContainerRect));
         console.log('[gameView] DEBUG: Before computed style logs');
         console.log('[gameView] gameBoardContainer computed style:', window.getComputedStyle(this.gameBoardContainer).cssText);
-        console.log('[gameView] playerInfo computed style:', window.getComputedStyle(this.playerInfoElement).cssText);
+        // console.log('[gameView] playerInfo computed style:', window.getComputedStyle(this.playerInfoElement).cssText); // Removed per requirement
 
         // Create the right column wrapper that will hold the dice, indicator, and commentary panel
         this.rightColumnWrapper = document.createElement('div');
@@ -725,6 +712,17 @@ class GameView {
         const lastMover = this.model.getLastMover();
         const activePlayer = this.model.getActivePlayer();
         
+        // Update dice ring color to show whose turn it is
+        let diceBorderColor;
+        switch (activePlayer) {
+            case 0: diceBorderColor = '#e74c3c'; break; // Red
+            case 1: diceBorderColor = '#3498db'; break; // Blue
+            case 2: diceBorderColor = '#2ecc71'; break; // Green
+            case 3: diceBorderColor = '#f1c40f'; break; // Yellow
+            default: diceBorderColor = '#ccc';
+        }
+        this.diceElement.style.border = `2px solid ${diceBorderColor}`;
+        
         // Update dice display with tumble animation
         if (lastRoll >= 1 && lastRoll <= 6) {
             // Log dice tumble start
@@ -818,8 +816,8 @@ class GameView {
                 // Turn advanced: next player gets turn
                 activePlayerToShow = activePlayer;
             }
-            // Update player info panel to show next player (for highlighting in panel)
-            this.updatePlayerInfo(activePlayerToShow);
+            // Update player info panel to show next player (for highlighting in panel) - removed per requirement
+            // this.updatePlayerInfo(activePlayerToShow);
             
             // Generate commentary for the turn that just completed
             this.generateCommentary();
@@ -1380,6 +1378,8 @@ class GameView {
 
     // Update player info panel to show next player (for highlighting in panel)
     updatePlayerInfo(activePlayerToShow) {
+        // Guard clause: if playerInfoElement doesn't exist, exit early
+        if (!this.playerInfoElement) return;
         // Clear the player info element
         this.playerInfoElement.innerHTML = '';
         
