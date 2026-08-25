@@ -597,8 +597,19 @@ class GameView {
             if (watchdogId !== null) {
                 clearTimeout(watchdogId);
             }
-            // Update player info to show whose turn is next after movement completes
-            this.updatePlayerInfo(this.model.getActivePlayer());
+            // Determine whose turn to show as active after movement completes
+            const lastRoll = this.model.getLastRoll();
+            const consecutiveSixes = this.model.getConsecutiveSixes();
+            let activePlayerToShow;
+            if (lastRoll === 6 && consecutiveSixes > 0) {
+                // Extra roll situation: same player gets another turn
+                activePlayerToShow = this.model.getLastMover();
+            } else {
+                // Turn advanced: next player gets turn
+                activePlayerToShow = this.model.getActivePlayer();
+            }
+            // Update player info to show correct active player after movement completes
+            this.updatePlayerInfo(activePlayerToShow);
             this.autoRoll();
         };
 
