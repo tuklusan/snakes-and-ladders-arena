@@ -7,7 +7,26 @@
     <link rel="stylesheet" href="src/css/styles.css">
 </head>
 <body>
-    <div id="game-container"></div>
+    <div id="game-container">
+        <!-- Three-column layout using flexbox -->
+        <div id="game-columns">
+            <!-- Left margin title panel -->
+            <div id="left-title-panel">
+                <div class="title-content">
+                    <div class="title-main">SANYALnet Labs Snakes & Ladders Arena</div>
+                    <div class="title-sub">(C) Supratim Sanyal</div>
+                </div>
+            </div>
+            
+            <!-- Game board and controls -->
+            <div id="game-board-container"></div>
+            
+            <!-- Right margin commentary panel -->
+            <div id="right-commentary-panel">
+                <div id="commentary-content"></div>
+            </div>
+        </div>
+    </div>
     <noscript>
         <div style="text-align: center; padding: 20px; background: #fff3cd; color: #856404; border: 1px solid #ffeeba;">
             JavaScript is disabled. Please enable JavaScript to play the game.

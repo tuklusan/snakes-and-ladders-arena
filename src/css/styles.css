@@ -225,3 +225,127 @@ body {
     z-index: 1;
     border: 1px solid #bbb;
 }
+
+/* Three-column flex container */
+#game-columns {
+    display: flex;
+    height: 100%;
+    gap: 0; /* No gap between columns - panels will touch board */
+}
+
+/* Left margin title panel */
+#left-title-panel {
+    width: 100px; /* Fixed width for title panel */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* Allow clicks to pass through to game */
+}
+
+#left-title-panel .title-content {
+    writing-mode: vertical-rl;
+    text-align: center;
+    transform: rotate(180deg); /* Optional: makes it read bottom-to-top instead of top-to-bottom */
+    font-family: 'Arial', sans-serif;
+    color: #333;
+}
+
+#left-title-panel .title-main {
+    font-size: 1.4rem;
+    font-weight: bold;
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+#left-title-panel .title-sub {
+    font-size: 0.9rem;
+    color: #666;
+    font-style: italic;
+}
+
+/* Right margin commentary panel */
+#right-commentary-panel {
+    width: 300px; /* Fixed width for commentary panel */
+    display: flex;
+    flex-direction: column;
+    pointer-events: none; /* Allow clicks to pass through to game */
+}
+
+#right-commentary-panel #commentary-content {
+    flex: 1;
+    overflow-y: auto; /* Required for scrolling */
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-left: 1px solid #eee;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+#right-commentary-panel #commentary-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+#right-commentary-panel #commentary-content::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#right-commentary-panel #commentary-content::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+#right-commentary-panel #commentary-content::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Player color definitions for commentary */
+.commentary-player-0 { color: #e74c3c; } /* Red */
+.commentary-player-1 { color: #3498db; } /* Blue */
+.commentary-player-2 { color: #2ecc71; } /* Green */
+.commentary-player-3 { color: #f1c40f; } /* Yellow */
+
+/* Responsive adjustments for panels */
+@media (max-width: 1200px) {
+    #left-title-panel {
+        width: 80px;
+    }
+    
+    #right-commentary-panel {
+        width: 250px;
+    }
+    
+    #game-board-container {
+    flex: 1;
+    position: relative;
+    }
+}
+
+@media (max-width: 900px) {
+    #left-title-panel {
+        width: 60px;
+    }
+    
+    #right-commentary-panel {
+        width: 200px;
+    }
+    
+    #game-board-container {
+    flex: 1;
+    position: relative;
+    }
+    
+    #left-title-panel .title-main {
+        font-size: 1.2rem;
+    }
+    
+    #left-title-panel .title-sub {
+        font-size: 0.8rem;
+    }
+    
+    #right-commentary-panel #commentary-content {
+        font-size: 0.75rem;
+        padding: 8px;
+    }
+}

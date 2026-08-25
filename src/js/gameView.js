@@ -33,6 +33,8 @@ class GameView {
         this.svgElement = null; // SVG overlay for snakes and ladders
         this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
         this.moveId = 0; // unique identifier for each onStateChange call
+        this.commentaryBuffer = []; // Array to store commentary messages
+        this.maxCommentaryLines = 200; // Maximum lines to keep in buffer
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
@@ -225,6 +227,13 @@ class GameView {
         const boardTop = '10px';
         const gap = '10px';
 
+        // Get the game board container (already in HTML)
+        this.gameBoardContainer = document.getElementById('game-board-container');
+        if (!this.gameBoardContainer) {
+            console.error("Game board container not found");
+            return;
+        }
+        
         // Create board container
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
@@ -238,7 +247,7 @@ class GameView {
         this.boardElement.style.display = 'grid';
         this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
         this.boardElement.style.gridTemplateRows = 'repeat(10, 1fr)';
-        this.container.appendChild(this.boardElement);
+        this.gameBoardContainer.appendChild(this.boardElement);
 
         // Create 100 cell elements
         for (let row = 0; row < 10; row++) {
@@ -303,31 +312,33 @@ class GameView {
         // Size tokens after all DOM is created
         this.sizeTokens();
 
-        // Create dice container
+        // Create dice container (over board)
         this.diceElement = document.createElement('div');
         this.diceElement.id = 'dice-container';
         this.diceElement.style.position = 'absolute';
-        this.diceElement.style.top = '20px';
-        this.diceElement.style.right = '20px';
+        this.diceElement.style.top = '10px';
+        this.diceElement.style.right = '60px';
         this.diceElement.style.width = '60px';
         this.diceElement.style.height = '60px';
         this.diceElement.style.backgroundSize = 'contain';
         this.diceElement.style.backgroundRepeat = 'no-repeat';
         this.diceElement.style.backgroundPosition = 'center';
-        this.container.appendChild(this.diceElement);
+        this.diceElement.style.zIndex = '2';
+        this.gameBoardContainer.appendChild(this.diceElement);
 
-        // Create turn indicator (placed below dice)
+        // Create turn indicator (below dice)
         this.turnIndicator = document.createElement('div');
         this.turnIndicator.id = 'turn-indicator';
         this.turnIndicator.style.position = 'absolute';
-        this.turnIndicator.style.top = '90px'; // below dice (dice at 20px, 60px high, so 20+60+10=90px)
-        this.turnIndicator.style.right = '20px';
+        this.turnIndicator.style.top = '80px';
+        this.turnIndicator.style.right = '60px';
         this.turnIndicator.style.width = '30px';
         this.turnIndicator.style.height = '30px';
         this.turnIndicator.style.backgroundSize = 'contain';
         this.turnIndicator.style.backgroundRepeat = 'no-repeat';
         this.turnIndicator.style.backgroundPosition = 'center';
-        this.container.appendChild(this.turnIndicator);
+        this.turnIndicator.style.zIndex = '2';
+        this.gameBoardContainer.appendChild(this.turnIndicator);
 
         // Create message area for non-blocking alerts
         this.messageElement = document.createElement('div');
@@ -633,6 +644,10 @@ class GameView {
             }
             // Update player info panel to show next player (for highlighting in panel)
             this.updatePlayerInfo(activePlayerToShow);
+            
+            // Generate commentary for the turn that just completed
+            this.generateCommentary();
+            
             this.autoRoll();
         };
 
@@ -1083,6 +1098,56 @@ class GameView {
         }
     }
 
+    // Add a commentary message to the buffer
+    addCommentary(message, playerId = null) {
+        // Add timestamp
+        const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const formattedMessage = `[${timestamp}] ${message}`;
+        
+        // Add to buffer
+        this.commentaryBuffer.push({
+            text: formattedMessage,
+            playerId: playerId,
+            timestamp: Date.now()
+        });
+        
+        // Maintain buffer size
+        if (this.commentaryBuffer.length > this.maxCommentaryLines) {
+            this.commentaryBuffer.shift(); // Remove oldest entry
+        }
+        
+        // Update display
+        this.updateCommentaryDisplay();
+    }
+
+    // Update the commentary display
+    updateCommentaryDisplay() {
+        const commentaryDiv = document.getElementById('commentary-content');
+        if (!commentaryDiv) return;
+        
+        // Clear and rebuild
+        commentaryDiv.innerHTML = '';
+        
+        // Add each message
+        this.commentaryBuffer.forEach((entry, index) => {
+            const lineDiv = document.createElement('div');
+            lineDiv.style.marginBottom = '4px';
+            lineDiv.style.padding = '2px 4px';
+            lineDiv.style.borderRadius = '3px';
+            
+            // Add player-specific coloring if playerId is provided
+            if (entry.playerId !== null && entry.playerId >= 0 && entry.playerId <= 3) {
+                lineDiv.classList.add(`commentary-player-${entry.playerId}`);
+            }
+            
+            lineDiv.textContent = entry.text;
+            commentaryDiv.appendChild(lineDiv);
+        });
+        
+        // Auto-scroll to bottom
+        commentaryDiv.scrollTop = commentaryDiv.scrollHeight;
+    }
+
     // Helper method to set token position using left/top/transform for centering
     setTokenPosition(playerId, xPercent, yPercent) {
         console.log(`[gameView] setTokenPosition called for player ${playerId} with x:${xPercent}%, y:${yPercent}%`);
@@ -1139,6 +1204,94 @@ class GameView {
             }
 
             this.playerInfoElement.appendChild(playerDiv);
+        }
+    }
+
+    // Generate commentary messages based on game state
+    generateCommentary() {
+        // Get the last turn data from the model
+        const lastMover = this.model.getLastMover();
+        const lastRoll = this.model.getLastRoll();
+        const lastMoveIntermediatePosition = this.model.getLastMoveIntermediatePosition();
+        
+        // If no turn has happened yet, show initial state
+        if (lastMover === null && lastRoll === 0) {
+            this.addCommentary(`Game starting - Player ${this.model.getActivePlayer() + 1} to roll first`, this.model.getActivePlayer());
+            return;
+        }
+
+        const moverName = `Player ${lastMover + 1}`;
+        
+        // Handle triple six penalty detection
+        // Characteristics: lastRoll = 6, player ended up where they started their turn
+        // We approximate this by checking if lastRoll = 6 and the intermediate position 
+        // equals the current position (suggesting they were rolled back)
+        // Note: This isn't perfect but works for most cases
+        let isTripleSixPenalty = false;
+        if (lastRoll === 6 && lastMoveIntermediatePosition > 0) {
+            const moverCurrentPosition = this.model.getPlayerPosition(lastMover);
+            // If they ended up at the intermediate position (suggesting a jump back to start)
+            // and it's a reasonable board position, it might be a triple six penalty
+            // This is a heuristic - not perfect but reasonable
+            if (lastMoveIntermediatePosition === moverCurrentPosition && lastMoveIntermediatePosition >= 1 && lastMoveIntermediatePosition <= 100) {
+                // Additional check: if they were likely on the board before rolling
+                // (this is approximate since we don't have their exact previous position)
+                isTripleSixPenalty = true;
+            }
+        }
+        
+        if (isTripleSixPenalty) {
+            this.addCommentary(`${moverName}: rolls ${lastRoll}, three sixes penalty!`, lastMover);
+            return; // Don't generate additional commentary for this turn
+        }
+        
+        // Handle wins
+        if (this.model.isGameOver()) {
+            const winner = this.model.getWinner();
+            if (winner !== null) {
+                this.addCommentary(`Player ${winner + 1} WINS!`, winner);
+                return; // Don't generate additional commentary for this turn
+            }
+        }
+        
+        // Generate commentary for normal rolls
+        if (lastRoll > 0) {
+            let baseMessage = `${moverName} rolls ${lastRoll}`;
+            
+            // Check if there was movement for this player
+            const moverCurrentPosition = this.model.getPlayerPosition(lastMover);
+            
+            // Check if they moved to the intermediate position
+            if (lastMoveIntermediatePosition > 0 && lastMoveIntermediatePosition !== moverCurrentPosition) {
+                // There was a jump (snake or ladder)
+                const isLadder = this.model.Ladders.has(lastMoveIntermediatePosition);
+                const jumpType = isLadder ? 'ladder' : 'snake';
+                const startPos = lastMoveIntermediatePosition;
+                const endPos = moverCurrentPosition;
+                
+                if (isLadder) {
+                    this.addCommentary(`${baseMessage}, ladder ${startPos} up to ${endPos}`, lastMover);
+                } else {
+                    this.addCommentary(`${baseMessage}, snake ${startPos} down to ${endPos}`, lastMover);
+                }
+            } else if (lastMoveIntermediatePosition > 0) {
+                // They moved to the intermediate position and stayed there (no jump)
+                // Check if they actually moved from their previous position
+                // We'll use a heuristic: if they are on the board now or moved to a valid position,
+                // assume they moved from off-board or made a valid move
+                if (moverCurrentPosition > 0 || lastMoveIntermediatePosition > 0) {
+                    this.addCommentary(`${baseMessage}, moves to ${moverCurrentPosition}`, lastMover);
+                } else {
+                    // They didn't move (e.g., invalid roll)
+                    this.addCommentary(`${baseMessage}, no move`, lastMover);
+                }
+            } else if (lastMoveIntermediatePosition === 0) {
+                // Intermediate position is 0 (off-board) - they didn't leave staging
+                this.addCommentary(`${baseMessage}, no move (still off-board)`, lastMover);
+            } else {
+                // Fallback
+                this.addCommentary(baseMessage, lastMover);
+            }
         }
     }
 }

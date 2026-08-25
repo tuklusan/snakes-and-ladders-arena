@@ -96,6 +96,26 @@ function run(){
     okI = ir.width>6 && ir.height>6 && !!paint;
     whyI = Math.round(ir.width)+"x"+Math.round(ir.height)+" painted="+!!paint; }
   P("VIS_turn_indicator", okI, whyI);
+  // 19/20. the side panels must not overlap the board or each other
+  var bb3=b.getBoundingClientRect();
+  var cm=d.getElementById("right-commentary-panel");
+  var tt=d.getElementById("left-title-panel");
+  var dc=d.getElementById("dice-container");
+  var ix=function(a,z){return a&&z&&a.left<z.right&&a.right>z.left&&a.top<z.bottom&&a.bottom>z.top;};
+  var cr=cm?cm.getBoundingClientRect():null, tr2=tt?tt.getBoundingClientRect():null,
+      dr2=dc?dc.getBoundingClientRect():null;
+  var bad=[];
+  if(!cm) bad.push("commentary missing");
+  else if(ix(cr,bb3)) bad.push("commentary overlaps board by "+Math.round(bb3.right-cr.left)+"px");
+  if(!tt) bad.push("title missing");
+  else if(ix(tr2,bb3)) bad.push("title overlaps board");
+  P("VIS_panels_no_overlap", bad.length===0, bad.length?bad.join("; "):"board clear of both panels");
+  var bad2=[];
+  if(dr2&&cr&&ix(dr2,cr)) bad2.push("dice overlaps commentary");
+  if(cm){ var csx=w.getComputedStyle(cm);
+    if(csx.overflowY!=="auto"&&csx.overflowY!=="scroll") bad2.push("commentary overflow-y="+csx.overflowY+" (needs auto/scroll)"); }
+  P("VIS_commentary_scrolls", bad2.length===0, bad2.length?bad2.join("; "):"dice clear, overflow-y ok");
+
 
   } else { P("VIS_staging_contained", false, "no staging element"); }
 
