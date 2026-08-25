@@ -563,7 +563,7 @@ class GameView {
         }
 
         // Update player info immediately
-        this.updatePlayerInfo();
+        this.updatePlayerInfo(this.model.getActivePlayer());
 
         // Now, animate the tokens that have changed
         const currentPositions = [];
@@ -958,7 +958,7 @@ class GameView {
     // View callback methods (called by controller)
     onTurnChange(activePlayer) {
         // Update player info panel to show whose turn it is
-        this.updatePlayerInfo();
+        this.updatePlayerInfo(activePlayer);
         this.playAudio('turn');
     }
 
@@ -1001,7 +1001,7 @@ class GameView {
         // Roll button removed for fully automatic arena
         this.previousPositions = [0,0,0,0];
         this.updateTokenPositions();
-        this.updatePlayerInfo();
+        this.updatePlayerInfo(this.model.getActivePlayer());
         this.diceElement.style.backgroundImage = ''; // clear dice
     }
 
@@ -1061,7 +1061,10 @@ class GameView {
     }
 
     // Update player info panel
-    updatePlayerInfo() {
+    updatePlayerInfo(highlightPlayer) {
+        if (highlightPlayer === undefined) {
+            highlightPlayer = this.model.getActivePlayer();
+        }
         // Clear current content
         this.playerInfoElement.innerHTML = '';
 
@@ -1097,7 +1100,7 @@ class GameView {
             playerDiv.appendChild(posSpan);
 
             // Highlight active player
-            if (i === this.model.getActivePlayer()) {
+            if (i === highlightPlayer) {
                 playerDiv.classList.add('active-player');
             }
 
