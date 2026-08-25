@@ -49,6 +49,29 @@ class GameView {
         if (typeof window !== 'undefined') {
             window.gameViewInstance = this;
         }
+
+        // Audio unlock and start button
+        this.isAudioUnlocked = false;
+        this._deferredUnlock = false;
+        this.startButtonElement = document.createElement('button');
+        this.startButtonElement.textContent = 'Click to start the arena';
+        Object.assign(this.startButtonElement.style, {
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            padding: '12px 24px',
+            fontSize: '18px',
+            backgroundColor: '#ffeb3b',
+            color: '#000',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            zIndex: '1000'
+        });
+        this.startButtonElement.addEventListener('click', () => {
+            this._unlockAudioAndStart();
+        });
     }
 
     _delay(ms) {
@@ -256,7 +279,7 @@ class GameView {
         this.gameBoardContainer.style.display = 'flex';
         this.gameBoardContainer.style.flexDirection = 'column';
         this.gameBoardContainer.style.alignItems = 'center';
-        this.gameBoardContainer.style.gap = '20px';
+        this.gameBoardContainer.style.gap = '6px';
         this.gameBoardContainer.style.position = 'relative';
         this.gameBoardContainer.style.padding = '4px';
         this.gameBoardContainer.style.boxSizing = 'border-box';
@@ -370,9 +393,7 @@ class GameView {
         this.rightColumnWrapper.style.flex = '1 1 auto';
         this.rightColumnWrapper.style.display = 'flex';
         this.rightColumnWrapper.style.flexDirection = 'column';
-        // Add top margin so dice isn't flush with the top edge
-        this.rightColumnWrapper.style.marginTop = '10px';
-        console.log('[gameView] Created rightColumnWrapper with flex: 1 1 auto and margin-top: 10px');
+        console.log('[gameView] Created rightColumnWrapper with flex: 1 1 auto');
 
         // Create dice container
         this.diceElement = document.createElement('div');
@@ -432,7 +453,7 @@ class GameView {
         this.assetsTotalCount += 4; // tokens
         this.assetsTotalCount += 6; // dice faces
         this.assetsTotalCount += 1; // dice tumble sheet
-        this.assetsTotalCount += 10; // audio events (roll, step, settle, ladder, snake, six, triple_six, turn, win, gameover)
+        this.assetsTotalCount += 12; // audio events (roll, step, settle, ladder, snake, six, triple_six, turn, win, gameover, capture, enter)
         console.log(`[gameView] Total assets to load: ${this.assetsTotalCount}`);
 
         this.assetsLoadedCount = 0;
@@ -481,7 +502,7 @@ class GameView {
         this.assets.diceTumbleSheet = tumbleSheet;
 
         // Load audio files
-        const audioEvents = ['roll', 'step', 'settle', 'ladder', 'snake', 'six', 'triple_six', 'turn', 'win', 'gameover'];
+        const audioEvents = ['roll', 'step', 'settle', 'ladder', 'snake', 'six', 'triple_six', 'turn', 'win', 'gameover', 'capture', 'enter'];
         audioEvents.forEach(event => {
             const audio = new Audio();
             audio.src = `assets/audio/${event}.ogg`;
@@ -578,6 +599,18 @@ class GameView {
     bindEvents() {
         // Roll button removed for fully automatic arena
     }
+    
+    _unlockAudioAndStart() {
+        // Unlock audio context on user interaction
+        // This is a no-op in automatic mode but kept for compatibility
+        console.log('[gameView] Audio unlocked via user interaction');
+    }
+    
+    enableRollButton() {
+        // Roll button removed for fully automatic arena
+        // This is a no-op but kept for compatibility
+        console.log('[gameView] Roll button enabled (no-op in automatic mode)');
+    }
 
     handleRollClick() {
         // Roll button removed for fully automatic arena - do nothing
@@ -644,13 +677,17 @@ class GameView {
     }
 
     // Handle extra roll (when a six is rolled and not three sixes)
+    // Handle earning another roll after rolling a 6
     onExtraRoll() {
-        // No-op - turn indicator is updated in onStateChange
+        // Play the six sound
+        this.playAudio('six');
     }
 
     // Handle triple six penalty
     onTripleSixPenalty() {
-        // No-op - turn indicator and commentary are updated in onStateChange
+        // Play the triple six sound
+        this.playAudio('triple_six');
+        // Turn indicator and commentary are updated in onStateChange
     }
 
     // Handle capture of an opponent's token
@@ -661,6 +698,8 @@ class GameView {
     }
 
     onGameWin(playerId) {
+        // Play the win sound
+        this.playAudio('win');
         // The win commentary is generated in onStateChange via generateCommentary.
         // This method is required by the contract but does not need to contain any logic.
     }
@@ -842,12 +881,11 @@ class GameView {
 
         // We will animate step-by-step only if:
         //   - the player is the active player
-        //   - the move is forward (newPosition > previousPosition) [or for leaving staging?]
-        //   - and the intermediate position is different from previous (i.e., the die roll caused movement)
-        //   - and the intermediate position is on the board (1-100) or we are leaving staging (from 0 to 1)
+        //   - the move is caused by a die roll (intermediatePos differs from previousPosition)
+        //   - and we are not in the special case of leaving staging (0->1) which uses direct move
         const isStepByStep = isMover &&
             ((previousPosition === 0 && newPosition === 1) || // leaving staging
-             (previousPosition > 0 && newPosition > 0 && newPosition > previousPosition)); // moving forward on board
+             (previousPosition > 0 && intermediatePos !== previousPosition)); // any move based on die roll
              
         // SPECIAL CASE: Entry moves (0->1) should not do tile-by-tile walk, use direct move instead
         const isEntryMove = (previousPosition === 0 && newPosition === 1);
@@ -856,6 +894,7 @@ class GameView {
         if (shouldDoStepByStepWalk) {
             await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord);
         } else {
+            this.playAudio('enter');
             await this._animateDirectMove(previousPosition, newPosition, move.playerId);
         }
     }
@@ -997,14 +1036,29 @@ class GameView {
                         const elapsed = timestamp - startTime;
                         const t = Math.min(elapsed / duration, 1);
                         const point = path.getPointAtLength(t * length);
-                        pt.x = point.x;
-                        pt.y = point.y;
-                        const screenPt = pt.matrixTransform(this.svgElement.getScreenCTM());
-                        const containerRect = this.container.getBoundingClientRect();
-                        const x = screenPt.x - containerRect.left;
-                        const y = screenPt.y - containerRect.top;
-                        this.setTokenPositionFromPixel(x, y, token);
-                        console.log(`[gameView] jump animation at t=${t} -> (${x},${y})`);
+                        // point.x and point.y are in viewBox coordinates (0-100)
+                        const x_vb = point.x;
+                        const y_vb = point.y;
+                        // Find the closest tile to this viewBox position
+                        const logicalRowFloat = 9 - (y_vb - 5) / 10;
+                        let logicalRow = Math.round(logicalRowFloat);
+                        logicalRow = Math.max(0, Math.min(9, logicalRow));
+                        let colInRow;
+                        if (logicalRow % 2 === 0) {
+                            colInRow = (x_vb - 5) / 10;
+                        } else {
+                            colInRow = 9 - (x_vb - 5) / 10;
+                        }
+                        colInRow = Math.max(0, Math.min(9, colInRow));
+                        const tileZero = logicalRow * 10 + colInRow;
+                        let tile = Math.round(tileZero) + 1;
+                        tile = Math.max(1, Math.min(100, tile));
+                        // Get the pixel position of this tile's center
+                        const pos = this.getTokenPositionFromTile(tile, playerId);
+                        if (pos) {
+                            this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                        }
+                        console.log(`[gameView] jump animation at t=${t} -> tile ${tile} (${x_vb},${y_vb})`);
                         if (t < 1) {
                             rafId = requestAnimationFrame(step);
                         } else {
@@ -1250,6 +1304,8 @@ class GameView {
             audio.play().catch(e => {
                 console.warn(`[gameView] Failed to play audio ${event}:`, e);
             });
+        } else {
+            console.warn(`[gameView] Audio not found for event: ${event}`);
         }
     }
 
@@ -1333,7 +1389,7 @@ class GameView {
         playerInfoContainer.style.flexDirection = 'row';
         playerInfoContainer.style.gap = '8px';
         playerInfoContainer.style.width = '100%';
-        playerInfoContainer.style.alignItems = 'center';
+        playerInfoContainer.style.alignItems = 'flex-start';
         
         // Add info for each player
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
@@ -1342,6 +1398,7 @@ class GameView {
             playerContainer.style.flexDirection = 'column';
             playerContainer.style.alignItems = 'center';
             playerContainer.style.flex = '1 1 0';
+            playerContainer.style.height = '56px';
             
             // Add player token image
             if (this.assets.tokens[i]) {

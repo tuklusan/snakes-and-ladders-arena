@@ -1,0 +1,79 @@
+<!doctype html><meta charset=utf-8><title>live snake test</title>
+<style>body{margin:0;font:13px monospace}#f{width:1280px;height:620px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>waiting for game to initialise...</pre>
+<script>
+// Poll for the globals instead of guessing a delay. The game needs its assets
+// before window.gameModel exists.
+var tries=0;
+var boot=setInterval(function(){
+  tries++;
+  var fr=document.getElementById("f");
+  var w=fr.contentWindow;
+  var ready=false;
+  try{ ready = !!(w && w.gameController && w.gameModel && w.gameView
+                 && fr.contentDocument.querySelector('[data-tile="98"]')); }catch(e){}
+  if(ready){ clearInterval(boot); main(); }
+  else if(tries>400){ clearInterval(boot);
+    document.getElementById("out").textContent="NO GLOBALS after "+tries+" polls"; }
+},50);
+
+function main(){
+  var fr=document.getElementById("f"), d=fr.contentDocument, w=fr.contentWindow;
+  var out=document.getElementById("out");
+  var m=w.gameModel, v=w.gameView, c=w.gameController;
+  try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
+  // autoRoll left intact - real display, real timers   // hard-stop the arena loop for a deterministic test
+  var cells={},cw=40;
+  for(var n=1;n<=100;n++){var el=d.querySelector('[data-tile="'+n+'"]');
+    if(el){var r=el.getBoundingClientRect();cells[n]={x:r.left+r.width/2,y:r.top+r.height/2};cw=r.width;}}
+  function near(x,y){var b=null,bd=1e9;
+    for(var k in cells){var dx=cells[k].x-x,dy=cells[k].y-y,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;b=+k;}}
+    return {t:b,d:Math.sqrt(bd)};}
+  var tok=d.querySelectorAll(".game-token")[0];
+
+  // Set up pawn on tile 97 for player 0
+  m.pawn_positions[0]=97; m.pawn_positions[1]=5; m.pawn_positions[2]=6; m.pawn_positions[3]=7;
+  m.active_player=0; m.consecutive_sixes=0; m.game_over=false;
+  v.previousPositions=[97,5,6,7];
+  try{ v.positionTokenOnTile(0,97); }catch(e){}
+
+  var realRandom=w.Math.random;
+  w.Math.random=function(){ return 0.2; };   // -> die roll 2
+
+  var seq=[];
+  var samp=setInterval(function(){
+    var r=tok.getBoundingClientRect();
+    var h=near(r.left+r.width/2, r.top+r.height/2);
+    if(h.d<cw*0.45){ if(!seq.length||seq[seq.length-1]!==h.t) seq.push(h.t); }
+  },25);
+
+  var err=null;
+  try{ c.rollDice(); }catch(e){ err=e.message; }
+  var moverAfter; try{ moverAfter=(m.getLastMover?m.getLastMover():"NO getLastMover"); }catch(e){ moverAfter="ERR"; }
+  var activeAfter=m.active_player;
+
+  setTimeout(function(){
+    clearInterval(samp);
+    w.Math.random=realRandom;
+    var L=[];
+    L.push("REAL CONTROLLER PATH: player 0 on tile 97, forced die roll 2");
+    L.push("expected: land 99 (snake head) then slide 99->80");
+    L.push("");
+    L.push("controller error : "+(err||"none"));
+    L.push("model position   : "+m.pawn_positions[0]+"   (must be 80)");
+    L.push("lastRoll         : "+m.lastRoll+"   (must be 2)");
+    L.push("getLastMover()   : "+moverAfter+"   (must be 0)");
+    L.push("active_player now: "+activeAfter);
+    L.push("");
+    L.push("observed tile sequence:");
+    L.push("  "+seq.join(" "));
+    var w98=seq.indexOf(98)>=0, w99=seq.indexOf(99)>=0;
+    L.push("");
+    L.push("visited 98: "+w98+"   visited 99: "+w99+"   ended 80: "+(seq[seq.length-1]===80));
+    L.push((w98&&w99&&seq[seq.length-1]===80) ? "PASS - walked through snake head then slide"
+                      : "FAIL - TELEPORT still happening");
+    out.textContent=L.join("\n");
+  }, 70000);
+}
+</script>

@@ -63,7 +63,7 @@ body {
 .game-token {
     position: absolute;
     pointer-events: none;
-    transition: transform 1.0s ease, right 1.0s ease, left 1.0s ease, top 1.0s ease;
+    transition: left 150ms linear, top 150ms linear;
 }
 
 /* Dice */
@@ -105,7 +105,7 @@ body {
     margin: 8px 0;
 }
 
-#player-info div div:first-child {
+#player-info div div div:first-child {
     width: 24px;
     height: 24px;
     margin: 0 auto 4px;
@@ -114,13 +114,13 @@ body {
     background-position: center;
 }
 
-#player-info div span:nth-child(2) {
+#player-info div div div:nth-child(2) {
     display: block;
     font-weight: bold;
     font-size: 1rem;
 }
 
-#player-info div span:nth-child(3) {
+#player-info div div div:nth-child(3) {
     display: block;
     font-size: 0.85rem;
     opacity: 0.9;
@@ -211,7 +211,7 @@ body {
     }
 }  /* Staging area animations */
 .game-token.move-to-board {
-  transition: all 1.5s ease-in-out;
+  transition: transform 1.5s ease-in-out;
   transform: scale(1.2);
 }
 .game-token.return-to-staging {
@@ -251,6 +251,7 @@ body {
 
 #left-title-panel .title-content {
     writing-mode: vertical-rl;
+    text-orientation: sideways;
     text-align: center;
     transform: rotate(180deg); /* Optional: makes it read bottom-to-top instead of top-to-bottom */
     font-family: 'Arial', sans-serif;

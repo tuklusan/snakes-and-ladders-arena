@@ -112,6 +112,10 @@ class GameController {
         let event = 'move'; // default, may change
 
         if (moved) {
+            // Check for entry move (from 0 to 1)
+            if (current_pos === 0 && landedPos === 1) {
+                event = 'enter';
+            }
             // Entity Traversal (Ladders & Snakes)
             if (this.model.Ladders.has(landedPos)) {
                 finalPos = this.model.Ladders.get(landedPos);
@@ -180,6 +184,8 @@ class GameController {
             this.view.onExtraRoll();
         } else {
             this.advanceTurn();
+            // Play the turn sound when the turn passes to the next player
+            this.view.playAudio('turn');
         }
 
         // Create turn record for normal turn
