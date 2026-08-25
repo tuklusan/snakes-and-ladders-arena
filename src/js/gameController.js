@@ -146,7 +146,8 @@ class GameController {
         active = (active + 1) % numPlayers;
         this.model.setActivePlayer(active);
         this.model.setConsecutiveSixes(0); // Reset consecutive sixes on turn change
-        this.view.onTurnChange(active);
+        // Removed: this.view.onTurnChange(active);
+        // Turn indicator will be updated in onStateChange after movement completes
     }
 
     // Reset the game (for replay)
