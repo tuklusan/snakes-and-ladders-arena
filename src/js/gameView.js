@@ -25,7 +25,6 @@ class GameView {
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
         this.playerInfoElement = null;
-        this.turnIndicator = null; // Turn indicator element below dice
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
         this.gameOverTimeout = null;
@@ -233,7 +232,7 @@ class GameView {
 
         // Set container styles for three-column flex layout
         this.container.style.position = 'relative';
-        this.container.style.width = '800px';
+        this.container.style.width = '620px';
         this.container.style.height = '600px';
         this.container.style.margin = '0 auto';
         this.container.style.padding = '0';
@@ -388,23 +387,8 @@ class GameView {
         this.diceElement.style.position = 'static';
         console.log('[gameView] Created diceElement with position: static');
 
-        // Create turn indicator (below dice)
-        this.turnIndicator = document.createElement('div');
-        this.turnIndicator.id = 'turn-indicator';
-        this.turnIndicator.style.width = '30px';
-        this.turnIndicator.style.height = '30px';
-        this.turnIndicator.style.backgroundSize = 'contain';
-        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
-        this.turnIndicator.style.backgroundPosition = 'center';
-        this.turnIndicator.style.alignSelf = 'center'; // Center horizontally in the flex column
-        this.turnIndicator.style.marginTop = '10px'; // Gap between dice and indicator
-        // Override any absolute positioning from CSS
-        this.turnIndicator.style.position = 'static';
-        console.log('[gameView] Created turnIndicator with position: static');
-
-        // Add dice and indicator to the wrapper
+        // Add dice to the wrapper (turn indicator removed)
         this.rightColumnWrapper.appendChild(this.diceElement);
-        this.rightColumnWrapper.appendChild(this.turnIndicator);
 
         // Now we need to insert the wrapper in place of the right-commentary-panel
         // First, remove the right-commentary-panel from the game container
@@ -643,12 +627,7 @@ class GameView {
         this.commentaryElement.textContent = '';
         // Reset dice to empty
         this.diceElement.style.backgroundImage = '';
-        // Reset turn indicator to show active player (after reset, active player is 0)
         const activePlayer = this.model.getActivePlayer();
-        if (this.turnIndicator && this.assets.tokens[activePlayer]) {
-            const src = this.assets.tokens[activePlayer].src;
-            this.turnIndicator.style.backgroundImage = `url('${src}')`;
-        }
         // Reset tokens to staging (position 0) without animation
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             const pos = this.getTokenPositionFromTile(0, i);
@@ -695,32 +674,47 @@ class GameView {
     // We now use getTokenPositionFromTile for pixel-based positioning.
 
     // Update token positions based on model state - now handles animation
-    onStateChange() {
+    async onStateChange() {
         console.log(`[gameView] move start at ${Date.now()}`);
         const currentMoveId = ++this.moveId;
+        
         // Update dice display with tumble animation
         const lastRoll = this.model.getLastRoll();
+        
         if (lastRoll >= 1 && lastRoll <= 6) {
-            this.animateDiceRoll(lastRoll);
+            // Log dice tumble start
+            console.log(`[gameView] dice tumble start at ${Date.now()}`);
+            
+            // Wait for dice animation to complete with timeout fallback
+            const DICE_TIMEOUT = 2000; // 2 second timeout for dice animation
+            const diceTimeoutPromise = new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    console.log(`[gameView] Dice animation timeout after ${DICE_TIMEOUT}ms`);
+                    resolve();
+                }, DICE_TIMEOUT);
+            });
+
+            try {
+                await Promise.race([this.animateDiceRoll(lastRoll), diceTimeoutPromise]);
+            } catch (error) {
+                console.error(`[gameView] Error waiting for dice animation:`, error);
+            }
         } else {
+            // Non-animated case (no roll or invalid roll)
             this.diceElement.style.backgroundImage = '';
+            // Log dice settled for non-animated case
+            console.log(`[gameView] dice settled on face ${lastRoll} at ${Date.now()}`);
         }
 
+        // Wait 500ms with nothing moving
+        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`[gameView] delay complete at ${Date.now()}`);
+
+        // Log piece move start
+        console.log(`[gameView] piece move start at ${Date.now()}`);
+
         // Update turn indicator to show whose roll is being processed (matches dice)
-        if (this.turnIndicator) {
-            let moverId;
-            if (this.model.getLastMover() !== null) {
-                // Show the player who last moved (whose roll is being shown)
-                moverId = this.model.getLastMover();
-            } else {
-                // At start of game, show the player about to roll
-                moverId = this.model.getActivePlayer();
-            }
-            if (this.assets.tokens[moverId]) {
-                const src = this.assets.tokens[moverId].src;
-                this.turnIndicator.style.backgroundImage = `url('${src}')`;
-            }
-        }
+// Turn indicator removed - no longer needed
 
         // Now, animate the tokens that have changed
         const currentPositions = [];
@@ -1104,40 +1098,49 @@ class GameView {
         if (!this.assets.diceTumbleSheet || !this.assets.diceTumbleSheet.complete) {
             // Fallback to static face if tumble sheet not ready
             this.updateDice(face);
+            // Log dice settled for fallback case
+            console.log(`[gameView] dice settled on face ${face} at ${Date.now()}`);
             if (callback) callback();
-            return;
+            // Return a promise that resolves immediately for fallback case
+            return Promise.resolve();
         }
 
-        // Play tumble animation
+        // Play tumble animation by scaling the sprite sheet to the element size
         const tumbleSheet = this.assets.diceTumbleSheet;
-        const frameWidth = 256; // assuming each frame is 256x256
-        const frameHeight = 256;
-        const frames = 6; // number of frames in the tumble sheet
+        // Get the cell size from the dice element (assumes square)
+        const cell = this.diceElement.getBoundingClientRect().width;
+        const frames = 12; // number of frames in the tumble sheet (1536px / 128px)
         let currentFrame = 0;
         const startTime = performance.now();
         const duration = 1000; // 1 second for tumble animation
 
-        const animate = (timestamp) => {
-            const elapsed = timestamp - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const frame = Math.floor(progress * frames);
-            if (frame >= frames) {
-                // Animation ended, show final face
-                this.updateDice(face);
-                if (callback) callback();
-                return;
-            }
-            if (frame !== currentFrame) {
-                currentFrame = frame;
-                const offset = -currentFrame * frameWidth;
-                this.diceElement.style.backgroundImage = `url('${tumbleSheet.src}')`;
-                this.diceElement.style.backgroundPosition = `${offset}px 0`;
-                this.diceElement.style.backgroundSize = `${frames * frameWidth}px ${frameHeight}px`;
-                this.diceElement.style.backgroundRepeat = 'no-repeat';
-            }
+        // Return a promise that resolves when the animation settles
+        return new Promise((resolve) => {
+            const animate = (timestamp) => {
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                const frame = Math.floor(progress * frames);
+                if (frame >= frames) {
+                    // Animation ended, show final face
+                    this.updateDice(face);
+                    // Log dice settled
+                    console.log(`[gameView] dice settled on face ${face} at ${Date.now()}`);
+                    if (callback) callback();
+                    resolve();
+                    return;
+                }
+                if (frame !== currentFrame) {
+                    currentFrame = frame;
+                    const offset = -currentFrame * cell;
+                    this.diceElement.style.backgroundImage = `url('${tumbleSheet.src}')`;
+                    this.diceElement.style.backgroundPosition = `${offset}px 0`;
+                    this.diceElement.style.backgroundSize = `${frames * cell}px ${cell}px`;
+                    this.diceElement.style.backgroundRepeat = 'no-repeat';
+                }
+                requestAnimationFrame(animate);
+            };
             requestAnimationFrame(animate);
-        };
-        requestAnimationFrame(animate);
+        });
     }
 
     // Play audio
@@ -1251,6 +1254,7 @@ class GameView {
                 tokenImg.style.backgroundRepeat = 'no-repeat';
                 tokenImg.style.backgroundPosition = 'center';
                 tokenImg.style.marginBottom = '2px';
+                tokenImg.style.flexShrink = '0';
                 playerContainer.appendChild(tokenImg);
             }
             
@@ -1261,6 +1265,7 @@ class GameView {
             playerNumber.style.fontWeight = 'bold';
             playerNumber.style.color = '#fff';
             playerNumber.style.marginBottom = '4px'; // Add space between number and tile
+            playerNumber.style.flexShrink = '0';
             playerContainer.appendChild(playerNumber);
             
             // Add current tile position
@@ -1269,6 +1274,7 @@ class GameView {
             playerPosition.textContent = `Tile ${position}`;
             playerPosition.style.fontSize = '10px';
             playerPosition.style.color = '#ccc';
+            playerPosition.style.flexShrink = '0';
             playerContainer.appendChild(playerPosition);
             
             // Highlight active player

@@ -12,7 +12,7 @@ const puppeteer = require('puppeteer');
   // Listen for page errors
   page.on('pageerror', err => console.log('PAGE ERROR:', err));
 
-  await page.goto('http://localhost:8080/diag_accept.html', { waitUntil: 'networkidle0' });
+  await page.goto('http://localhost:8000/diag_accept.html', { waitUntil: 'networkidle0' });
 
   // Wait for the iframe to load and then for the test to run.
   // Wait for the iframe to be present.
