@@ -562,9 +562,6 @@ class GameView {
             this.diceElement.style.backgroundImage = '';
         }
 
-        // Update player info immediately
-        this.updatePlayerInfo(this.model.getActivePlayer());
-
         // Now, animate the tokens that have changed
         const currentPositions = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
@@ -600,6 +597,8 @@ class GameView {
             if (watchdogId !== null) {
                 clearTimeout(watchdogId);
             }
+            // Update player info to show whose turn is next after movement completes
+            this.updatePlayerInfo(this.model.getActivePlayer());
             this.autoRoll();
         };
 
