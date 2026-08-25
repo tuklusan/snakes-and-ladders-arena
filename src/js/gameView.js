@@ -22,6 +22,7 @@ class GameView {
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
         this.playerInfoElement = null;
+        this.turnIndicator = null; // Turn indicator element below dice
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
         this.gameOverTimeout = null;
@@ -316,7 +317,17 @@ class GameView {
         this.container.appendChild(this.diceElement);
 
         // Create turn indicator (placed below dice)
-// Removed as turn indicator is now integrated into player info panel
+        this.turnIndicator = document.createElement('div');
+        this.turnIndicator.id = 'turn-indicator';
+        this.turnIndicator.style.position = 'absolute';
+        this.turnIndicator.style.top = '90px'; // below dice (dice at 20px, 60px high, so 20+60+10=90px)
+        this.turnIndicator.style.right = '20px';
+        this.turnIndicator.style.width = '30px';
+        this.turnIndicator.style.height = '30px';
+        this.turnIndicator.style.backgroundSize = 'contain';
+        this.turnIndicator.style.backgroundRepeat = 'no-repeat';
+        this.turnIndicator.style.backgroundPosition = 'center';
+        this.container.appendChild(this.turnIndicator);
 
         // Create message area for non-blocking alerts
         this.messageElement = document.createElement('div');
@@ -374,8 +385,6 @@ class GameView {
                 this.hideLoadingOverlay();
                 this.enableRollButton();
                 this.isAssetsHandled = true;
-                // Set the turn indicator for the current active player (even if assets failed)
-                this.onTurnChange(this.model.getActivePlayer());
                 // Start auto-play even if assets didn't load (maybe some failed)
                 this.autoRoll();
             }
@@ -442,8 +451,6 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
-                // Set the turn indicator for the current active player
-                this.onTurnChange(this.model.getActivePlayer());
                 // Start auto-play after assets loaded
                 this.autoRoll();
             }
@@ -562,6 +569,22 @@ class GameView {
             this.diceElement.style.backgroundImage = '';
         }
 
+        // Update turn indicator to show whose roll is being processed (matches dice)
+        if (this.turnIndicator) {
+            let moverId;
+            if (this.model.getLastMover() !== null) {
+                // Show the player who last moved (whose roll is being shown)
+                moverId = this.model.getLastMover();
+            } else {
+                // At start of game, show the player about to roll
+                moverId = this.model.getActivePlayer();
+            }
+            if (this.assets.tokens[moverId]) {
+                const src = this.assets.tokens[moverId].src;
+                this.turnIndicator.style.backgroundImage = `url('${src}')`;
+            }
+        }
+
         // Now, animate the tokens that have changed
         const currentPositions = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
@@ -597,7 +620,7 @@ class GameView {
             if (watchdogId !== null) {
                 clearTimeout(watchdogId);
             }
-            // Determine whose turn to show as active after movement completes
+            // Update player info to show whose turn is next after movement completes
             const lastRoll = this.model.getLastRoll();
             const consecutiveSixes = this.model.getConsecutiveSixes();
             let activePlayerToShow;
@@ -608,7 +631,7 @@ class GameView {
                 // Turn advanced: next player gets turn
                 activePlayerToShow = this.model.getActivePlayer();
             }
-            // Update player info to show correct active player after movement completes
+            // Update player info panel to show next player (for highlighting in panel)
             this.updatePlayerInfo(activePlayerToShow);
             this.autoRoll();
         };
@@ -970,6 +993,7 @@ class GameView {
         // Update player info panel to show whose turn it is
         this.updatePlayerInfo(activePlayer);
         this.playAudio('turn');
+        // DO NOT update turn indicator here - it's updated in onStateChange with the dice
     }
 
     onExtraRoll() {
