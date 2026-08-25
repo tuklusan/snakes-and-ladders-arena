@@ -136,10 +136,22 @@ function run(){
   }
   P("VIS_dice_renders", dw.length===0, dw.length?dw.join("; "):"dice has a usable background");
 
-  // 21. the app must be exactly 800px wide
+  // the app no longer has a fixed width: the client approved narrowing it once
+  // the right sidebar was halved. What matters is that the columns account for
+  // the whole width - no dead space padding it back out - and that the right
+  // column is genuinely narrow.
   var gc=d.getElementById("game-container");
   var gw=gc?Math.round(gc.getBoundingClientRect().width):0;
-  P("VIS_app_width_800", gw>0&&Math.abs(gw-800)<=2, gw+"px");
+  var lt2=d.getElementById("left-title-panel");
+  var cm3=d.getElementById("right-commentary-panel");
+  var rc=d.getElementById("right-column")||d.querySelector(".right-column")||cm3;
+  var rw=rc?Math.round(rc.getBoundingClientRect().width):0;
+  var lw=lt2?Math.round(lt2.getBoundingClientRect().width):0;
+  var bw2=Math.round(b.getBoundingClientRect().width);
+  var sum=lw+bw2+rw;
+  P("VIS_no_dead_space", gw>0&&sum>0&&(gw-sum)<=80,
+    "app "+gw+"px vs columns "+lw+"+"+bw2+"+"+rw+"="+sum+" (slack "+(gw-sum)+"px)");
+  P("VIS_right_column_narrow", rw>0&&rw<=190, "right column "+rw+"px (target ~176)");
   // 22. the board must never shrink to make room for the side panels
   var bwid=Math.round(b.getBoundingClientRect().width);
   P("VIS_board_not_shrunk", bwid>=380, bwid+"px (must stay >=380)");
