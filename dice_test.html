@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dice Settle Test</title>
+    <link rel="stylesheet" href="src/css/styles.css">
+</head>
+<body>
+    <div id="game-container">
+        <!-- Left margin title panel -->
+        <div id="left-title-panel">
+            <div class="title-content">
+                <div class="title-main">SANYALnet Labs Snakes & Ladders Arena</div>
+                <div class="title-sub">© Supratim Sanyal</div>
+            </div>
+        </div>
+        
+        <!-- Game board and controls -->
+        <div id="game-board-container"></div>
+        
+        <!-- Right margin commentary panel -->
+        <div id="right-commentary-panel">
+            <div id="commentary-content"></div>
+        </div>
+    </div>
+    
+    <div id="test-results" style="position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 5px; z-index: 1000;">
+        <h3>Dice Settle Test Results:</h3>
+        <div id="test-log"></div>
+    </div>
+
+    <script>
+        // Capture console logs
+        const logs = [];
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            logs.push({type: 'log', message});
+            originalLog.apply(console, args);
+            // Display in test results
+            const logDiv = document.getElementById('test-log');
+            if (logDiv) {
+                logDiv.innerHTML += '<div>' + message + '</div>';
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            logs.push({type: 'error', message});
+            originalError.apply(console, args);
+            // Display in test results
+            const logDiv = document.getElementById('test-log');
+            if (logDiv) {
+                logDiv.innerHTML += '<div style="color: red;">' + message + '</div>';
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+        };
+        
+        // Load game scripts
+        const loadScript = (src) => {
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = resolve;
+                script.onerror = reject;
+                document.head.appendChild(script);
+            });
+        };
+        
+        // Run tests after loading scripts
+        window.addEventListener('load', async () => {
+            try {
+                await loadScript('src/js/gameModel.js');
+                await loadScript('src/js/gameController.js');
+                await loadScript('src/js/gameView.js');
+                
+                console.log('All scripts loaded');
+                
+                // Wait a moment for DOM to be ready
+                setTimeout(() => {
+                    try {
+                        // Initialize game
+                        const model = new GameModel();
+                        const view = new GameView();
+                        view.model = model;
+                        
+                        // Mock assets loading
+                        view.assets = {
+                            board: {src: '', complete: true},
+                            tokens: Array.from({length: 4}, (_, i) => ({src: `token_${i}.png`, complete: true})),
+                            diceFaces: Array.from({length: 6}, (_, i) => ({src: `dice_face_${i+1}.png`, complete: true})),
+                            diceTumbleSheet: {src: 'dice_tumble_sheet.png', complete: true},
+                            audio: {
+                                roll: new Audio(),
+                                capture: new Audio(),
+                                win: new Audio()
+                            }
+                        };
+                        view.isAssetsLoaded = true;
+                        view.isAssetsHandled = true;
+                        
+                        // Create DOM
+                        view.createDOM();
+                        
+                        console.log('View initialized');
+                        
+                        // Test the animateDiceRoll function
+                        let settleCount = 0;
+                        let tumbleStartCount = 0;
+                        
+                        // Override console.log in view to capture specific messages
+                        const originalViewLog = console.log;
+                        console.log = function(...args) {
+                            const message = args.join(' ');
+                            if (message.includes('dice tumble start')) {
+                                tumbleStartCount++;
+                                console.log(`[gameView] dice tumble start at ${Date.now()}`);
+                            } else if (message.includes('dice settled on face')) {
+                                settleCount++;
+                                console.log(`[gameView] dice settled on face ${args[1] ? args[1].toString() : 'unknown'} at ${Date.now()}`);
+                            }
+                            originalViewLog.apply(console, args);
+                        };
+                        
+                        // Test animateDiceRoll directly
+                        console.log('Testing animateDiceRoll with face 4...');
+                        if (view.diceElement && view.assets.diceTumbleSheet) {
+                            view.animateDiceRoll(4, () => {
+                                console.log('animateDiceRoll callback executed');
+                            });
+                            
+                            // Check results after a short delay
+                            setTimeout(() => {
+                                console.log(`=== Test Results ===`);
+                                console.log(`Tumble start events: ${tumbleStartCount}`);
+                                console.log(`Settle events: ${settleCount}`);
+                                
+                                if (tumbleStartCount > 0 && settleCount > 0) {
+                                    console.log('✅ SUCCESS: Dice settle animation is working!');
+                                } else {
+                                    console.log('❌ FAILURE: Dice settle animation not working properly');
+                                    console.log('Settle found:', settleCount > 0);
+                                    console.log('Tumble start found:', tumbleStartCount > 0);
+                                }
+                                
+                                // Show final results
+                                document.getElementById('test-log').innerHTML += '<hr><b>Final Result:</b> ' + 
+                                    (tumbleStartCount > 0 && settleCount > 0 ? '✅ SUCCESS' : '❌ FAILURE');
+                            }, 2000);
+                        } else {
+                            console.log('❌ FAILURE: Missing required elements for test');
+                            console.log('Dice element:', !!view.diceElement);
+                            console.log('Tumble sheet:', !!view.assets.diceTumbleSheet);
+                        }
+                    } catch (e) {
+                        console.error('Error during test execution:', e);
+                    }
+                }, 1000);
+                
+            } catch (e) {
+                console.error('Error loading scripts:', e);
+            }
+        });
+    </script>
+</body>
+</html>

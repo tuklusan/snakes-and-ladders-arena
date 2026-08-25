@@ -68,16 +68,17 @@ body {
 
 /* Dice */
 #dice-container {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    align-self: center;
+    margin-top: 15px;
+    flex: 0 0 60px;
+    min-height: 60px;
 }
 
 /* Player info panel */
@@ -274,11 +275,16 @@ body {
     position: relative;
 }
 
-/* Right margin commentary panel */
-#right-commentary-panel {
-    flex: 0 0 300px;
+#right-column-wrapper {
     display: flex;
     flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+#right-commentary-panel {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
     pointer-events: none; /* Allow clicks to pass through to game */
 }
 

@@ -678,9 +678,15 @@ class GameView {
         console.log(`[gameView] move start at ${Date.now()}`);
         const currentMoveId = ++this.moveId;
         
-        // Update dice display with tumble animation
+        // SNAPSHOT: Capture all turn-specific data needed for animation and proceed BEFORE any await
+        // This prevents reading shared mutable state after awaits which could belong to a different turn
         const lastRoll = this.model.getLastRoll();
+        const lastTurnRecord = this.model.getLastTurnRecord();
+        const consecutiveSixes = this.model.getConsecutiveSixes();
+        const lastMover = this.model.getLastMover();
+        const activePlayer = this.model.getActivePlayer();
         
+        // Update dice display with tumble animation
         if (lastRoll >= 1 && lastRoll <= 6) {
             // Log dice tumble start
             console.log(`[gameView] dice tumble start at ${Date.now()}`);
@@ -730,15 +736,26 @@ class GameView {
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             if (currentPositions[i] !== this.previousPositions[i]) {
                 console.log(`[gameView] animating token ${i} from ${this.previousPositions[i]} to ${currentPositions[i]}`);
-                const promise = this.animateTokenMove(i, currentPositions[i]);
+                
+                // CREATE MOVE OBJECT: Snapshot all data needed for this token's animation
+                const move = {
+                    playerId: i,
+                    from: this.previousPositions[i],
+                    to: currentPositions[i],
+                    lastTurnRecord: lastTurnRecord,
+                    lastRoll: lastRoll,
+                    lastMover: lastMover,
+                    consecutiveSixes: consecutiveSixes,
+                    intermediatePos: this.model.getLastMoveIntermediatePosition() // Snapshot intermediate position
+                };
+                
+                const promise = this.animateTokenMove(move);
                 animationPromises.push(promise);
             }
         }
 
         // Update previous positions
         this.previousPositions = [...currentPositions];
-        // Store the last turn record for use in animations
-        this.lastTurnRecord = this.model.getLastTurnRecord();
 
         // Single-fire guard for autoRoll
         let settled = false;
@@ -754,15 +771,13 @@ class GameView {
                 clearTimeout(watchdogId);
             }
             // Update player info to show whose turn is next after movement completes
-            const lastRoll = this.model.getLastRoll();
-            const consecutiveSixes = this.model.getConsecutiveSixes();
             let activePlayerToShow;
             if (lastRoll === 6 && consecutiveSixes > 0) {
                 // Extra roll situation: same player gets another turn
-                activePlayerToShow = this.model.getLastMover();
+                activePlayerToShow = lastMover;
             } else {
                 // Turn advanced: next player gets turn
-                activePlayerToShow = this.model.getActivePlayer();
+                activePlayerToShow = activePlayer;
             }
             // Update player info panel to show next player (for highlighting in panel)
             this.updatePlayerInfo(activePlayerToShow);
@@ -806,27 +821,22 @@ class GameView {
     }
 
     // Animates a token move. Returns a promise that resolves when the animation completes.
-    async animateTokenMove(playerId, newPosition) {
-        console.log(`[gameView] animateTokenMove called for player ${playerId} to position ${newPosition}`);
+    async animateTokenMove(move) {
+        console.log(`[gameView] animateTokenMove called for player ${move.playerId} to position ${move.to}`);
         // Check if there is no movement needed
-        const previousPosition = this.previousPositions[playerId];
+        const previousPosition = move.from;
+        const newPosition = move.to;
         if (previousPosition === newPosition) {
             // No movement, so we don't need to animate or play sounds.
-            console.log(`[gameView] no movement needed for player ${playerId}`);
+            console.log(`[gameView] no movement needed for player ${move.playerId}`);
             return Promise.resolve();
         }
 
         // Determine if this is a step-by-step move (active player's normal move)
-        const dieRoll = this.model.getLastRoll();
-        const isMover = playerId === this.model.getLastMover();
-        let intermediatePos;
-        if (isMover) {
-            // For the active player, use the intermediate position from the model
-            intermediatePos = this.model.getLastMoveIntermediatePosition();
-        } else {
-            // For non-movers (captured tokens, etc.), there is no intermediate tile
-            intermediatePos = newPosition;
-        }
+        const dieRoll = move.lastRoll;
+        const isMover = move.playerId === move.lastMover;
+        // Use snapshotted intermediate position (already captured in onStateChange)
+        const intermediatePos = move.intermediatePos;
         const hasJump = (intermediatePos !== previousPosition && intermediatePos !== newPosition) &&
             (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
 
@@ -838,11 +848,15 @@ class GameView {
         const isStepByStep = isMover &&
             ((previousPosition === 0 && newPosition === 1) || // leaving staging
              (previousPosition > 0 && newPosition > 0 && newPosition > previousPosition)); // moving forward on board
+             
+        // SPECIAL CASE: Entry moves (0->1) should not do tile-by-tile walk, use direct move instead
+        const isEntryMove = (previousPosition === 0 && newPosition === 1);
+        const shouldDoStepByStepWalk = isStepByStep && !isEntryMove;
 
-        if (isStepByStep) {
-            await this._animateStepByStep(previousPosition, newPosition, playerId, dieRoll, intermediatePos);
+        if (shouldDoStepByStepWalk) {
+            await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord);
         } else {
-            await this._animateDirectMove(previousPosition, newPosition, playerId);
+            await this._animateDirectMove(previousPosition, newPosition, move.playerId);
         }
     }
 
@@ -850,43 +864,87 @@ class GameView {
 
     // Animates a move step-by-step along the board, then along the jump path if applicable.
     // Animates a move step-by-step along the board, then along the jump path if applicable.
-    async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos) {
+    async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos, lastTurnRecord, isIntermediatePosLadderStart, isIntermediatePosSnakeStart, isEndTileLadderStart, isEndTileSnakeStart) {
         console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
-        // Determine if there is a jump based on the last turn record
+        // Determine if there is a jump based on the SNAPSHOTTED last turn record
         let jumpStart = intermediatePos;
         let jumpEnd = endTile;
         let hasJump = false;
-        if (this.lastTurnRecord && 
-            (this.lastTurnRecord.event === 'ladder' || this.lastTurnRecord.event === 'snake') &&
-            this.lastTurnRecord.mover === playerId) {
-            jumpStart = this.lastTurnRecord.landed;
-            jumpEnd = this.lastTurnRecord.to;
+        if (lastTurnRecord && 
+            (lastTurnRecord.event === 'ladder' || lastTurnRecord.event === 'snake') &&
+            lastTurnRecord.mover === playerId) {
+            jumpStart = lastTurnRecord.landed;
+            jumpEnd = lastTurnRecord.to;
             hasJump = (jumpStart !== jumpEnd);
         } else {
             // Fallback to the old method if no record or not a jump
             hasJump = (intermediatePos !== startTile && intermediatePos !== endTile) &&
-                (this.model.Ladders.has(intermediatePos) || this.model.Snakes.has(intermediatePos));
+                (isIntermediatePosLadderStart || isIntermediatePosSnakeStart);
         }
 
+        // Determine if jumpStart is the start of a ladder or snake for sound effects
+        const isJumpStartLadderStart = (lastTurnRecord && 
+            lastTurnRecord.event === 'ladder' && 
+            lastTurnRecord.mover === playerId) ||
+            (!(lastTurnRecord && 
+                lastTurnRecord.event === 'ladder' && 
+                lastTurnRecord.mover === playerId) &&
+            isIntermediatePosLadderStart);
+            
+        const isJumpStartSnakeStart = (lastTurnRecord && 
+            lastTurnRecord.event === 'snake' && 
+            lastTurnRecord.mover === playerId) ||
+            (!(lastTurnRecord && 
+                lastTurnRecord.event === 'snake' && 
+                lastTurnRecord.mover === playerId) &&
+            isIntermediatePosSnakeStart);
+
         // Part 1: move from startTile to jumpStart one tile at a time
+        // GUARD THE DIRECTION: A tile-by-tile walk is only meaningful forward
         let current = startTile;
-        while (current !== jumpStart) {
-            // Determine next tile: since we are moving forward, next = current + 1
-            const nextTile = current + 1;
-            console.log(`[gameView] hop from ${current} to ${nextTile} start`);
-            // Move token to nextTile
-            const pos = this.getTokenPositionFromTile(nextTile, playerId);
-            if (!pos) {
-                console.error(`[gameView] Could not compute position for tile ${nextTile}`);
-                break;
+        let steps = 0;
+        if (jumpStart < startTile) {
+            console.warn(`[gameView] jumpStart (${jumpStart}) < startTile (${startTile}) - not walking backwards`);
+            // Log the case for investigation
+            console.warn(`[gameView] Investigation: startTile=${startTile}, endTile=${endTile}, playerId=${playerId}, dieRoll=${dieRoll}, intermediatePos=${intermediatePos}`);
+            if (lastTurnRecord) {
+                console.warn(`[gameView] lastTurnRecord:`, lastTurnRecord);
             }
-            this.setTokenPositionFromPixel(pos.x, pos.y, token);
-            // Play step sound for each hop
-            this.playAudio('step');
-            // Wait for a short duration (150-250ms)
-            await this._delay(200); // fixed 200ms for now, can be random
-            current = nextTile;
+            // Place token directly at jumpStart since we're not walking
+            current = jumpStart;
+        } else {
+            // BOUND THE LOOP: Even with the guard, never let it run free
+            // Twelve is more than any legal single move
+            while (current !== jumpStart && current < 100 && steps++ < 12) {
+                // Determine next tile: since we are moving forward, next = current + 1
+                const nextTile = current + 1;
+                console.log(`[gameView] hop from ${current} to ${nextTile} start`);
+                // Move token to nextTile
+                const pos = this.getTokenPositionFromTile(nextTile, playerId);
+                if (!pos) {
+                    console.error(`[gameView] Could not compute position for tile ${nextTile}`);
+                    break;
+                }
+                this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                // Play step sound for each hop
+                this.playAudio('step');
+                // Wait for a short duration (150-250ms)
+                await this._delay(200); // fixed 200ms for now, can be random
+                current = nextTile;
+            }
+            
+            // Check if we exited due to bounds
+            if (current !== jumpStart) {
+                console.error(`[gameView] _animateStepByStep loop bounded! startTile=${startTile}, jumpStart=${jumpStart}, endTile=${endTile}, steps=${steps}`);
+                console.error(`[gameView] Placing token directly at jumpStart=${jumpStart}`);
+                // Place token directly at destination so the arena keeps running
+                const pos = this.getTokenPositionFromTile(jumpStart, playerId);
+                if (pos) {
+                    this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                }
+                current = jumpStart; // Set current to jumpStart to continue with jump logic
+            }
         }
 
         // Pause at the landing tile (jumpStart) before jumping
@@ -908,7 +966,7 @@ class GameView {
                     this.setTokenPositionFromPixel(pos.x, pos.y, token);
                 }
                 // Play the appropriate sound based on the jumpStart (which is the landed position)
-                this.playAudio(this.model.Ladders.has(jumpStart) ? 'ladder' : 'snake');
+                this.playAudio(isJumpStartLadderStart ? 'ladder' : 'snake');
                 await this._delay(100); // small delay to simulate sound
             } else {
                 // Animate along the path
@@ -917,7 +975,7 @@ class GameView {
                 const duration = Math.random() * 300 + 600; // 600-900ms
                 const startTime = performance.now();
                 // Play the appropriate sound
-                this.playAudio(this.model.Ladders.has(jumpStart) ? 'ladder' : 'snake');
+                this.playAudio(isJumpStartLadderStart ? 'ladder' : 'snake');
                 // Animation loop
                 await new Promise((resolve, reject) => {
                     // Create SVG point once for reuse
@@ -1094,10 +1152,27 @@ class GameView {
         // Play roll sound
         this.playAudio('roll');
 
+        console.log(`[gameView] animateDiceRoll START: face=${face}, callback=${!!callback}`);
+
         // Check if tumble sheet is loaded
         if (!this.assets.diceTumbleSheet || !this.assets.diceTumbleSheet.complete) {
             // Fallback to static face if tumble sheet not ready
-            this.updateDice(face);
+            try {
+                this.updateDice(face);
+            } catch (e) {
+                console.error(`[gameView] Error in fallback updateDice:`, e);
+                // Last resort: try to set it directly
+                try {
+                    this.diceElement.style.backgroundImage = `url('${this.assets.diceFaces[face-1].src}')`;
+                    this.diceElement.style.backgroundSize = 'contain';
+                    this.diceElement.style.backgroundRepeat = 'no-repeat';
+                    this.diceElement.style.backgroundPosition = 'center';
+                } catch (e2) {
+                    console.error(`[gameView] Fallback also failed:`, e2);
+                    // Last resort: blank it out
+                    this.diceElement.style.backgroundImage = '';
+                }
+            }
             // Log dice settled for fallback case
             console.log(`[gameView] dice settled on face ${face} at ${Date.now()}`);
             if (callback) callback();
@@ -1117,12 +1192,36 @@ class GameView {
         // Return a promise that resolves when the animation settles
         return new Promise((resolve) => {
             const animate = (timestamp) => {
+                console.log(`[dice] animate called with timestamp=${timestamp.toFixed(0)}`);
                 const elapsed = timestamp - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const frame = Math.floor(progress * frames);
-                if (frame >= frames) {
+                
+                // Log first few frames and last few frames to debug timing
+                if (frame < 5 || frame >= frames - 5) {
+                    console.log(`[dice] ts=${timestamp.toFixed(0)} startTime=${startTime.toFixed(0)} elapsed=${elapsed.toFixed(0)} progress=${progress.toFixed(3)} frame=${frame}/${frames}`);
+                }
+                
+                // Check if animation has completed (with small epsilon for timing imprecisions)
+                if (frame >= frames - 1) {
                     // Animation ended, show final face
-                    this.updateDice(face);
+                    try {
+                        this.updateDice(face);
+                        console.log(`[gameView] animateDiceRoll: updateDice called with face ${face}`);
+                    } catch (e) {
+                        console.error(`[gameView] Error updating dice to settled face:`, e);
+                        // Fallback: try to set it directly
+                        try {
+                            this.diceElement.style.backgroundImage = `url('${this.assets.diceFaces[face-1].src}')`;
+                            this.diceElement.style.backgroundSize = 'contain';
+                            this.diceElement.style.backgroundRepeat = 'no-repeat';
+                            this.diceElement.style.backgroundPosition = 'center';
+                        } catch (e2) {
+                            console.error(`[gameView] Fallback also failed:`, e2);
+                            // Last resort: blank it out
+                            this.diceElement.style.backgroundImage = '';
+                        }
+                    }
                     // Log dice settled
                     console.log(`[gameView] dice settled on face ${face} at ${Date.now()}`);
                     if (callback) callback();
@@ -1266,6 +1365,7 @@ class GameView {
             playerNumber.style.color = '#fff';
             playerNumber.style.marginBottom = '4px'; // Add space between number and tile
             playerNumber.style.flexShrink = '0';
+            playerNumber.style.lineHeight = '1.2';
             playerContainer.appendChild(playerNumber);
             
             // Add current tile position
@@ -1275,6 +1375,7 @@ class GameView {
             playerPosition.style.fontSize = '10px';
             playerPosition.style.color = '#ccc';
             playerPosition.style.flexShrink = '0';
+            playerPosition.style.lineHeight = '1.2';
             playerContainer.appendChild(playerPosition);
             
             // Highlight active player

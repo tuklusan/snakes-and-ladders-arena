@@ -19,7 +19,7 @@ sleep 3
 rm -rf /home/sanyalnet/gcprof
 
 # chromium writes page console.log to stderr with --enable-logging=stderr
-chromium --no-sandbox --disable-gpu \
+chromium --disable-gpu \
   --user-data-dir=/home/sanyalnet/gcprof --no-first-run --disable-infobars \
   --window-size=1300,900 --autoplay-policy=no-user-gesture-required \
   --enable-logging=stderr --v=0 \

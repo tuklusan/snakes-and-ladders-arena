@@ -47,7 +47,7 @@ while :; do
   if ! pgrep -f "user-data-dir=${PROFILE}" >/dev/null 2>&1; then
     log "browser down; launching arena"
     rm -rf "$PROFILE"
-    setsid nohup chromium --no-sandbox --disable-gpu \
+    setsid nohup chromium --disable-gpu \
       --user-data-dir="$PROFILE" --no-first-run \
       --disable-infobars --disable-session-crashed-bubble \
       --window-size=1300,900 --window-position=0,0 \

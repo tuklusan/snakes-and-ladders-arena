@@ -8,7 +8,7 @@ sleep 1
 rm -rf /tmp/cr_trav
 Xvfb :96 -screen 0 1300x900x24 >/dev/null 2>&1 &
 sleep 3
-DISPLAY=:96 chromium --no-sandbox --disable-gpu --disable-dev-shm-usage \
+DISPLAY=:96 chromium --disable-gpu --disable-dev-shm-usage \
   --user-data-dir=/tmp/cr_trav --no-first-run --disable-infobars \
   --window-size=1300,900 --window-position=0,0 \
   --autoplay-policy=no-user-gesture-required \

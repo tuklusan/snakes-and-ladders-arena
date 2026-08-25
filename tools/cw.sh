@@ -6,7 +6,7 @@ D=:90
 pkill -f "user-data-dir=/tmp/cr_cw" 2>/dev/null; pkill -f "Xvfb $D" 2>/dev/null
 sleep 1; rm -rf /tmp/cr_cw /tmp/.X90-lock 2>/dev/null
 Xvfb $D -screen 0 1400x1000x24 >/dev/null 2>&1 & sleep 4
-DISPLAY=$D chromium --no-sandbox --disable-gpu --user-data-dir=/tmp/cr_cw \
+DISPLAY=$D chromium --disable-gpu --user-data-dir=/tmp/cr_cw \
   --no-first-run --disable-infobars --window-size=1400,1000 \
   --autoplay-policy=no-user-gesture-required \
   "http://localhost:8000/diag_console.html" >/dev/null 2>&1 &
