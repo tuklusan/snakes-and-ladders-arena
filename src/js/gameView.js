@@ -53,6 +53,7 @@ class GameView {
         // Audio unlock and start button
         this.isAudioUnlocked = false;
         this._deferredUnlock = false;
+        this.hasProbedAutoplay = false;
         this.startButtonElement = document.createElement('button');
         this.startButtonElement.textContent = 'Click to start the arena';
         Object.assign(this.startButtonElement.style, {
@@ -599,6 +600,11 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
+                // Probe autoplay policy
+                if (!this.hasProbedAutoplay) {
+                    this.hasProbedAutoplay = true;
+                    this.probeAutoplay();
+                }
                 // Start auto-play after assets loaded
                 // Also reset the game to ensure token positions are updated with loaded assets
                 setTimeout(() => {
@@ -640,6 +646,90 @@ class GameView {
         if (this.loadingOverlay) {
             this.loadingOverlay.style.display = 'none';
         }
+    }
+
+    /**
+     * Probe autoplay policy by trying to play a silent audio.
+     * If allowed (resolved), we do nothing (button not shown).
+     * If blocked (rejected), we show the start button to unlock audio via user gesture.
+     */
+    probeAutoplay() {
+        // Use the first loaded audio asset, or create a temporary one if none are loaded yet.
+        // We'll use the 'enter' sound if available, otherwise create a new Audio object.
+        let audio = null;
+        if (this.assets.audio && this.assets.audio.enter) {
+            audio = this.assets.audio.enter;
+        } else {
+            audio = new Audio();
+            audio.src = 'assets/audio/enter.ogg';
+        }
+        // Ensure we don't interfere with existing audio state: mute, reset, and try to play.
+        const originalVolume = audio.volume;
+        audio.volume = 0;
+        audio.muted = true;
+        audio.currentTime = 0;
+
+        const playPromise = audio.play();
+
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    // Autoplay allowed (e.g., in kiosk with --autoplay-policy=no-user-gesture-required)
+                    // We do not show the button. Reset the audio state.
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = originalVolume;
+                    audio.muted = false;
+                })
+                .catch(() => {
+                    // Autoplay blocked (normal browser): show the button to unlock audio via user gesture.
+                    this.showStartButton();
+                    // Reset the audio state (we don't want to leave it in a clean state for later use )
+                    audio.pause();
+                    audio.currentTime = 0;
+                    audio.volume = originalVolume;
+                    audio.muted = false;
+                });
+        } else {
+            // If play() returned undefined, treat as blocked (some browsers return undefined and then reject later?).
+            // To be safe, we show the button.
+            this.showStartButton();
+            audio.pause();
+            audio.currentTime = 0;
+            audio.volume = originalVolume;
+            audio.muted = false;
+        }
+    }
+
+    /**
+     * Show the start button as an overlay over the game container.
+     */
+    showStartButton() {
+        // Append the button to the container (which is positioned relative)
+        this.container.appendChild(this.startButtonElement);
+    }
+
+    /**
+     * Handle button click: unlock audio and remove the button.
+     * This satisfies the user-gesture requirement for audio playback.
+     */
+    _unlockAudioAndStart() {
+        // Mark audio as unlocked
+        this.isAudioUnlocked = true;
+        
+        // Play a sound to satisfy the user-gesture requirement (use the 'enter' sound if available)
+        const audio = this.assets.audio.enter || new Audio('assets/audio/enter.ogg');
+        audio.currentTime = 0;
+        audio.play().catch(e => {
+            console.warn(`[gameView] Failed to play audio for unlock:`, e);
+        });
+        
+        // Remove the button from DOM
+        if (this.startButtonElement.parentNode) {
+            this.startButtonElement.parentNode.removeChild(this.startButtonElement);
+        }
+        
+        console.log('[gameView] Audio unlocked via user interaction');
     }
 
     clearTimeouts() {
@@ -1564,4 +1654,8 @@ class GameView {
 console.log("!!! Attaching GameView to window !!!");
 if (typeof window !== 'undefined') {
     window.GameView = GameView;
+}
+// Export for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameView;
 }
