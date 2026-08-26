@@ -75,6 +75,35 @@ class GameView {
         });
     }
 
+    debugLog(message) {
+        // Get or create the debug log div
+        let debugLogDiv = document.getElementById('debuglog');
+        if (!debugLogDiv) {
+            debugLogDiv = document.createElement('div');
+            debugLogDiv.id = 'debuglog';
+            debugLogDiv.style.position = 'fixed';
+            debugLogDiv.style.top = '0';
+            debugLogDiv.style.left = '0';
+            debugLogDiv.style.width = '100%';
+            debugLogDiv.style.background = 'rgba(0,0,0,0.7)';
+            debugLogDiv.style.color = '#0f0';
+            debugLogDiv.style.fontFamily = 'monospace';
+            debugLogDiv.style.fontSize = '12px';
+            debugLogDiv.style.lineHeight = '1.4';
+            debugLogDiv.style.padding = '5px';
+            debugLogDiv.style.overflow = 'auto';
+            debugLogDiv.style.zIndex = '9999';
+            debugLogDiv.style.maxHeight = '50%';
+            document.body.insertBefore(debugLogDiv, document.body.firstChild);
+        }
+        const timestamp = new Date().toISOString();
+        const line = document.createElement('div');
+        line.textContent = `[${timestamp}] ${message}`;
+        debugLogDiv.appendChild(line);
+        // Optionally scroll to bottom
+        debugLogDiv.scrollTop = debugLogDiv.scrollHeight;
+    }
+    
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
@@ -789,11 +818,8 @@ class GameView {
             this.handleGameOver();
             return;
         }
-        // Set timeout to roll again after 1 second
-        this.autoRollTimeout = setTimeout(() => {
-            console.log("[gameView] Auto-rolling");
-            this.controller.rollDice();
-        }, 1800);
+        // Immediately roll dice
+        this.controller.rollDice();
     }
 
     // Handle game over: show win, then after 10 sec restart
@@ -814,6 +840,7 @@ class GameView {
     onReset() {
         this.clearTimeouts();
         this.moveId++;   // invalidate any in-flight animation
+        this.debugLog(`onReset called, moveId=${this.moveId}`);
         this.commentaryBuffer = [];
         this.commentaryElement.textContent = '';
         // Reset dice to empty
@@ -877,9 +904,7 @@ class GameView {
 
     // Update token positions based on model state - now handles animation
     async onStateChange() {
-        console.log(`[gameView] move start at ${Date.now()}`);
         const currentMoveId = ++this.moveId;
-        
         // SNAPSHOT: Capture all turn-specific data needed for animation and proceed BEFORE any await
         // This prevents reading shared mutable state after awaits which could belong to a different turn
         const lastRoll = this.model.getLastRoll();
@@ -887,7 +912,10 @@ class GameView {
         const consecutiveSixes = this.model.getConsecutiveSixes();
         const lastMover = this.model.getLastMover();
         const activePlayer = this.model.getActivePlayer();
-        
+        this.debugLog(`Entering onStateChange: moveId=${currentMoveId}, lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
+        this.debugLog(`Snapshot lastTurnRecord: ${JSON.stringify(lastTurnRecord)}`);
+        this.debugLog(`After snapshot log`);
+
         // Update dice ring color to show whose turn it is
         let diceBorderColor;
         switch (lastMover) {
@@ -898,36 +926,27 @@ class GameView {
             default: diceBorderColor = '#ccc';
         }
         this.diceElement.style.border = `2px solid ${diceBorderColor}`;
-        
+        this.debugLog(`Before dice animation, lastRoll=${lastRoll}`);
         // Update dice display with tumble animation
         if (lastRoll >= 1 && lastRoll <= 6) {
             // Log dice tumble start
             console.log(`[gameView] dice tumble start at ${Date.now()}`);
             
-            // Wait for dice animation to complete with timeout fallback
-            const DICE_TIMEOUT = 2000; // 2 second timeout for dice animation
-            const diceTimeoutPromise = new Promise((resolve, reject) => {
-                setTimeout(() => {
-                    console.log(`[gameView] Dice animation timeout after ${DICE_TIMEOUT}ms`);
-                    resolve();
-                }, DICE_TIMEOUT);
-            });
-
-            try {
-                await Promise.race([this.animateDiceRoll(lastRoll), diceTimeoutPromise]);
-            } catch (error) {
-                console.error(`[gameView] Error waiting for dice animation:`, error);
-            }
+            await this.animateDiceRoll(lastRoll);
+            // Log after dice animation
+            this.debugLog(`After dice animation, lastRoll=${lastRoll}`);
         } else {
             // Non-animated case (no roll or invalid roll)
             this.diceElement.style.backgroundImage = '';
             // Log dice settled for non-animated case
+            this.debugLog(`Non-animated dice case, lastRoll=${lastRoll}`);
             console.log(`[gameView] dice settled on face ${lastRoll} at ${Date.now()}`);
         }
 
         // Wait 500ms with nothing moving
+        this.debugLog(`Before 500ms wait`);
         await new Promise(resolve => setTimeout(resolve, 500));
-        console.log(`[gameView] delay complete at ${Date.now()}`);
+        this.debugLog(`After 500ms wait`);
 
         // Log piece move start
         console.log(`[gameView] piece move start at ${Date.now()}`);
@@ -973,17 +992,15 @@ class GameView {
 
         // Single-fire guard for autoRoll
         let settled = false;
-        let watchdogId = null;
         const proceed = () => {
+            this.debugLog(`proceed called (at beginning): moveId=${this.moveId}`);
             if (settled) return;
             // Check if this is the latest move
             if (this.moveId !== currentMoveId) {
                 return;
             }
+            this.debugLog(`proceed called: moveId=${this.moveId}, lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
             settled = true;
-            if (watchdogId !== null) {
-                clearTimeout(watchdogId);
-            }
             // Update player info to show whose turn is next after movement completes
             let activePlayerToShow;
             if (lastRoll === 6 && consecutiveSixes > 0) {
@@ -1002,25 +1019,24 @@ class GameView {
             // Generate commentary for the turn that just completed
             this.generateCommentary();
             
-            this.autoRoll();
+            // Schedule the next autoRoll with a 900ms delay
+            if (this.autoRollTimeout) {
+                clearTimeout(this.autoRollTimeout);
+            }
+            this.debugLog(`autoRoll scheduled for moveId=${this.moveId} in 900ms after turn with lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
+            this.autoRollTimeout = setTimeout(() => {
+                this.autoRoll();
+            }, 900);
         };
 
+        this.debugLog(`animationPromises length: ${animationPromises.length}`);
         if (animationPromises.length === 0) {
+            this.debugLog(`animationPromises is empty, calling proceed`);
             proceed();
             return;
         }
 
-        // Watchdog timeout: derived from animation constants
-        //   max hops (6) * hop delay (200ms) = 1200ms
-        //   landing pause (PAUSE_DURATION) = 500ms
-        //   max jump duration (600ms base + 300ms random) = 900ms
-        //   destination pause (PAUSE_DURATION) = 500ms
-        //   total = 1200 + 500 + 900 + 500 = 3100ms
-        const WATCHDOG_TIMEOUT = (6 * 200) + GameView.PAUSE_DURATION + 900 + GameView.PAUSE_DURATION;
-        watchdogId = setTimeout(() => {
-            console.log('[gameView] Watchdog triggered: calling autoRoll after timeout');
-            proceed();
-        }, WATCHDOG_TIMEOUT);
+        // Wait for all animations to complete
 
         // Wait for all animations to complete
         Promise.all(animationPromises).then(() => {
@@ -1393,14 +1409,17 @@ class GameView {
 
     // Play dice roll animation (tumble) and then show the result
     animateDiceRoll(face, callback) {
+        this.debugLog(`animateDiceRoll START: face=${face}, callback=${!!callback}`);
         // Play roll sound
         this.playAudio('roll');
 
         console.log(`[gameView] animateDiceRoll START: face=${face}, callback=${!!callback}`);
 
         // Check if tumble sheet is loaded
+        this.debugLog(`Checking if tumble sheet is loaded: this.assets.diceTumbleSheet=${this.assets.diceTumbleSheet}, complete=${this.assets.diceTumbleSheet?.complete}`);
         if (!this.assets.diceTumbleSheet || !this.assets.diceTumbleSheet.complete) {
             // Fallback to static face if tumble sheet not ready
+            this.debugLog(`Tumble sheet not ready, using fallback for face ${face}`);
             try {
                 this.updateDice(face);
             } catch (e) {
@@ -1426,17 +1445,28 @@ class GameView {
 
         // Play tumble animation by scaling the sprite sheet to the element size
         const tumbleSheet = this.assets.diceTumbleSheet;
+        this.debugLog(`this.assets.diceTumbleSheet=${tumbleSheet}`);
         // Get the cell size from the dice element (assumes square)
         const cell = this.diceElement.getBoundingClientRect().width;
+        this.debugLog(`this.diceElement.getBoundingClientRect().width=${cell}`);
         const frames = 12; // number of frames in the tumble sheet (1536px / 128px)
         let currentFrame = 0;
-        const startTime = performance.now();
+        let startTime;
         const duration = 1000; // 1 second for tumble animation
 
         // Return a promise that resolves when the animation settles
         return new Promise((resolve) => {
+            this.debugLog(`Starting tumble animation promise`);
+            // Timeout fallback: resolve after 1200ms if animation doesn't complete naturally
+            const timeoutId = setTimeout(() => {
+                this.debugLog(`animateDiceRoll timeout fallback triggered`);
+                resolve();
+            }, 1200);
             const animate = (timestamp) => {
-                console.log(`[dice] animate called with timestamp=${timestamp.toFixed(0)}`);
+                this.debugLog(`animate called with timestamp=${timestamp.toFixed(0)}`);
+                if (startTime === undefined) {
+                    startTime = timestamp;
+                }
                 const elapsed = timestamp - startTime;
                 const progress = Math.min(elapsed / duration, 1);
                 const frame = Math.floor(progress * frames);
@@ -1447,7 +1477,11 @@ class GameView {
                 }
                 
                 // Check if animation has completed (with small epsilon for timing imprecisions)
-                if (frame >= frames - 1) {
+                const isComplete = frame >= frames - 1;
+                if (isComplete) {
+                    this.debugLog(`Entering completion condition: frame=${frame}, frames-1=${frames-1}`);
+                    // Clear timeout on natural completion
+                    clearTimeout(timeoutId);
                     // Animation ended, show final face
                     try {
                         this.updateDice(face);
@@ -1472,6 +1506,9 @@ class GameView {
                     resolve();
                     return;
                 }
+                const isSchedulingAnotherFrame = true; // We are about to schedule another frame unless we return above
+                // Log the required details
+                this.debugLog(`animate: timestamp=${timestamp}, startTime=${startTime}, elapsed=${elapsed}, progress=${progress}, frame=${frame}, currentFrame=${currentFrame}, schedulingAnotherFrame=${isSchedulingAnotherFrame}`);
                 if (frame !== currentFrame) {
                     currentFrame = frame;
                     const offset = -currentFrame * cell;
@@ -1481,6 +1518,7 @@ class GameView {
                     this.diceElement.style.backgroundRepeat = 'no-repeat';
                 }
                 requestAnimationFrame(animate);
+                this.debugLog('animate end');
             };
             requestAnimationFrame(animate);
         });
@@ -1502,20 +1540,8 @@ class GameView {
     // Generate commentary for the turn that just completed
     generateCommentary() {
         const record = this.model.getLastTurnRecord();
+        this.debugLog(`generateCommentary: record = ${JSON.stringify(record)}, will return early: ${!record}`);
         if (!record) return;
-
-        // Create commentary line element
-        const line = document.createElement('div');
-        line.style.marginBottom = '4px';
-        line.style.padding = '2px 4px';
-        line.style.borderRadius = '2px';
-        line.style.fontSize = '12px';
-        line.style.lineHeight = '1.4';
-
-        // Determine player color
-        const playerColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
-        const playerColor = playerColors[record.mover] || '#ffffff';
-        line.style.borderLeft = `3px solid ${playerColor}`;
 
         // Format the commentary text
         const playerNum = record.mover + 1; // Convert to 1-indexed for display
@@ -1551,6 +1577,23 @@ class GameView {
             default:
                 text += ` and moved from ${record.from} to ${record.to}`;
         }
+
+        // Debug log
+        console.log('generateCommentary record:', record);
+        console.log('generateCommentary formatted text:', text);
+
+        // Create commentary line element
+        const line = document.createElement('div');
+        line.style.marginBottom = '4px';
+        line.style.padding = '2px 4px';
+        line.style.borderRadius = '2px';
+        line.style.fontSize = '12px';
+        line.style.lineHeight = '1.4';
+
+        // Determine player color
+        const playerColors = ['#e74c3c', '#3498db', '#2ecc71', '#f1c40f'];
+        const playerColor = playerColors[record.mover] || '#ffffff';
+        line.style.borderLeft = `3px solid ${playerColor}`;
 
         line.textContent = text;
         
