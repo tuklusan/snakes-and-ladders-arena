@@ -190,7 +190,7 @@ class GameView {
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
-            const offset = 20; // arbitrary offset for control point
+            const offset = 6; // arbitrary offset for control point
             const nx = (-dy / length) * offset;
             const ny = (dx / length) * offset;
             const controlX = mx + nx;
