@@ -714,7 +714,7 @@ class GameView {
         
         // Update dice ring color to show whose turn it is
         let diceBorderColor;
-        switch (activePlayer) {
+        switch (lastMover) {
             case 0: diceBorderColor = '#e74c3c'; break; // Red
             case 1: diceBorderColor = '#3498db'; break; // Blue
             case 2: diceBorderColor = '#2ecc71'; break; // Green
