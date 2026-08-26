@@ -1169,9 +1169,13 @@ class GameView {
         console.log(`[gameView] pausing at landing tile ${jumpStart} for ${GameView.PAUSE_DURATION}ms`);
         await this._delay(GameView.PAUSE_DURATION);
         console.log(`[gameView] landing pause end`);
+        // Bail out if a newer turn or reset invalidated this walk
+        if (this.moveId !== moveId) return;
 
         // Part 2: if there is a jump, follow the SVG path from jumpStart to jumpEnd
         if (hasJump) {
+            // Bail out if a newer turn or reset invalidated this walk
+            if (this.moveId !== moveId) return;
             console.log(`[gameView] has jump from ${jumpStart} to ${jumpEnd}`);
             // Find the SVG path element for this jump
             const pathSelector = `[data-jump="${jumpStart}-${jumpEnd}"]`;
