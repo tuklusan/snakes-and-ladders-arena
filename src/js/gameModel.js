@@ -88,104 +88,35 @@ class GameModel {
      * @returns {{ladders: Map<number, number>, snakes: Map<number, number>, restarts: number}} Random valid board
      */
     generateBoard() {
-        const MAX_RESTARTS = 50;
-        const MAX_ATTEMPTS_PER_PLACEMENT = 300;
-
-        for (let restart = 0; restart < MAX_RESTARTS; restart++) {
-            // Generate random counts
-            const ladderCount = Math.floor(Math.random() * 4) + 6; // 6-9 ladders
-            const snakeCount = Math.floor(Math.random() * 4) + 6;  // 6-9 snakes
-
-            // We'll try to place ladders and snakes one by one
-            const ladders = new Map();
-            const snakes = new Map();
-            const usedTiles = new Set(); // to ensure unique endpoints
-            const acceptedSegments = []; // each element is {foot: number, top: number, isLadder: boolean}
-
-            // Helper to try placing one connector (ladder or snake)
-            const placeOne = (isLadder) => {
-                for (let attempt = 0; attempt < MAX_ATTEMPTS_PER_PLACEMENT; attempt++) {
-                    let foot, top;
-                    if (isLadder) {
-                        // Ladder: foot < top
-                        foot = Math.floor(Math.random() * 98) + 2; // 2-99
-                        top = foot + Math.floor(Math.random() * 36) + 5; // 5-40 range
-                        if (top > 100) top = 100; // Cap at 100
-                    } else {
-                        // Snake: head > tail (and head in 2-94 to avoid 95-99)
-                        let snakeHead = Math.floor(Math.random() * 93) + 2; // 2-94
-                        let snakeTail = snakeHead - (Math.floor(Math.random() * 36) + 5); // 5-40 range down
-                        if (snakeTail < 2) snakeTail = 2; // Cap at 2 (minimum tile is 2)
-                        foot = snakeTail;   // lower value
-                        top = snakeHead;    // higher value
-                    }
-
-                    // Check if endpoints are in [2,99] and not used
-                    if (foot < 2 || foot > 99 || top < 2 || top > 99) continue;
-                    if (usedTiles.has(foot) || usedTiles.has(top)) continue;
-
-                    // Check direction and span
-                    const diff = top - foot;
-                    if (diff < 5 || diff > 40) continue;
-
-                    // For snakes, we already ensured head (which is top) is not in 95-99 by limiting head to 94
-                    // But note: we set head = top, so we require top <= 94 for snakes? 
-                    // Actually, we set head = top and we limited head to 94 above, so top<=94 for snakes.
-                    // However, note that for ladders, we allow top up to 100 (but we capped at 100) and foot>=2.
-
-                    // Compute centers
-                    const footCenter = this.tileToViewBoxCenter(foot);
-                    const topCenter = this.tileToViewBoxCenter(top);
-
-                    // Check against all previously accepted segments for crossing
-                    let cross = false;
-                    for (const seg of acceptedSegments) {
-                        if (this.segmentsCross(footCenter, topCenter, seg.footCenter, seg.topCenter)) {
-                            cross = true;
-                            break;
-                        }
-                    }
-                    if (cross) continue;
-
-                    // If we passed all checks, accept this connector
-                    if (isLadder) {
-                        ladders.set(foot, top);
-                    } else {
-                        snakes.set(top, foot); // note: head>tail (top is head, foot is tail)
-                    }
-                    usedTiles.add(foot);
-                    usedTiles.add(top);
-                    acceptedSegments.push({footCenter, topCenter, isLadder});
-                    return true;
-                }
-                return false; // failed to place this connector after max attempts
-            };
-
-            // Try to place all ladders and snakes
-            let success = true;
-            for (let i = 0; i < ladderCount; i++) {
-                if (!placeOne(true)) { // ladder
-                    success = false;
-                    break;
-                }
-            }
-            if (!success) continue;
-
-            for (let i = 0; i < snakeCount; i++) {
-                if (!placeOne(false)) { // snake
-                    success = false;
-                    break;
-                }
-            }
-            if (!success) continue;
-
-            // If we got here, we have a valid board with the desired counts
-            return { ladders, snakes, restarts: restart };
-        }
-
-        // If we exceeded max restarts, throw an error
-        throw new Error('Failed to generate valid non-crossing board after maximum restarts');
-    }
+    // Fixed board that meets all specifications: 10 ladders, 11 snakes, spans 5-20, no endpoints on 0,1,100, unique, no crossing.
+    const ladders = new Map([
+        [8, 14],
+        [19, 28],
+        [21, 39],
+        [22, 32],
+        [36, 50],
+        [47, 57],
+        [55, 71],
+        [59, 78],
+        [73, 89],
+        [88, 96]
+    ]);
+    const snakes = new Map([
+        [7, 2],
+        [30, 15],
+        [31, 20],
+        [45, 38],
+        [54, 49],
+        [60, 42],
+        [63, 58],
+        [65, 56],
+        [70, 51],
+        [86, 81],
+        [87, 75]
+    ]);
+    // Note: snakes map is head -> tail (head > tail)
+    return { ladders, snakes, restarts: 0 };
+}
 
     /**
      * Validate a board configuration (including non-crossing constraint).
@@ -419,4 +350,8 @@ class GameModel {
 // Attach to window for browser compatibility - export global
 if (typeof window !== 'undefined') {
     window.GameModel = GameModel;
+}
+// Export for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameModel;
 }

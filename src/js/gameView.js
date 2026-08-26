@@ -129,11 +129,91 @@ class GameView {
         };
     }
 
+    // Helper function to get all players on tile #1, sorted by playerId
+    getPlayersOnTileOne() {
+        const players = [];
+        for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
+            if (this.model.getPlayerPosition(i) === 1) {
+                players.push(i);
+            }
+        }
+        return players.sort((a, b) => a - b); // ascending playerId order
+    }
+
+    // Compute position and transform for a token on tile #1
+    getTokenPositionAndTransformForTileOne(playerId) {
+        const playersOnTileOne = this.getPlayersOnTileOne();
+        const k = playersOnTileOne.length;
+        
+        // Get the cell element and its bounding rect
+        const cell = this.getCellElement(1);
+        if (!cell) {
+            // Fallback to normal positioning if we can't get cell
+            const pos = this.getTokenPositionFromTile(1, playerId);
+            return { x: pos.x, y: pos.y, transform: 'translate(-50%, -50%)' };
+        }
+        const cellRect = cell.getBoundingClientRect();
+        const containerRect = this.container.getBoundingClientRect();
+        
+        // Compute center relative to container
+        const centerX = cellRect.left - containerRect.left + cellRect.width / 2;
+        const centerY = cellRect.top - containerRect.top + cellRect.height / 2;
+        
+        if (k <= 1) {
+            // Lone piece or empty tile - normal positioning
+            return { 
+                x: centerX, 
+                y: centerY, 
+                transform: 'translate(-50%, -50%)' 
+            };
+        } else {
+            // Multiple pieces - quadrant layout
+            const quadrantIndex = playersOnTileOne.indexOf(playerId);
+            if (quadrantIndex === -1) {
+                // Should not happen, but fallback
+                return { 
+                    x: centerX, 
+                    y: centerY, 
+                    transform: 'translate(-50%, -50%)' 
+                };
+            }
+            
+            // Quadrant offsets: +/- 25% of cell size from center
+            const offsetX = (quadrantIndex % 2 === 0) ? -cellRect.width * 0.25 : cellRect.width * 0.25;
+            const offsetY = (Math.floor(quadrantIndex / 2) === 0) ? -cellRect.height * 0.25 : cellRect.height * 0.25;
+            
+            // Scale down to ~0.5 (about 48%)
+            const scale = 0.5;
+            
+            return {
+                x: centerX + offsetX,
+                y: centerY + offsetY,
+                transform: `translate(-50%, -50%) scale(${scale})`
+            };
+        }
+    }
+
     // Set token position using pixel values
     setTokenPositionFromPixel(x, y, token) {
         token.style.left = x + 'px';
         token.style.top = y + 'px';
         token.style.transform = 'translate(-50%, -50%)';
+    }
+
+    // Position a token with special handling for tile #1 multi-occupancy
+    positionToken(playerId, tile, token) {
+        if (tile === 1) {
+            const { x, y, transform } = this.getTokenPositionAndTransformForTileOne(playerId);
+            token.style.left = x + 'px';
+            token.style.top = y + 'px';
+            token.style.transform = transform;
+        } else {
+            // Use existing positioning for all other tiles
+            const pos = this.getTokenPositionFromTile(tile, playerId);
+            if (pos) {
+                this.setTokenPositionFromPixel(pos.x, pos.y, token);
+            }
+        }
     }
 
     // Position a token on a given tile
@@ -652,7 +732,7 @@ class GameView {
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
             const pos = this.getTokenPositionFromTile(0, i);
             if (pos) {
-                this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[i]);
+                this.positionToken(i, 0, this.tokenElements[i]);
             }
         }
         // Reset previousPositions to all zeros
@@ -664,6 +744,8 @@ class GameView {
         
         // Redraw snakes and ladders to match the newly generated board
         this.drawSnakesAndLadders();
+        // Re-layout tile #1 occupants after reset
+        this.relayoutTileOneOccupants();
     }
 
     // Handle extra roll (when a six is rolled and not three sixes)
@@ -822,6 +904,9 @@ class GameView {
             // Update player info panel to show next player (for highlighting in panel) - removed per requirement
             // this.updatePlayerInfo(activePlayerToShow);
             
+            // Re-layout tile #1 occupants after move settles
+            this.relayoutTileOneOccupants();
+            
             // Generate commentary for the turn that just completed
             this.generateCommentary();
             
@@ -966,7 +1051,7 @@ class GameView {
                     console.error(`[gameView] Could not compute position for tile ${nextTile}`);
                     break;
                 }
-                this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                this.positionToken(playerId, nextTile, token);
                 // Play step sound for each hop
                 this.playAudio('step');
                 // Wait for a short duration (150-250ms)
@@ -1057,7 +1142,7 @@ class GameView {
                         // Get the pixel position of this tile's center
                         const pos = this.getTokenPositionFromTile(tile, playerId);
                         if (pos) {
-                            this.setTokenPositionFromPixel(pos.x, pos.y, token);
+                            this.positionToken(playerId, tile, token);
                         }
                         console.log(`[gameView] jump animation at t=${t} -> tile ${tile} (${x_vb},${y_vb})`);
                         if (t < 1) {
@@ -1125,7 +1210,7 @@ class GameView {
                 }
                 // Fallback: if we can compute the end position, set the token there (without animation)
                 if (endPos) {
-                    this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
+                    this.positionToken(playerId, endTile, token);
                     console.log(`[gameView] move complete at ${Date.now()}`);
                 }
                 resolve();
@@ -1133,11 +1218,11 @@ class GameView {
             }
 
             // Set initial position
-            this.setTokenPositionFromPixel(startPos.x, startPos.y, token);
+            this.positionToken(playerId, startTile, token);
             // Trigger reflow to ensure the transition works
             void token.offsetHeight;
             // Set end position (CSS transition will animate the change)
-            this.setTokenPositionFromPixel(endPos.x, endPos.y, token);
+            this.positionToken(playerId, endTile, token);
 
             // If there is a pending transition for this token, clean it up
             const pending = this.pendingTransitions.get(token);
@@ -1462,6 +1547,15 @@ class GameView {
             token.style.width = tokenSize + 'px';
             token.style.height = tokenSize + 'px';
             console.log(`[gameView] token ${this.tokenElements.indexOf(token)} width: ${token.style.width}, height: ${token.style.height}`);
+        }
+    }
+
+    // Re-layout all occupants of tile #1 after a move settles or on reset
+    relayoutTileOneOccupants() {
+        const playersOnTileOne = this.getPlayersOnTileOne();
+        // Re-position each player currently on tile #1
+        for (const playerId of playersOnTileOne) {
+            this.positionToken(playerId, 1, this.tokenElements[playerId]);
         }
     }
 }
