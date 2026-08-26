@@ -88,7 +88,7 @@ class GameModel {
      * @returns {{ladders: Map<number, number>, snakes: Map<number, number>, restarts: number}} Random valid board
      */
     generateBoard() {
-        const MAX_RESTARTS = 50;
+        const MAX_RESTARTS = 200;
         const MAX_ATTEMPTS_PER_PLACEMENT = 300;
 
         for (let restart = 0; restart < MAX_RESTARTS; restart++) {
@@ -161,55 +161,49 @@ class GameModel {
                 return false; // failed to place this connector after max attempts
             };
 
-            // Try to place all ladders and snakes
-            let success = true;
+            // Try to place ladders greedily up to ladderCount, but break on failure
+            let laddersPlaced = 0;
             for (let i = 0; i < ladderCount; i++) {
                 if (!placeOne(true)) { // ladder
-                    success = false;
                     break;
                 }
+                laddersPlaced++;
             }
-            if (!success) continue;
 
+            // Try to place snakes greedily up to snakeCount, but break on failure
+            let snakesPlaced = 0;
             for (let i = 0; i < snakeCount; i++) {
                 if (!placeOne(false)) { // snake
-                    success = false;
                     break;
                 }
+                snakesPlaced++;
             }
-            if (!success) continue;
 
-            // If we got here, we have a valid board with the desired counts
-            return { ladders, snakes, restarts: restart };
+            // If we have at least 6 ladders and 6 snakes, we accept this board
+            if (laddersPlaced >= 6 && snakesPlaced >= 6) {
+                return { ladders, snakes, restarts: restart };
+            }
+            // Otherwise, we try again with a new restart
         }
 
-        // If we exceeded max restarts, return a known valid board to never throw
+        // If we exhausted all restarts, return the known-good 6+6 board (never throw)
         const ladders = new Map([
-            [8, 14],
-            [19, 28],
-            [21, 39],
-            [22, 32],
-            [36, 50],
-            [47, 57],
-            [55, 71],
-            [59, 78],
-            [73, 89],
-            [88, 96]
+            [45, 83],
+            [33, 71],
+            [34, 46],
+            [35, 44],
+            [23, 43],
+            [89, 95]
         ]);
         const snakes = new Map([
-            [7, 2],
-            [30, 15],
-            [31, 20],
-            [45, 38],
-            [54, 49],
-            [60, 42],
-            [63, 58],
-            [65, 56],
-            [70, 51],
-            [86, 81],
-            [87, 75]
+            [75, 69],
+            [22, 2],
+            [84, 65],
+            [81, 63],
+            [36, 8],
+            [82, 57]
         ]);
-        return { ladders, snakes, restarts: 0 };
+        return { ladders, snakes, restarts: MAX_RESTARTS };
     }
 
     /**
@@ -444,4 +438,8 @@ class GameModel {
 // Attach to window for browser compatibility - export global
 if (typeof window !== 'undefined') {
     window.GameModel = GameModel;
+}
+// Export for Node.js
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = GameModel;
 }
