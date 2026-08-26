@@ -84,17 +84,69 @@ class GameModel {
     }
 
     /**
+     * @private
+     * @param {{x:number, y:number}} p
+     * @param {{x:number, y:number}} a
+     * @param {{x:number, y:number}} b
+     * @return {number} distance from point p to segment ab
+     */
+    _pointSegDistance(p, a, b) {
+        const vx = b.x - a.x;
+        const vy = b.y - a.y;
+        const wx = p.x - a.x;
+        const wy = p.y - a.y;
+        const c1 = vx * wx + vy * wy;
+        if (c1 <= 0) {
+            // closest to a
+            return Math.hypot(p.x - a.x, p.y - a.y);
+        }
+        const c2 = vx * vx + vy * vy;
+        if (c2 <= c1) {
+            // closest to b
+            return Math.hypot(p.x - b.x, p.y - b.y);
+        }
+        const ratio = c1 / c2;
+        const pbx = a.x + ratio * vx;
+        const pby = a.y + ratio * vy;
+        return Math.hypot(p.x - pbx, p.y - pby);
+    }
+
+    /**
+     * @private
+     * @param {{x:number, y:number}} a1
+     * @param {{x:number, y:number}} a2
+     * @param {{x:number, y:number}} b1
+     * @param {{x:number, y:number}} b2
+     * @return {number} distance between segments a1a2 and b1b2 (0 if they intersect or touch)
+     */
+    _segSegDistance(a1, a2, b1, b2) {
+        if (this.segmentsCross(a1, a2, b1, b2)) {
+            return 0;
+        }
+        return Math.min(
+            this._pointSegDistance(a1, b1, b2),
+            this._pointSegDistance(a2, b1, b2),
+            this._pointSegDistance(b1, a1, a2),
+            this._pointSegDistance(b2, a1, a2)
+        );
+    }
+
+    /**
      * Generate a random valid board configuration with non-crossing connectors.
      * @returns {{ladders: Map<number, number>, snakes: Map<number, number>, restarts: number}} Random valid board
      */
     generateBoard() {
-        const MAX_RESTARTS = 200;
-        const MAX_ATTEMPTS_PER_PLACEMENT = 300;
+        const MAX_RESTARTS = 500;
+        const MAX_ATTEMPTS_PER_PLACEMENT = 1000;
+        const CLEARANCE = 5; // viewBox units
+
+        // Helper: row of a tile (0-indexed rows from bottom)
+        const row = (tile) => Math.floor((tile - 1) / 10);
 
         for (let restart = 0; restart < MAX_RESTARTS; restart++) {
-            // Generate random counts
-            const ladderCount = Math.floor(Math.random() * 4) + 6; // 6-9 ladders
-            const snakeCount = Math.floor(Math.random() * 4) + 6;  // 6-9 snakes
+            // Generate random counts: aim for 4-6 each to make placement feasible with constraints
+            const ladderCount = Math.floor(Math.random() * 3) + 4; // 4-6 ladders
+            const snakeCount = Math.floor(Math.random() * 3) + 4;  // 4-6 snakes
 
             // We'll try to place ladders and snakes one by one
             const ladders = new Map();
@@ -128,24 +180,25 @@ class GameModel {
                     const diff = top - foot;
                     if (diff < 5 || diff > 40) continue;
 
-                    // For snakes, we already ensured head (which is top) is not in 95-99 by limiting head to 94
-                    // But note: we set head = top, so we require top <= 94 for snakes? 
-                    // Actually, we set head = top and we limited head to 94 above, so top<=94 for snakes.
-                    // However, note that for ladders, we allow top up to 100 (but we capped at 100) and foot>=2.
+                    // NEW: row span >= 3
+                    const rFoot = row(foot);
+                    const rTop = row(top);
+                    if (Math.abs(rFoot - rTop) < 3) continue;
 
                     // Compute centers
                     const footCenter = this.tileToViewBoxCenter(foot);
                     const topCenter = this.tileToViewBoxCenter(top);
 
-                    // Check against all previously accepted segments for crossing
-                    let cross = false;
+                    // Check against all previously accepted segments for clearance
+                    let ok = true;
                     for (const seg of acceptedSegments) {
-                        if (this.segmentsCross(footCenter, topCenter, seg.footCenter, seg.topCenter)) {
-                            cross = true;
+                        const dist = this._segSegDistance(footCenter, topCenter, seg.footCenter, seg.topCenter);
+                        if (dist < CLEARANCE) {
+                            ok = false;
                             break;
                         }
                     }
-                    if (cross) continue;
+                    if (!ok) continue;
 
                     // If we passed all checks, accept this connector
                     if (isLadder) {
@@ -179,29 +232,27 @@ class GameModel {
                 snakesPlaced++;
             }
 
-            // If we have at least 6 ladders and 6 snakes, we accept this board
-            if (laddersPlaced >= 6 && snakesPlaced >= 6) {
+            // If we have at least 4 ladders and 4 snakes, we accept this board
+            if (laddersPlaced >= 4 && snakesPlaced >= 4) {
                 return { ladders, snakes, restarts: restart };
             }
             // Otherwise, we try again with a new restart
         }
 
-        // If we exhausted all restarts, return the known-good 6+6 board (never throw)
+        // If we exhausted all restarts, return the known-good 4+4 board (never throw)
         const ladders = new Map([
-            [45, 83],
-            [33, 71],
-            [34, 46],
-            [35, 44],
-            [23, 43],
-            [89, 95]
+            [9, 33],
+            [14, 47],
+            [20, 56],
+            [21, 58],
+            [25, 55],
+            [60, 87]
         ]);
         const snakes = new Map([
-            [75, 69],
-            [22, 2],
-            [84, 65],
-            [81, 63],
-            [36, 8],
-            [82, 57]
+            [31, 10],
+            [35, 5],
+            [37, 2],
+            [74, 48]
         ]);
         return { ladders, snakes, restarts: MAX_RESTARTS };
     }
@@ -214,6 +265,8 @@ class GameModel {
      */
     validateBoard(ladders, snakes) {
         const violations = [];
+        const CLEARANCE = 5;
+        const row = (tile) => Math.floor((tile - 1) / 10);
 
         // Check a: Endpoints never touch {0,1,100}
         for (const [foot, top] of ladders) {
@@ -276,15 +329,15 @@ class GameModel {
         const ladderCount = ladders.size;
         const snakeCount = snakes.size;
         
-        if (ladderCount < 6 || ladderCount > 9) {
-            violations.push(`Ladder count ${ladderCount} not in [6,9]`);
+        if (ladderCount < 4 || ladderCount > 6) {
+            violations.push(`Ladder count ${ladderCount} not in [4,6]`);
         }
         
-        if (snakeCount < 6 || snakeCount > 9) {
-            violations.push(`Snake count ${snakeCount} not in [6,9]`);
+        if (snakeCount < 4 || snakeCount > 6) {
+            violations.push(`Snake count ${snakeCount} not in [4,6]`);
         }
         
-        // Check e: Span
+        // Check e: Span (5-40)
         for (const [foot, top] of ladders) {
             const span = top - foot;
             if (span < 5 || span > 40) {
@@ -306,14 +359,28 @@ class GameModel {
             }
         }
 
-        // Check g: Non-crossing connectors (using straight segments between centers)
+        // NEW: Check g: Row span >= 3 for each connector
+        for (const [foot, top] of ladders) {
+            const rFoot = row(foot);
+            const rTop = row(top);
+            if (Math.abs(rFoot - rTop) < 3) {
+                violations.push(`Ladder ${foot}-${top} row span ${Math.abs(rFoot - rTop)} < 3`);
+            }
+        }
+        for (const [head, tail] of snakes) {
+            const rHead = row(head);
+            const rTail = row(tail);
+            if (Math.abs(rHead - rTail) < 3) {
+                violations.push(`Snake ${head}-${tail} row span ${Math.abs(rHead - rTail)} < 3`);
+            }
+        }
+
+        // Build list of connectors with centers for distance checks
         const allConnectors = [];
         for (const [foot, top] of ladders) {
             allConnectors.push({
                 foot: foot,
                 top: top,
-                footCenter: this.tileToViewBoxCenter(foot),
-                topCenter: this.tileToViewBoxCenter(top),
                 p1: this.tileToViewBoxCenter(foot),
                 p2: this.tileToViewBoxCenter(top),
                 type: 'ladder'
@@ -323,20 +390,20 @@ class GameModel {
             allConnectors.push({
                 head: head,
                 tail: tail,
-                headCenter: this.tileToViewBoxCenter(head),
-                tailCenter: this.tileToViewBoxCenter(tail),
                 p1: this.tileToViewBoxCenter(head),
                 p2: this.tileToViewBoxCenter(tail),
                 type: 'snake'
             });
         }
 
+        // NEW: Check h: Clearance gap >= CLEARANCE for every pair
         for (let i = 0; i < allConnectors.length; i++) {
             for (let j = i + 1; j < allConnectors.length; j++) {
                 const c1 = allConnectors[i];
                 const c2 = allConnectors[j];
-                if (this.segmentsCross(c1.p1, c1.p2, c2.p1, c2.p2)) {
-                    violations.push(`Connector ${c1.type} ${c1.foot}-${c1.top} crosses ${c2.type} ${c2.head}-${c2.tail}`);
+                const dist = this._segSegDistance(c1.p1, c1.p2, c2.p1, c2.p2);
+                if (dist < CLEARANCE) {
+                    violations.push(`Connector ${c1.type} ${c1.foot}-${c1.top} and ${c2.type} ${c2.head}-${c2.tail} too close: distance ${dist.toFixed(2)} < ${CLEARANCE}`);
                 }
             }
         }
