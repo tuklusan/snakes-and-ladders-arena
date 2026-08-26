@@ -813,6 +813,7 @@ class GameView {
     // Reset the game state for the view
     onReset() {
         this.clearTimeouts();
+        this.moveId++;   // invalidate any in-flight animation
         this.commentaryBuffer = [];
         this.commentaryElement.textContent = '';
         // Reset dice to empty
@@ -958,7 +959,8 @@ class GameView {
                     lastRoll: lastRoll,
                     lastMover: lastMover,
                     consecutiveSixes: consecutiveSixes,
-                    intermediatePos: this.model.getLastMoveIntermediatePosition() // Snapshot intermediate position
+                    intermediatePos: this.model.getLastMoveIntermediatePosition(),
+                    moveId: currentMoveId
                 };
                 
                 const promise = this.animateTokenMove(move);
@@ -1068,7 +1070,7 @@ class GameView {
         const shouldDoStepByStepWalk = isStepByStep && !isEntryMove;
 
         if (shouldDoStepByStepWalk) {
-            await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord);
+            await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord, move.moveId);
         } else {
             this.playAudio('enter');
             await this._animateDirectMove(previousPosition, newPosition, move.playerId);
@@ -1079,7 +1081,7 @@ class GameView {
 
     // Animates a move step-by-step along the board, then along the jump path if applicable.
     // Animates a move step-by-step along the board, then along the jump path if applicable.
-    async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos, lastTurnRecord, isIntermediatePosLadderStart, isIntermediatePosSnakeStart, isEndTileLadderStart, isEndTileSnakeStart) {
+    async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos, lastTurnRecord, isIntermediatePosLadderStart, isIntermediatePosSnakeStart, isEndTileLadderStart, isEndTileSnakeStart, moveId) {
         console.log(`[gameView] _animateStepByStep from ${startTile} to ${endTile} for player ${playerId}`);
         const token = this.tokenElements[playerId];
         // Determine if there is a jump based on the SNAPSHOTTED last turn record
@@ -1132,6 +1134,7 @@ class GameView {
             // BOUND THE LOOP: Even with the guard, never let it run free
             // Twelve is more than any legal single move
             while (current !== jumpStart && current < 100 && steps++ < 12) {
+                if (this.moveId !== moveId) return;
                 // Determine next tile: since we are moving forward, next = current + 1
                 const nextTile = current + 1;
                 console.log(`[gameView] hop from ${current} to ${nextTile} start`);
@@ -1205,6 +1208,13 @@ class GameView {
                         }
                     }, duration + 100);
                     const step = (timestamp) => {
+                        if (this.moveId !== moveId) {
+                            animationFinished = true;
+                            if (rafId) cancelAnimationFrame(rafId);
+                            clearTimeout(timeoutId);
+                            resolve();
+                            return;
+                        }
                         if (animationFinished) {
                             // already timed out, just return
                             return;
