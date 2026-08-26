@@ -29,6 +29,8 @@ console.log('Testing board generation and validation...');
 const model = new window.GameModel();
 
 let totalViolations = 0;
+let totalCrossings = 0;
+let totalRestarts = 0;
 let minLadderCount = Infinity;
 let maxLadderCount = -Infinity;
 let minSnakeCount = Infinity;
@@ -41,12 +43,19 @@ for (let i = 0; i < RUNS; i++) {
     
     if (violations.length > 0) {
         console.error(`Run ${i}: ${violations.length} violations:`);
-        violations.forEach(v => console.error(`  - ${v}`));
+        violations.forEach(v => {
+            console.error(`  - ${v}`);
+            if (v.toLowerCase().includes('crosses')) {
+                totalCrossings++;
+            }
+        });
         totalViolations += violations.length;
     }
     
     const ladderCount = board.ladders.size;
     const snakeCount = board.snakes.size;
+    const restarts = board.restarts !== undefined ? board.restarts : 0;
+    totalRestarts += restarts;
     
     if (ladderCount < minLadderCount) minLadderCount = ladderCount;
     if (ladderCount > maxLadderCount) maxLadderCount = ladderCount;
@@ -55,7 +64,7 @@ for (let i = 0; i < RUNS; i++) {
     if (snakeCount > maxSnakeCount) maxSnakeCount = snakeCount;
 }
 
-console.log(`RUNS=${RUNS} VIOLATIONS=${totalViolations}`);
+console.log(`RUNS=${RUNS} VIOLATIONS=${totalViolations} CROSSINGS=${totalCrossings} RESTARTS=${totalRestarts}`);
 console.log(`Ladder counts: min=${minLadderCount}, max=${maxLadderCount}`);
 console.log(`Snake counts: min=${minSnakeCount}, max=${maxSnakeCount}`);
 
