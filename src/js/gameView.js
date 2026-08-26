@@ -661,6 +661,9 @@ class GameView {
         this.updatePlayerInfo(activePlayer);
         // Ensure tokens are sized correctly
         this.sizeTokens();
+        
+        // Redraw snakes and ladders to match the newly generated board
+        this.drawSnakesAndLadders();
     }
 
     // Handle extra roll (when a six is rolled and not three sixes)
