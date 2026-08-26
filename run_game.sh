@@ -4,11 +4,11 @@
 
 # Kill any existing python http.server on port 8000
 echo "Stopping any existing web server on port 8000..."
-pkill -f "python3 -m http.server 8000" >/dev/null 2>&1
+pkill -f "python3 tools/serve_nocache.py 8000" >/dev/null 2>&1
 
 # Start the web server in the background
 echo "Starting web server on port 8000..."
-cd "$(dirname "$0")" && python3 -m http.server 8000 > server.log 2>&1 &
+cd "$(dirname "$0")" && python3 tools/serve_nocache.py 8000 > server.log 2>&1 &
 
 # Get the PID of the background process
 SERVER_PID=$!
@@ -17,7 +17,7 @@ SERVER_PID=$!
 sleep 2
 
 # Check if the server is running
-if pgrep -f "python3 -m http.server 8000" > /dev/null; then
+if pgrep -f "python3 tools/serve_nocache.py 8000" > /dev/null; then
     echo "Web server started successfully (PID: $SERVER_PID)."
 else
     echo "Failed to start web server. Check server.log for details."
@@ -44,7 +44,7 @@ echo "- Three consecutive 6s trigger a penalty: your turn ends and you return to
 echo "- First player to reach tile 100 exactly wins"
 echo ""
 echo "To stop the web server, run:"
-echo "  pkill -f 'python3 -m http.server 8000'"
+echo "  pkill -f 'python3 tools/serve_nocache.py 8000'"
 echo ""
 echo "Or, if you started this script from the terminal, you can also stop it with:"
 echo "  kill $SERVER_PID"

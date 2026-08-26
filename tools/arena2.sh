@@ -32,7 +32,7 @@ while :; do
   if ! curl -s -o /dev/null --max-time 5 http://localhost:8000/index.html; then
     log "web server down; restarting"
     cd "$PROJ" || exit 1
-    setsid nohup python3 -m http.server 8000 >/dev/null 2>&1 < /dev/null &
+    setsid nohup python3 tools/serve_nocache.py 8000 >/dev/null 2>&1 < /dev/null &
     sleep 3
   fi
 
