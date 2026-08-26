@@ -33,9 +33,9 @@ function run(){
   const cand=d.querySelector("[data-tile]")||d.querySelector(".tile,.cell,.board-cell,.grid-cell");
   if(cand){ numEl=cand; fs=parseFloat(w.getComputedStyle(cand).fontSize)||0; }
   P("DR110_numbers>=9px", fs>=9, fs?fs.toFixed(1)+"px":"no numbered cell found");
-  // 6. connectors present (one per jump = 21)
+  // 6. connectors present (procedural board: 6-9 ladders + 6-9 snakes = 12-18)
   const conn=d.querySelectorAll("[data-jump],.ladder,.snake,.connector").length;
-  P("DR108_connectors=21", conn===21, conn+" connectors");
+  P("DR108_connectors_in_range", conn>=12 && conn<=18, conn+" connectors (expect 12-18)");
   // 7. tokens must occupy DISTINCT positions (not stacked)
   const pos=new Set(); toks.forEach(t=>{const r=t.getBoundingClientRect(); pos.add(r.left.toFixed(0)+","+r.top.toFixed(0));});
   P("VIS_tokens_distinct", pos.size===toks.length, pos.size+" distinct of "+toks.length);
