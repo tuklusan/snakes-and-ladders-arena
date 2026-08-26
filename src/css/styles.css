@@ -318,6 +318,25 @@ body {
     background: #a8a8a8;
 }
 
+/* Footer */
+#app-footer {
+    width: 620px;
+    margin: 0 auto;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    border-top: 1px solid #ddd;
+    font-size: 0; /* to remove whitespace */
+}
+#app-footer a {
+    font-size: 10px;
+    color: #0066cc;
+    text-decoration: none;
+}
+#app-footer a:hover {
+    text-decoration: underline;
+}
+
 /* Player color definitions for commentary */
 .commentary-player-0 { color: #e74c3c; } /* Red */
 .commentary-player-1 { color: #3498db; } /* Blue */
