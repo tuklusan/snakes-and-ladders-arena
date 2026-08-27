@@ -287,7 +287,7 @@ class GameView {
             const py = ux;
             
             // Ladder width (in viewBox units)
-            const ladderWidth = 2.0;
+            const ladderWidth = 3.0;
             
             // Calculate the four corners of the ladder
             const startLeftX = startCenter.x + px * ladderWidth / 2;
@@ -321,7 +321,7 @@ class GameView {
             
             path.setAttribute('d', d);
             path.setAttribute('stroke', '#2ecc71'); // green
-            path.setAttribute('stroke-width', '2.5'); // Increased from 2 to 2.5 for better visibility
+            path.setAttribute('stroke-width', '0.8'); // thin rails so rungs are visible
             path.setAttribute('fill', 'none');
             path.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(path);
@@ -1822,7 +1822,7 @@ class GameView {
         const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         headCircle.setAttribute('cx', 0);
         headCircle.setAttribute('cy', 0);
-        headCircle.setAttribute('r', 5); // Increased from 4 to 5
+        headCircle.setAttribute('r', 3); // Set to 3 as required
         headCircle.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
         group.appendChild(headCircle);
 
