@@ -73,9 +73,11 @@ class GameView {
         this.startButtonElement.addEventListener('click', () => {
             this._unlockAudioAndStart();
         });
+        this._debugEnabled = (new URLSearchParams(window.location.search).get('debug') === '1');
     }
 
     debugLog(message) {
+        if (!this._debugEnabled) return;
         // Get or create the debug log div
         let debugLogDiv = document.getElementById('debuglog');
         if (!debugLogDiv) {
