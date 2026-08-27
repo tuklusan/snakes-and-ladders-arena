@@ -270,58 +270,14 @@ class GameView {
 
         // Draw ladders
         for (const [start, end] of this.model.Ladders) {
-            const startCenter = this.model.tileToViewBoxCenter(start);
-            const endCenter = this.model.tileToViewBoxCenter(end);
-            
-            // Calculate ladder geometry: two parallel sides with rungs
-            const dx = endCenter.x - startCenter.x;
-            const dy = endCenter.y - startCenter.y;
-            const length = Math.sqrt(dx*dx + dy*dy);
-            
-            // Unit vector along the ladder
-            const ux = dx / length;
-            const uy = dy / length;
-            
-            // Perpendicular vector (for ladder width)
-            const px = -uy;
-            const py = ux;
-            
-            // Ladder width (in viewBox units)
-            const ladderWidth = 3.0;
-            
-            // Calculate the four corners of the ladder
-            const startLeftX = startCenter.x + px * ladderWidth / 2;
-            const startLeftY = startCenter.y + py * ladderWidth / 2;
-            const startRightX = startCenter.x - px * ladderWidth / 2;
-            const startRightY = startCenter.y - py * ladderWidth / 2;
-            const endLeftX = endCenter.x + px * ladderWidth / 2;
-            const endLeftY = endCenter.y + py * ladderWidth / 2;
-            const endRightX = endCenter.x - px * ladderWidth / 2;
-            const endRightY = endCenter.y - py * ladderWidth / 2;
-            
-            // Create the ladder path (sides and rungs)
+            const startCenter = this.getViewBoxCenter(start);
+            const endCenter = this.getViewBoxCenter(end);
+            // For ladder, we'll draw a straight line with dash array to simulate rungs
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            
-            // Start with the left side
-            let d = `M ${startLeftX} ${startLeftY} L ${endLeftX} ${endLeftY} `;
-            // Right side
-            d += `L ${endRightX} ${endRightY} L ${startRightX} ${startRightY} Z `;
-            
-            // Add rungs (every 5 units along the ladder)
-            const rungSpacing = 5.0;
-            const numRungs = Math.floor(length / rungSpacing);
-            for (let i = 1; i <= numRungs; i++) {
-                const t = i * rungSpacing / length;
-                const rungStartX = startCenter.x + ux * t * length + px * ladderWidth / 2;
-                const rungStartY = startCenter.y + uy * t * length + py * ladderWidth / 2;
-                const rungEndX = startCenter.x + ux * t * length - px * ladderWidth / 2;
-                const rungEndY = startCenter.y + uy * t * length - py * ladderWidth / 2;
-                d += `M ${rungStartX} ${rungStartY} L ${rungEndX} ${rungEndY} `;
-            }
-            
-            path.setAttribute('d', d);
+            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} L ${endCenter.x} ${endCenter.y}`);
             path.setAttribute('stroke', '#2ecc71'); // green
-            path.setAttribute('stroke-width', '0.8'); // thin rails so rungs are visible
+            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-dasharray', '4,2');
             path.setAttribute('fill', 'none');
             path.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(path);
@@ -332,7 +288,7 @@ class GameView {
             const startCenter = this.model.tileToViewBoxCenter(start);
             const endCenter = this.model.tileToViewBoxCenter(end);
             
-            // Draw the snake body with sinuous S-curve
+            // Draw the snake body with sinuous S-curve as a tapered filled path
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
@@ -350,15 +306,88 @@ class GameView {
             const controlPoint2X = endCenter.x - nx * amplitude * 0.5;
             const controlPoint2Y = endCenter.y - ny * amplitude * 0.5;
             
+            // Sample the Bezier curve for the tapered body
+            const numSamples = 20;
+            const baseWidth = 4.0; // in viewBox units
+            const taperFactor = 0.5; // width at tail is baseWidth * (1 - taperFactor) = baseWidth * 0.5
+            let pointsLeft = [];
+            let pointsRight = [];
+            for (let i = 0; i <= numSamples; i++) {
+                const t = i / numSamples;
+                // Compute point on Bezier curve
+                const oneMinusT = 1 - t;
+                const x = 
+                    oneMinusT*oneMinusT*oneMinusT * startCenter.x +
+                    3 * oneMinusT*oneMinusT * t * controlPoint1X +
+                    3 * oneMinusT * t*t * controlPoint2X +
+                    t*t*t * endCenter.x;
+                const y = 
+                    oneMinusT*oneMinusT*oneMinusT * startCenter.y +
+                    3 * oneMinusT*oneMinusT * t * controlPoint1Y +
+                    3 * oneMinusT * t*t * controlPoint2Y +
+                    t*t*t * endCenter.y;
+                
+                // Compute derivative (tangent) for normal
+                const dx_dt = 
+                    3 * oneMinusT*oneMinusT * (controlPoint1X - startCenter.x) +
+                    6 * oneMinusT * t * (controlPoint2X - controlPoint1X) +
+                    3 * t*t * (endCenter.x - controlPoint2X);
+                const dy_dt = 
+                    3 * oneMinusT*oneMinusT * (controlPoint1Y - startCenter.y) +
+                    6 * oneMinusT * t * (controlPoint2Y - controlPoint1Y) +
+                    3 * t*t * (endCenter.y - controlPoint2Y);
+                
+                // Normalize the tangent to get the direction vector
+                const len = Math.sqrt(dx_dt*dx_dt + dy_dt*dy_dt);
+                let tx, ty;
+                if (len > 0) {
+                    tx = dx_dt / len;
+                    ty = dy_dt / len;
+                } else {
+                    // If tangent is zero, use the direction from start to end
+                    tx = dx / length;
+                    ty = dy / length;
+                }
+                // Normal vector (perpendicular to tangent): rotate 90 degrees counterclockwise: (-ty, tx)
+                const nx = -ty;
+                const ny = tx;
+                
+                // Width at this point: taper from head (t=0) to tail (t=1)
+                const width = baseWidth * (1 - t * taperFactor);
+                const halfWidth = width / 2;
+                
+                // Left and right points
+                pointsLeft.push({
+                    x: x + nx * halfWidth,
+                    y: y + ny * halfWidth
+                });
+                pointsRight.push({
+                    x: x - nx * halfWidth,
+                    y: y - ny * halfWidth
+                });
+            }
+            
+            // Build the path data: left edge from head to tail, then right edge from tail to head
+            let d = `M ${pointsLeft[0].x} ${pointsLeft[0].y}`;
+            for (let i = 1; i < pointsLeft.length; i++) {
+                d += ` L ${pointsLeft[i].x} ${pointsLeft[i].y}`;
+            }
+            // Now go to the right edge at tail (which is the last point in pointsLeft? Actually, pointsLeft[numSamples] is at tail)
+            // But we want to go to the right edge at tail: pointsRight[numSamples]
+            d += ` L ${pointsRight[numSamples].x} ${pointsRight[numSamples].y}`;
+            for (let i = numSamples-1; i >= 0; i--) {
+                d += ` L ${pointsRight[i].x} ${pointsRight[i].y}`;
+            }
+            d += ` Z`; // close the path
+            
             const bodyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            bodyPath.setAttribute('d', `M ${startCenter.x} ${startCenter.y} C ${controlPoint1X} ${controlPoint1Y} ${controlPoint2X} ${controlPoint2Y} ${endCenter.x} ${endCenter.y}`);
-            bodyPath.setAttribute('stroke', '#e74c3c'); // red
-            bodyPath.setAttribute('stroke-width', '3'); // near-uniform width
-            bodyPath.setAttribute('fill', 'none');
+            bodyPath.setAttribute('d', d);
+            bodyPath.setAttribute('fill', '#e74c3c'); // red
+            bodyPath.setAttribute('stroke', 'none');
             bodyPath.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(bodyPath);
             
-            // Now, draw the head and tail
+            // Now, draw the head and tail, but scaled down to match the width at the ends
             // Direction from tail to head: (startCenter - endCenter)
             const headDx = startCenter.x - endCenter.x;
             const headDy = startCenter.y - endCenter.y;
@@ -366,13 +395,17 @@ class GameView {
             const headUx = headDx / headLength;
             const headUy = headDy / headLength;
             
-            const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy);
+            // Size of head proportional to width at head (t=0): baseWidth
+            const headSize = baseWidth / 2.0; // adjust as needed
+            const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy, headSize);
             this.svgElement.appendChild(headGroup);
             
             // Direction from head to tail: (endCenter - startCenter) = (-headDx, -headDy)
             const tailUx = -headUx;
             const tailUy = -headUy;
-            const tailGroup = this._createTailElement(endCenter.x, endCenter.y, tailUx, tailUy);
+            // Size of tail proportional to width at tail (t=1): baseWidth * (1 - taperFactor)
+            const tailSize = baseWidth * (1 - taperFactor) / 2.0;
+            const tailGroup = this._createTailElement(endCenter.x, endCenter.y, tailUx, tailUy, tailSize);
             this.svgElement.appendChild(tailGroup);
         }
     }
@@ -1812,23 +1845,23 @@ class GameView {
     }
 
     // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
-    _createHeadElement(cx, cy, ux, uy) {
+    _createHeadElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Head base: circle - increased size and changed color for better visibility
+        // Head base: circle - scaled by size
         const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         headCircle.setAttribute('cx', 0);
         headCircle.setAttribute('cy', 0);
-        headCircle.setAttribute('r', 3); // Set to 3 as required
+        headCircle.setAttribute('r', 3 * size); // Set to 3 as required, scaled
         headCircle.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
         group.appendChild(headCircle);
 
-        // Eyes: two circles - increased size
-        const eyeOffsetX = 2;
-        const eyeOffsetY = 1;
-        const eyeRadius = 1.2; // Increased from 0.8 to 1.2
+        // Eyes: two circles - scaled by size
+        const eyeOffsetX = 2 * size;
+        const eyeOffsetY = 1 * size;
+        const eyeRadius = 1.2 * size; // Increased from 0.8 to 1.2, scaled
 
         // Left eye (top-right in the head's coordinate system)
         const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1846,11 +1879,11 @@ class GameView {
         eye2.setAttribute('fill', '#fff');
         group.appendChild(eye2);
 
-        // Tongue: two lines - increased size and changed color
-        const tongueStartX = 4;
+        // Tongue: two lines - scaled by size
+        const tongueStartX = 4 * size;
         const tongueStartY = 0;
-        const tongueLength = 3; // Increased from 2 to 3
-        const tongueOffset = 0.7; // Increased from 0.5 to 0.7
+        const tongueLength = 3 * size; // Increased from 2 to 3, scaled
+        const tongueOffset = 0.7 * size; // Increased from 0.5 to 0.7, scaled
 
         const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         tongueLine1.setAttribute('x1', tongueStartX);
@@ -1858,7 +1891,7 @@ class GameView {
         tongueLine1.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine1.setAttribute('y2', -tongueOffset);
         tongueLine1.setAttribute('stroke', '#c0392b');
-        tongueLine1.setAttribute('stroke-width', 0.8); // Increased from 0.5 to 0.8
+        tongueLine1.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
         group.appendChild(tongueLine1);
 
         const tongueLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1867,21 +1900,21 @@ class GameView {
         tongueLine2.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine2.setAttribute('y2', tongueOffset);
         tongueLine2.setAttribute('stroke', '#c0392b');
-        tongueLine2.setAttribute('stroke-width', 0.8); // Increased from 0.5 to 0.8
+        tongueLine2.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
         group.appendChild(tongueLine2);
 
         return group;
     }
 
     // Create an SVG group for a snake tail, positioned at (cx, cy) and facing in the direction (ux, uy)
-    _createTailElement(cx, cy, ux, uy) {
+    _createTailElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Tail: a tapering whip tail - slender triangle pointing backward
-        const tailLength = 5; // length of the tail
-        const tailWidth = 2; // base width
+        // Tail: a tapering whip tail - slender triangle pointing backward, scaled by size
+        const tailLength = 5 * size; // length of the tail
+        const tailWidth = 2 * size; // base width
         const tailPoints = `
             0,0 
             ${-tailLength},${-tailWidth/2} 
