@@ -1088,7 +1088,7 @@ class GameView {
         const shouldDoStepByStepWalk = isStepByStep && !isEntryMove;
 
         if (shouldDoStepByStepWalk) {
-            await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord, move.moveId);
+            await this._animateStepByStep(previousPosition, newPosition, move.playerId, dieRoll, intermediatePos, move.lastTurnRecord, undefined, undefined, undefined, undefined, move.moveId);
         } else {
             this.playAudio('enter');
             await this._animateDirectMove(previousPosition, newPosition, move.playerId);
