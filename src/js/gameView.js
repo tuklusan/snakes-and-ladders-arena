@@ -268,19 +268,79 @@ class GameView {
             this.svgElement.removeChild(this.svgElement.firstChild);
         }
 
-        // Draw ladders
+        // Draw ladders with two rails and rungs
         for (const [start, end] of this.model.Ladders) {
             const startCenter = this.getViewBoxCenter(start);
             const endCenter = this.getViewBoxCenter(end);
-            // For ladder, we'll draw a straight line with dash array to simulate rungs
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} L ${endCenter.x} ${endCenter.y}`);
-            path.setAttribute('stroke', '#2ecc71'); // green
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('stroke-dasharray', '4,2');
-            path.setAttribute('fill', 'none');
-            path.setAttribute('data-jump', `${start}-${end}`);
-            this.svgElement.appendChild(path);
+            
+            // Calculate the vector from start to end
+            const dx = endCenter.x - startCenter.x;
+            const dy = endCenter.y - startCenter.y;
+            const length = Math.sqrt(dx*dx + dy*dy);
+            
+            // If length is zero, skip (shouldn't happen)
+            if (length === 0) continue;
+            
+            // Unit vector along the ladder
+            const ux = dx / length;
+            const uy = dy / length;
+            
+            // Perpendicular vector (for rungs and rail offset)
+            const px = -uy;
+            const py = ux;
+            
+            // Rail offset (half the distance between rails)
+            const railOffset = 0.8; // in viewBox units
+            
+            // Calculate rail positions
+            const rail1StartX = startCenter.x + px * railOffset;
+            const rail1StartY = startCenter.y + py * railOffset;
+            const rail1EndX = endCenter.x + px * railOffset;
+            const rail1EndY = endCenter.y + py * railOffset;
+            
+            const rail2StartX = startCenter.x - px * railOffset;
+            const rail2StartY = startCenter.y - py * railOffset;
+            const rail2EndX = endCenter.x - px * railOffset;
+            const rail2EndY = endCenter.y - py * railOffset;
+            
+            // Draw the two rails
+            const rail1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            rail1.setAttribute('d', `M ${rail1StartX} ${rail1StartY} L ${rail1EndX} ${rail1EndY}`);
+            rail1.setAttribute('stroke', '#2ecc71'); // green
+            rail1.setAttribute('stroke-width', '1.5');
+            rail1.setAttribute('fill', 'none');
+            rail1.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(rail1);
+            
+            const rail2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            rail2.setAttribute('d', `M ${rail2StartX} ${rail2StartY} L ${rail2EndX} ${rail2EndY}`);
+            rail2.setAttribute('stroke', '#2ecc71'); // green
+            rail2.setAttribute('stroke-width', '1.5');
+            rail2.setAttribute('fill', 'none');
+            rail2.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(rail2);
+            
+            // Draw rungs (perpendicular lines between rails)
+            const numRungs = Math.max(2, Math.floor(length / 5)); // at least 2 rungs, spaced every 5 viewBox units
+            for (let i = 0; i <= numRungs; i++) {
+                const t = i / numRungs; // position along ladder from 0 to 1
+                const rungCenterX = startCenter.x + t * dx;
+                const rungCenterY = startCenter.y + t * dy;
+                
+                // Rung endpoints (from rail1 to rail2)
+                const rungStartX = rungCenterX + px * railOffset;
+                const rungStartY = rungCenterY + py * railOffset;
+                const rungEndX = rungCenterX - px * railOffset;
+                const rungEndY = rungCenterY - py * railOffset;
+                
+                const rung = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                rung.setAttribute('d', `M ${rungStartX} ${rungStartY} L ${rungEndX} ${rungEndY}`);
+                rung.setAttribute('stroke', '#2ecc71'); // green
+                rung.setAttribute('stroke-width', '1.5');
+                rung.setAttribute('fill', 'none');
+                rung.setAttribute('data-jump', `${start}-${end}`);
+                this.svgElement.appendChild(rung);
+            }
         }
 
         // Draw snakes
