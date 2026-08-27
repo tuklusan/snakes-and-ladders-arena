@@ -332,10 +332,7 @@ class GameView {
             const startCenter = this.model.tileToViewBoxCenter(start);
             const endCenter = this.model.tileToViewBoxCenter(end);
             
-            // For snake, we'll draw a more natural curved path using cubic Bezier
-            // Calculate control points for a natural S-curve
-            const mx = (startCenter.x + endCenter.x) / 2;
-            const my = (startCenter.y + endCenter.y) / 2;
+            // Draw the snake body (as before)
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
@@ -348,18 +345,35 @@ class GameView {
             const py = (dx / length) * offset;
             
             // Two control points for a more natural curve
-            const controlPoint1X = mx + px * 0.3;
-            const controlPoint1Y = my + py * 0.3;
-            const controlPoint2X = mx - px * 0.3;
-            const controlPoint2Y = my - py * 0.3;
+            const controlPoint1X = startCenter.x + px * 0.3;
+            const controlPoint1Y = startCenter.y + py * 0.3;
+            const controlPoint2X = endCenter.x - px * 0.3;
+            const controlPoint2Y = endCenter.y - py * 0.3;
             
-            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} C ${controlPoint1X} ${controlPoint1Y} ${controlPoint2X} ${controlPoint2Y} ${endCenter.x} ${endCenter.y}`);
-            path.setAttribute('stroke', '#e74c3c'); // red
-            path.setAttribute('stroke-width', '2');
-            path.setAttribute('fill', 'none');
-            path.setAttribute('data-jump', `${start}-${end}`);
-            this.svgElement.appendChild(path);
+            const bodyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            bodyPath.setAttribute('d', `M ${startCenter.x} ${startCenter.y} C ${controlPoint1X} ${controlPoint1Y} ${controlPoint2X} ${controlPoint2Y} ${endCenter.x} ${endCenter.y}`);
+            bodyPath.setAttribute('stroke', '#e74c3c'); // red
+            bodyPath.setAttribute('stroke-width', '2');
+            bodyPath.setAttribute('fill', 'none');
+            bodyPath.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(bodyPath);
+            
+            // Now, draw the head and tail
+            // Direction from tail to head: (startCenter - endCenter)
+            const headDx = startCenter.x - endCenter.x;
+            const headDy = startCenter.y - endCenter.y;
+            const headLength = Math.sqrt(headDx*headDx + headDy*headDy);
+            const headUx = headDx / headLength;
+            const headUy = headDy / headLength;
+            
+            const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy);
+            this.svgElement.appendChild(headGroup);
+            
+            // Direction from head to tail: (endCenter - startCenter) = (-headDx, -headDy)
+            const tailUx = -headUx;
+            const tailUy = -headUy;
+            const tailGroup = this._createTailElement(endCenter.x, endCenter.y, tailUx, tailUy);
+            this.svgElement.appendChild(tailGroup);
         }
     }
 
@@ -858,6 +872,15 @@ class GameView {
         if (this.model.isGameOver()) {
             this.handleGameOver();
             return;
+        }
+        // Check if we need to probe autoplay
+        if (!this.hasProbedAutoplay) {
+            this.hasProbedAutoplay = true;
+            this.probeAutoplay();
+            // If the button is now shown, we wait for the user to click it.
+            if (this.startButtonElement.parentNode) {
+                return;
+            }
         }
         // Immediately roll dice
         this.controller.rollDice();
@@ -1787,6 +1810,90 @@ class GameView {
         for (const playerId of playersOnTileOne) {
             this.positionToken(playerId, 1, this.tokenElements[playerId]);
         }
+    }
+
+    // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
+    _createHeadElement(cx, cy, ux, uy) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const angle = Math.atan2(uy, ux); // in radians
+        group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
+
+        // Head base: circle
+        const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        headCircle.setAttribute('cx', 0);
+        headCircle.setAttribute('cy', 0);
+        headCircle.setAttribute('r', 4);
+        headCircle.setAttribute('fill', '#111');
+        group.appendChild(headCircle);
+
+        // Eyes: two circles
+        const eyeOffsetX = 2;
+        const eyeOffsetY = 1;
+        const eyeRadius = 0.8;
+
+        // Left eye (top-right in the head's coordinate system)
+        const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        eye1.setAttribute('cx', eyeOffsetX);
+        eye1.setAttribute('cy', -eyeOffsetY);
+        eye1.setAttribute('r', eyeRadius);
+        eye1.setAttribute('fill', '#fff');
+        group.appendChild(eye1);
+
+        // Right eye (bottom-right)
+        const eye2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        eye2.setAttribute('cx', eyeOffsetX);
+        eye2.setAttribute('cy', eyeOffsetY);
+        eye2.setAttribute('r', eyeRadius);
+        eye2.setAttribute('fill', '#fff');
+        group.appendChild(eye2);
+
+        // Tongue: two lines
+        const tongueStartX = 4;
+        const tongueStartY = 0;
+        const tongueLength = 2;
+        const tongueOffset = 0.5;
+
+        const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tongueLine1.setAttribute('x1', tongueStartX);
+        tongueLine1.setAttribute('y1', tongueStartY);
+        tongueLine1.setAttribute('x2', tongueStartX + tongueLength);
+        tongueLine1.setAttribute('y2', -tongueOffset);
+        tongueLine1.setAttribute('stroke', '#c0392b');
+        tongueLine1.setAttribute('stroke-width', 0.5);
+        group.appendChild(tongueLine1);
+
+        const tongueLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        tongueLine2.setAttribute('x1', tongueStartX);
+        tongueLine2.setAttribute('y1', tongueStartY);
+        tongueLine2.setAttribute('x2', tongueStartX + tongueLength);
+        tongueLine2.setAttribute('y2', tongueOffset);
+        tongueLine2.setAttribute('stroke', '#c0392b');
+        tongueLine2.setAttribute('stroke-width', 0.5);
+        group.appendChild(tongueLine2);
+
+        return group;
+    }
+
+    // Create an SVG group for a snake tail, positioned at (cx, cy) and facing in the direction (ux, uy)
+    _createTailElement(cx, cy, ux, uy) {
+        const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const angle = Math.atan2(uy, ux); // in radians
+        group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
+
+        // Tail: a triangle pointing to the right (positive x) in the group's coordinate system.
+        const tailWidth = 3;
+        const tailLength = 5;
+        const tailPoints = `
+            0,0 
+            ${-tailWidth},${-tailLength} 
+            ${-tailWidth},${tailLength}
+        `;
+        const tailPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        tailPolygon.setAttribute('points', tailPoints.trim());
+        tailPolygon.setAttribute('fill', '#111');
+        group.appendChild(tailPolygon);
+
+        return group;
     }
 }
 
