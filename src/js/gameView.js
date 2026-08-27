@@ -31,6 +31,8 @@ class GameView {
         this.loadingTimeout = null; // timeout to hide loading overlay after a delay
         this.audioElements = {} // HTMLAudioElement for each sound
         this.previousPositions = [0,0,0,0]; // to track token positions for animation
+        this.pendingCaptureOpponentId = null;
+        this.pendingCaptureTile = null;
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
         this.svgElement = null; // SVG overlay for snakes and ladders
         this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
@@ -502,7 +504,6 @@ class GameView {
         this.diceElement.style.backgroundSize = 'contain';
         this.diceElement.style.backgroundRepeat = 'no-repeat';
         this.diceElement.style.backgroundPosition = 'center';
-        this.diceElement.style.alignSelf = 'center'; // Center horizontally in the flex column
         // Override any absolute positioning from CSS
         this.diceElement.style.position = 'static';
         console.log('[gameView] Created diceElement with position: static');
@@ -884,9 +885,10 @@ class GameView {
 
     // Handle capture of an opponent's token
     onCapture(opponentId, finalPos) {
-        // Play capture sound
-        this.playAudio('capture');
-        // Optionally, add a visual effect or vibration
+        // Store capture info for delayed processing
+        this.pendingCaptureOpponentId = opponentId;
+        this.pendingCaptureTile = finalPos;
+        // Do NOT play capture sound here
     }
 
     onGameWin(playerId) {
@@ -954,7 +956,7 @@ class GameView {
         console.log(`[gameView] piece move start at ${Date.now()}`);
 
         // Update turn indicator to show whose roll is being processed (matches dice)
-// Turn indicator removed - no longer needed
+    // Turn indicator removed - no longer needed
 
         // Now, animate the tokens that have changed
         const currentPositions = [];
@@ -968,6 +970,12 @@ class GameView {
 
         let animationPromises = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
+            // Skip animating the captured opponent token in this batch; it will be handled later
+            if (this.pendingCaptureOpponentId !== null && i === this.pendingCaptureOpponentId && 
+                currentPositions[i] === 0 && this.previousPositions[i] === this.pendingCaptureTile) {
+                continue;
+            }
+            
             if (currentPositions[i] !== this.previousPositions[i]) {
                 console.log(`[gameView] animating token ${i} from ${this.previousPositions[i]} to ${currentPositions[i]}`);
                 
@@ -992,17 +1000,11 @@ class GameView {
         // Update previous positions
         this.previousPositions = [...currentPositions];
 
-        // Single-fire guard for autoRoll
-        let settled = false;
-        const proceed = () => {
-            this.debugLog(`proceed called (at beginning): moveId=${this.moveId}`);
-            if (settled) return;
-            // Check if this is the latest move
-            if (this.moveId !== currentMoveId) {
-                return;
-            }
-            this.debugLog(`proceed called: moveId=${this.moveId}, lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
-            settled = true;
+        // Async post-animation handler
+        async function handlePostAnimation() {
+            
+            this.debugLog(`handlePostAnimation called: moveId=${this.moveId}, lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
+            
             // Update player info to show whose turn is next after movement completes
             let activePlayerToShow;
             if (lastRoll === 6 && consecutiveSixes > 0) {
@@ -1021,14 +1023,47 @@ class GameView {
             // Generate commentary for the turn that just completed
             this.generateCommentary();
             
-            // Schedule the next autoRoll with a 900ms delay
-            if (this.autoRollTimeout) {
-                clearTimeout(this.autoRollTimeout);
+            // Handle pending capture if any
+            if (this.pendingCaptureOpponentId !== null) {
+                this.debugLog(`Handling pending capture for opponent ${this.pendingCaptureOpponentId} from tile ${this.pendingCaptureTile}`);
+                // Play the capture sound
+                this.playAudio('capture');
+                // Animate the opponent token from the pendingCaptureTile to tile 0 (staging)
+                await this._animateDirectMove(this.pendingCaptureTile, 0, this.pendingCaptureOpponentId);
+                // Check if this is still the current move after the await (in case a new turn started during the animation)
+                if (this.moveId !== currentMoveId) {
+                    // Do not clear the pending capture variables as they belong to a newer turn
+                    return;
+                }
+                // Clear the pending capture variables only if we are still the current turn
+                this.pendingCaptureOpponentId = null;
+                this.pendingCaptureTile = null;
             }
-            this.debugLog(`autoRoll scheduled for moveId=${this.moveId} in 900ms after turn with lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
-            this.autoRollTimeout = setTimeout(() => {
-                this.autoRoll();
-            }, 900);
+            
+            // Schedule the next autoRoll with a 900ms delay only if we are still the current turn
+            if (this.moveId === currentMoveId) {
+                if (this.autoRollTimeout) {
+                    clearTimeout(this.autoRollTimeout);
+                }
+                this.debugLog(`autoRoll scheduled for moveId=${this.moveId} in 900ms after turn with lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
+                this.autoRollTimeout = setTimeout(() => {
+                    this.autoRoll();
+                }, 900);
+            } else {
+                this.debugLog(`Not scheduling autoRoll because moveId changed (current moveId=${this.moveId}, expected=${currentMoveId})`);
+            }
+        }
+
+        // Single-fire guard for autoRoll
+        let settled = false;
+        const proceed = () => {
+            this.debugLog(`proceed called (at beginning): moveId=${this.moveId}`);
+            if (settled) return;
+            // We always want to handle post-animation for the turn that just completed,
+            // even if a new turn has started during the animation wait.
+            this.debugLog(`proceed called: moveId=${this.moveId}, lastRoll=${lastRoll}, activePlayer=${activePlayer}`);
+            settled = true;
+            handlePostAnimation.call(this);
         };
 
         this.debugLog(`animationPromises length: ${animationPromises.length}`);
@@ -1037,8 +1072,6 @@ class GameView {
             proceed();
             return;
         }
-
-        // Wait for all animations to complete
 
         // Wait for all animations to complete
         Promise.all(animationPromises).then(() => {
@@ -1095,9 +1128,8 @@ class GameView {
             await this._animateDirectMove(previousPosition, newPosition, move.playerId);
         }
     }
-
     
-
+    
     // Animates a move step-by-step along the board, then along the jump path if applicable.
     // Animates a move step-by-step along the board, then along the jump path if applicable.
     async _animateStepByStep(startTile, endTile, playerId, dieRoll, intermediatePos, lastTurnRecord, isIntermediatePosLadderStart, isIntermediatePosSnakeStart, isEndTileLadderStart, isEndTileSnakeStart, moveId) {
