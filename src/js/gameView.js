@@ -268,27 +268,60 @@ class GameView {
             this.svgElement.removeChild(this.svgElement.firstChild);
         }
 
-        // Helper function to compute the viewBox center for a tile
-        const getViewBoxCenter = (tile) => {
-            const tileZero = tile - 1;
-            const logicalRow = Math.floor(tileZero / 10); // 0 = bottom row, 9 = top row
-            const colInRow = tileZero % 10;
-            const col = (logicalRow % 2 === 0) ? colInRow : (9 - colInRow);
-            const x = (col * 10) + 5;
-            const y = ((9 - logicalRow) * 10) + 5; // because logicalRow 0 -> y=95
-            return {x, y};
-        };
-
         // Draw ladders
         for (const [start, end] of this.model.Ladders) {
-            const startCenter = getViewBoxCenter(start);
-            const endCenter = getViewBoxCenter(end);
-            // For ladder, we'll draw a straight line with dash array to simulate rungs
+            const startCenter = this.model.tileToViewBoxCenter(start);
+            const endCenter = this.model.tileToViewBoxCenter(end);
+            
+            // Calculate ladder geometry: two parallel sides with rungs
+            const dx = endCenter.x - startCenter.x;
+            const dy = endCenter.y - startCenter.y;
+            const length = Math.sqrt(dx*dx + dy*dy);
+            
+            // Unit vector along the ladder
+            const ux = dx / length;
+            const uy = dy / length;
+            
+            // Perpendicular vector (for ladder width)
+            const px = -uy;
+            const py = ux;
+            
+            // Ladder width (in viewBox units)
+            const ladderWidth = 2.0;
+            
+            // Calculate the four corners of the ladder
+            const startLeftX = startCenter.x + px * ladderWidth / 2;
+            const startLeftY = startCenter.y + py * ladderWidth / 2;
+            const startRightX = startCenter.x - px * ladderWidth / 2;
+            const startRightY = startCenter.y - py * ladderWidth / 2;
+            const endLeftX = endCenter.x + px * ladderWidth / 2;
+            const endLeftY = endCenter.y + py * ladderWidth / 2;
+            const endRightX = endCenter.x - px * ladderWidth / 2;
+            const endRightY = endCenter.y - py * ladderWidth / 2;
+            
+            // Create the ladder path (sides and rungs)
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} L ${endCenter.x} ${endCenter.y}`);
+            
+            // Start with the left side
+            let d = `M ${startLeftX} ${startLeftY} L ${endLeftX} ${endLeftY} `;
+            // Right side
+            d += `L ${endRightX} ${endRightY} L ${startRightX} ${startRightY} Z `;
+            
+            // Add rungs (every 5 units along the ladder)
+            const rungSpacing = 5.0;
+            const numRungs = Math.floor(length / rungSpacing);
+            for (let i = 1; i <= numRungs; i++) {
+                const t = i * rungSpacing / length;
+                const rungStartX = startCenter.x + ux * t * length + px * ladderWidth / 2;
+                const rungStartY = startCenter.y + uy * t * length + py * ladderWidth / 2;
+                const rungEndX = startCenter.x + ux * t * length - px * ladderWidth / 2;
+                const rungEndY = startCenter.y + uy * t * length - py * ladderWidth / 2;
+                d += `M ${rungStartX} ${rungStartY} L ${rungEndX} ${rungEndY} `;
+            }
+            
+            path.setAttribute('d', d);
             path.setAttribute('stroke', '#2ecc71'); // green
             path.setAttribute('stroke-width', '2');
-            path.setAttribute('stroke-dasharray', '4,2');
             path.setAttribute('fill', 'none');
             path.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(path);
@@ -296,21 +329,32 @@ class GameView {
 
         // Draw snakes
         for (const [start, end] of this.model.Snakes) {
-            const startCenter = getViewBoxCenter(start);
-            const endCenter = getViewBoxCenter(end);
-            // For snake, we'll draw a curved path (quadratic Bezier)
+            const startCenter = this.model.tileToViewBoxCenter(start);
+            const endCenter = this.model.tileToViewBoxCenter(end);
+            
+            // For snake, we'll draw a more natural curved path using cubic Bezier
+            // Calculate control points for a natural S-curve
             const mx = (startCenter.x + endCenter.x) / 2;
             const my = (startCenter.y + endCenter.y) / 2;
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
-            const offset = 6; // arbitrary offset for control point
-            const nx = (-dy / length) * offset;
-            const ny = (dx / length) * offset;
-            const controlX = mx + nx;
-            const controlY = my + ny;
+            
+            // Use a stronger offset for more natural snake movement
+            const offset = Math.min(20, length / 3); // Dynamic offset based on length
+            
+            // Perpendicular vector
+            const px = (-dy / length) * offset;
+            const py = (dx / length) * offset;
+            
+            // Two control points for a more natural curve
+            const controlPoint1X = mx + px * 0.3;
+            const controlPoint1Y = my + py * 0.3;
+            const controlPoint2X = mx - px * 0.3;
+            const controlPoint2Y = my - py * 0.3;
+            
             const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} Q ${controlX} ${controlY} ${endCenter.x} ${endCenter.y}`);
+            path.setAttribute('d', `M ${startCenter.x} ${startCenter.y} C ${controlPoint1X} ${controlPoint1Y} ${controlPoint2X} ${controlPoint2Y} ${endCenter.x} ${endCenter.y}`);
             path.setAttribute('stroke', '#e74c3c'); // red
             path.setAttribute('stroke-width', '2');
             path.setAttribute('fill', 'none');
