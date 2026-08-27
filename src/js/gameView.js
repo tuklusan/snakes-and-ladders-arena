@@ -1053,6 +1053,7 @@ class GameView {
     onWindowResize() {
         this.sizeTokens();
         this.drawSnakesAndLadders();
+        this.relayoutTileOneOccupants();
     }
 
     // Animates a token move. Returns a promise that resolves when the animation completes.
