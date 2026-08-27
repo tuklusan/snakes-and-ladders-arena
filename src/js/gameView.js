@@ -332,28 +332,28 @@ class GameView {
             const startCenter = this.model.tileToViewBoxCenter(start);
             const endCenter = this.model.tileToViewBoxCenter(end);
             
-            // Draw the snake body (as before)
+            // Draw the snake body with sinuous S-curve
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
             
-            // Use a stronger offset for more natural snake movement
-            const offset = Math.min(20, length / 3); // Dynamic offset based on length
+            // Perpendicular vector (normalized)
+            const nx = -dy / length;
+            const ny = dx / length;
             
-            // Perpendicular vector
-            const px = (-dy / length) * offset;
-            const py = (dx / length) * offset;
+            // Amplitude for the S-curve (undulation)
+            const amplitude = Math.min(12, length / 4); // tweak for natural look
             
-            // Two control points for a more natural curve
-            const controlPoint1X = startCenter.x + px * 0.3;
-            const controlPoint1Y = startCenter.y + py * 0.3;
-            const controlPoint2X = endCenter.x - px * 0.3;
-            const controlPoint2Y = endCenter.y - py * 0.3;
+            // Control points positioned on opposite sides of the line to create an S shape
+            const controlPoint1X = startCenter.x + nx * amplitude * 0.5;
+            const controlPoint1Y = startCenter.y + ny * amplitude * 0.5;
+            const controlPoint2X = endCenter.x - nx * amplitude * 0.5;
+            const controlPoint2Y = endCenter.y - ny * amplitude * 0.5;
             
             const bodyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             bodyPath.setAttribute('d', `M ${startCenter.x} ${startCenter.y} C ${controlPoint1X} ${controlPoint1Y} ${controlPoint2X} ${controlPoint2Y} ${endCenter.x} ${endCenter.y}`);
             bodyPath.setAttribute('stroke', '#e74c3c'); // red
-            bodyPath.setAttribute('stroke-width', '2');
+            bodyPath.setAttribute('stroke-width', '3'); // near-uniform width
             bodyPath.setAttribute('fill', 'none');
             bodyPath.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(bodyPath);
@@ -1320,6 +1320,15 @@ class GameView {
                 const startTime = performance.now();
                 // Play the appropriate sound
                 this.playAudio(isJumpStartLadderStart ? 'ladder' : 'snake');
+                // Prepare for pixel-based positioning: suppress CSS transition during path animation
+                const containerRect = this.container.getBoundingClientRect();
+                const boardRect = this.boardElement.getBoundingClientRect();
+                const boardLeft = boardRect.left - containerRect.left;
+                const boardTop = boardRect.top - containerRect.top;
+                const boardWidth = boardRect.width;
+                const boardHeight = boardRect.height;
+                const originalTransition = token.style.transition;
+                token.style.transition = 'none';
                 // Animation loop
                 await new Promise((resolve, reject) => {
                     // Create SVG point once for reuse
@@ -1330,6 +1339,8 @@ class GameView {
                         if (!animationFinished) {
                             animationFinished = true;
                             if (rafId) cancelAnimationFrame(rafId);
+                            // Restore transition
+                            token.style.transition = originalTransition;
                             resolve();
                         }
                     }, duration + 100);
@@ -1338,6 +1349,8 @@ class GameView {
                             animationFinished = true;
                             if (rafId) cancelAnimationFrame(rafId);
                             clearTimeout(timeoutId);
+                            // Restore transition
+                            token.style.transition = originalTransition;
                             resolve();
                             return;
                         }
@@ -1351,31 +1364,17 @@ class GameView {
                         // point.x and point.y are in viewBox coordinates (0-100)
                         const x_vb = point.x;
                         const y_vb = point.y;
-                        // Find the closest tile to this viewBox position
-                        const logicalRowFloat = 9 - (y_vb - 5) / 10;
-                        let logicalRow = Math.round(logicalRowFloat);
-                        logicalRow = Math.max(0, Math.min(9, logicalRow));
-                        let colInRow;
-                        if (logicalRow % 2 === 0) {
-                            colInRow = (x_vb - 5) / 10;
-                        } else {
-                            colInRow = 9 - (x_vb - 5) / 10;
-                        }
-                        colInRow = Math.max(0, Math.min(9, colInRow));
-                        const tileZero = logicalRow * 10 + colInRow;
-                        let tile = Math.round(tileZero) + 1;
-                        tile = Math.max(1, Math.min(100, tile));
-                        // Get the pixel position of this tile's center
-                        const pos = this.getTokenPositionFromTile(tile, playerId);
-                        if (pos) {
-                            this.positionToken(playerId, tile, token);
-                        }
-                        console.log(`[gameView] jump animation at t=${t} -> tile ${tile} (${x_vb},${y_vb})`);
+                        // Convert viewBox point to container-relative pixels
+                        const pixelX = boardLeft + (x_vb / 100) * boardWidth;
+                        const pixelY = boardTop + (y_vb / 100) * boardHeight;
+                        this.setTokenPositionFromPixel(pixelX, pixelY, token);
                         if (t < 1) {
                             rafId = requestAnimationFrame(step);
                         } else {
                             animationFinished = true;
                             clearTimeout(timeoutId);
+                            // Restore transition
+                            token.style.transition = originalTransition;
                             resolve();
                         }
                     };
@@ -1880,17 +1879,17 @@ class GameView {
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Tail: a triangle pointing to the right (positive x) in the group's coordinate system - increased size and changed color
-        const tailWidth = 4; // Increased from 3 to 4
-        const tailLength = 6; // Increased from 5 to 6
+        // Tail: a tapering whip tail - slender triangle pointing backward
+        const tailLength = 5; // length of the tail
+        const tailWidth = 2; // base width
         const tailPoints = `
             0,0 
-            ${-tailWidth},${-tailLength} 
-            ${-tailWidth},${tailLength}
+            ${-tailLength},${-tailWidth/2} 
+            ${-tailLength},${tailWidth/2}
         `;
         const tailPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         tailPolygon.setAttribute('points', tailPoints.trim());
-        tailPolygon.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
+        tailPolygon.setAttribute('fill', '#e74c3c');
         group.appendChild(tailPolygon);
 
         return group;
