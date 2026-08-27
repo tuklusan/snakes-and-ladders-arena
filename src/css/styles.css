@@ -329,7 +329,7 @@ body {
     font-size: 0; /* to remove whitespace */
 }
 #app-footer a {
-    font-size: 10px;
+    font-size: 12px; /* Increased from 10px to 12px */
     color: #0066cc;
     text-decoration: none;
 }

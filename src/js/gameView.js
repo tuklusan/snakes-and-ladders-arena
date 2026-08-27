@@ -321,7 +321,7 @@ class GameView {
             
             path.setAttribute('d', d);
             path.setAttribute('stroke', '#2ecc71'); // green
-            path.setAttribute('stroke-width', '2');
+            path.setAttribute('stroke-width', '2.5'); // Increased from 2 to 2.5 for better visibility
             path.setAttribute('fill', 'none');
             path.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(path);
@@ -1818,18 +1818,18 @@ class GameView {
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Head base: circle
+        // Head base: circle - increased size and changed color for better visibility
         const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         headCircle.setAttribute('cx', 0);
         headCircle.setAttribute('cy', 0);
-        headCircle.setAttribute('r', 4);
-        headCircle.setAttribute('fill', '#111');
+        headCircle.setAttribute('r', 5); // Increased from 4 to 5
+        headCircle.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
         group.appendChild(headCircle);
 
-        // Eyes: two circles
+        // Eyes: two circles - increased size
         const eyeOffsetX = 2;
         const eyeOffsetY = 1;
-        const eyeRadius = 0.8;
+        const eyeRadius = 1.2; // Increased from 0.8 to 1.2
 
         // Left eye (top-right in the head's coordinate system)
         const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
@@ -1847,11 +1847,11 @@ class GameView {
         eye2.setAttribute('fill', '#fff');
         group.appendChild(eye2);
 
-        // Tongue: two lines
+        // Tongue: two lines - increased size and changed color
         const tongueStartX = 4;
         const tongueStartY = 0;
-        const tongueLength = 2;
-        const tongueOffset = 0.5;
+        const tongueLength = 3; // Increased from 2 to 3
+        const tongueOffset = 0.7; // Increased from 0.5 to 0.7
 
         const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         tongueLine1.setAttribute('x1', tongueStartX);
@@ -1859,7 +1859,7 @@ class GameView {
         tongueLine1.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine1.setAttribute('y2', -tongueOffset);
         tongueLine1.setAttribute('stroke', '#c0392b');
-        tongueLine1.setAttribute('stroke-width', 0.5);
+        tongueLine1.setAttribute('stroke-width', 0.8); // Increased from 0.5 to 0.8
         group.appendChild(tongueLine1);
 
         const tongueLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
@@ -1868,7 +1868,7 @@ class GameView {
         tongueLine2.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine2.setAttribute('y2', tongueOffset);
         tongueLine2.setAttribute('stroke', '#c0392b');
-        tongueLine2.setAttribute('stroke-width', 0.5);
+        tongueLine2.setAttribute('stroke-width', 0.8); // Increased from 0.5 to 0.8
         group.appendChild(tongueLine2);
 
         return group;
@@ -1880,9 +1880,9 @@ class GameView {
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Tail: a triangle pointing to the right (positive x) in the group's coordinate system.
-        const tailWidth = 3;
-        const tailLength = 5;
+        // Tail: a triangle pointing to the right (positive x) in the group's coordinate system - increased size and changed color
+        const tailWidth = 4; // Increased from 3 to 4
+        const tailLength = 6; // Increased from 5 to 6
         const tailPoints = `
             0,0 
             ${-tailWidth},${-tailLength} 
@@ -1890,7 +1890,7 @@ class GameView {
         `;
         const tailPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
         tailPolygon.setAttribute('points', tailPoints.trim());
-        tailPolygon.setAttribute('fill', '#111');
+        tailPolygon.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
         group.appendChild(tailPolygon);
 
         return group;
