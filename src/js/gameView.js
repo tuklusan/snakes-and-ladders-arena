@@ -789,12 +789,6 @@ class GameView {
         // Roll button removed for fully automatic arena
     }
     
-    _unlockAudioAndStart() {
-        // Unlock audio context on user interaction
-        // This is a no-op in automatic mode but kept for compatibility
-        console.log('[gameView] Audio unlocked via user interaction');
-    }
-    
     enableRollButton() {
         // Roll button removed for fully automatic arena
         // This is a no-op but kept for compatibility
@@ -1196,8 +1190,18 @@ class GameView {
                     break;
                 }
                 this.positionToken(playerId, nextTile, token);
-                // Play step sound for each hop
-                this.playAudio('step');
+                // Play step sound for each hop with volume based on tile number
+                const stepAudio = this.assets.audio.step;
+                if (stepAudio) {
+                    // Linear volume from 0.2 at tile 1 to 1.0 at tile 100
+                    stepAudio.volume = 0.2 + (nextTile - 1) * (0.8 / 99);
+                    stepAudio.currentTime = 0;
+                    stepAudio.play().catch(e => {
+                        console.warn(`[gameView] Failed to play step audio:`, e);
+                    });
+                } else {
+                    console.warn(`[gameView] Step audio not found`);
+                }
                 // Wait for a short duration (150-250ms)
                 await this._delay(200); // fixed 200ms for now, can be random
                 current = nextTile;
