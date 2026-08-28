@@ -426,7 +426,7 @@ class GameView {
             // Size of head proportional to width at head (t=0): baseWidth
             const desiredHeadRadius = 2.0; // viewBox units
             const headSize = desiredHeadRadius / 3.0;
-            const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy, headSize);
+            const headGroup = this._createHeadElement(startCenter.x, startCenter.y, -headUx, -headUy, headSize);
             this.svgElement.appendChild(headGroup);
             
             // Tail is tapered to a fine point via the body stroke-width; no separate tail element needed.
@@ -673,14 +673,24 @@ class GameView {
         this.assetsLoadedCount = 0;
 
         // Set a timeout to hide loading overlay after 5 seconds if assets don't load
-        this.loadingTimeout = setTimeout(() => {
+        this.loadingTimeout = setTimeout(async () => {
             if (!this.isAssetsLoaded && !this.isAssetsHandled) {
                 console.log("[gameView] Loading timeout: hiding overlay and enabling roll button");
                 this.hideLoadingOverlay();
                 this.enableRollButton();
                 this.isAssetsHandled = true;
-                // Start auto-play even if assets didn't load (maybe some failed)
-                this.autoRoll();
+                // Probe autoplay policy
+                if (!this.hasProbedAutoplay) {
+                    this.hasProbedAutoplay = true;
+                    await this.probeAutoplay();
+                }
+                // After probing, if the start button is shown, we wait for user click.
+                if (this.startButtonElement.parentNode) {
+                    // Button is shown, do not autoRoll yet.
+                } else {
+                    // Start auto-play
+                    this.autoRoll();
+                }
             }
         }, 5000);
 
@@ -727,7 +737,7 @@ class GameView {
         });
     }
 
-    assetLoaded() {
+    async assetLoaded() {
         console.log("[gameView] assetLoaded called");
         this.assetsLoadedCount++;
         console.log(`[gameView] Asset loaded: ${this.assetsLoadedCount}/${this.assetsTotalCount}`);
@@ -749,16 +759,21 @@ class GameView {
                 // Probe autoplay policy
                 if (!this.hasProbedAutoplay) {
                     this.hasProbedAutoplay = true;
-                    this.probeAutoplay();
+                    await this.probeAutoplay();
                 }
-                // Start auto-play after assets loaded
-                // Also reset the game to ensure token positions are updated with loaded assets
-                setTimeout(() => {
-                    if (this.controller) {
-                        this.controller.resetGame();
-                    }
-                    this.autoRoll();
-                }, 0);
+                // After probing, if the start button is shown, we wait for user click.
+                if (this.startButtonElement.parentNode) {
+                    // Button is shown, do not autoRoll yet.
+                } else {
+                    // Start auto-play after assets loaded
+                    // Also reset the game to ensure token positions are updated with loaded assets
+                    setTimeout(() => {
+                        if (this.controller) {
+                            this.controller.resetGame();
+                        }
+                        this.autoRoll();
+                    }, 0);
+                }
             }
         }
     }
@@ -1876,57 +1891,43 @@ class GameView {
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Head base: circle - scaled by size
-        const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        headCircle.setAttribute('cx', 0);
-        headCircle.setAttribute('cy', 0);
-        headCircle.setAttribute('r', 3 * size); // Set to 3 as required, scaled
-        headCircle.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
-        group.appendChild(headCircle);
+        // Head base: elongated oval/teardrop shape (major axis 4.0, minor axis 2.6) scaled by size
+        // When size = headSize (which is desiredHeadRadius/3.0), we want major axis = 4.0, minor axis = 2.6
+        // headSize = desiredHeadRadius/3.0 = 2.0/3.0
+        // So we set rx = 3.0 * size, ry = 1.95 * size to get rx=2.0, ry=1.3 when size = headSize
+        const rx = 3.0 * size;
+        const ry = 1.95 * size;
+        const headEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+        headEllipse.setAttribute('cx', 0);
+        headEllipse.setAttribute('cy', 0);
+        headEllipse.setAttribute('rx', rx);
+        headEllipse.setAttribute('ry', ry);
+        headEllipse.setAttribute('fill', '#e74c3c');
+        group.appendChild(headEllipse);
 
-        // Eyes: two circles - scaled by size
-        const eyeOffsetX = 2 * size;
-        const eyeOffsetY = 1 * size;
-        const eyeRadius = 1.2 * size; // Increased from 0.8 to 1.2, scaled
-
-        // Left eye (top-right in the head's coordinate system)
-        const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        eye1.setAttribute('cx', eyeOffsetX);
-        eye1.setAttribute('cy', -eyeOffsetY);
-        eye1.setAttribute('r', eyeRadius);
-        eye1.setAttribute('fill', '#fff');
-        group.appendChild(eye1);
-
-        // Right eye (bottom-right)
-        const eye2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        eye2.setAttribute('cx', eyeOffsetX);
-        eye2.setAttribute('cy', eyeOffsetY);
-        eye2.setAttribute('r', eyeRadius);
-        eye2.setAttribute('fill', '#fff');
-        group.appendChild(eye2);
-
-        // Tongue: two lines - scaled by size
-        const tongueStartX = 4 * size;
-        const tongueStartY = 0;
-        const tongueLength = 2 * size; // Shortened to fit within tile
-        const tongueOffset = 0.7 * size; // Increased from 0.5 to 0.7, scaled
+        // Forked tongue: two thin prongs from the nose tip
+        // Nose tip is at (rx, 0) in the head's coordinate system (positive x direction)
+        const tongueStartX = rx; // start at the nose tip
+        const tongueLength = 2.7 * size; // ~1.8 viewBox units when size = headSize
+        const tongueOffset = tongueLength * Math.tan(15 * Math.PI / 180); // ~15 degrees splay
+        const strokeWidth = 0.6 * size; // ~0.4 viewBox units when size = headSize
 
         const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         tongueLine1.setAttribute('x1', tongueStartX);
-        tongueLine1.setAttribute('y1', tongueStartY);
+        tongueLine1.setAttribute('y1', 0);
         tongueLine1.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine1.setAttribute('y2', -tongueOffset);
         tongueLine1.setAttribute('stroke', '#c0392b');
-        tongueLine1.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
+        tongueLine1.setAttribute('stroke-width', strokeWidth);
         group.appendChild(tongueLine1);
 
         const tongueLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
         tongueLine2.setAttribute('x1', tongueStartX);
-        tongueLine2.setAttribute('y1', tongueStartY);
+        tongueLine2.setAttribute('y1', 0);
         tongueLine2.setAttribute('x2', tongueStartX + tongueLength);
         tongueLine2.setAttribute('y2', tongueOffset);
         tongueLine2.setAttribute('stroke', '#c0392b');
-        tongueLine2.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
+        tongueLine2.setAttribute('stroke-width', strokeWidth);
         group.appendChild(tongueLine2);
 
         return group;
