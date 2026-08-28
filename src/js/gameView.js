@@ -348,7 +348,7 @@ class GameView {
             const startCenter = this.model.tileToViewBoxCenter(start);
             const endCenter = this.model.tileToViewBoxCenter(end);
             
-            // Draw the snake body with sinuous S-curve as a tapered filled path
+            // Draw the snake body with sinuous S-curve as a tapered stroked path
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
@@ -366,12 +366,11 @@ class GameView {
             const controlPoint2X = endCenter.x - nx * amplitude * 0.5;
             const controlPoint2Y = endCenter.y - ny * amplitude * 0.5;
             
-            // Sample the Bezier curve for the tapered body
+            // Sample the Bezier curve for the center line
             const numSamples = 20;
             const baseWidth = 4.0; // in viewBox units
             const taperFactor = 0.5; // width at tail is baseWidth * (1 - taperFactor) = baseWidth * 0.5
-            let pointsLeft = [];
-            let pointsRight = [];
+            const centerPoints = [];
             for (let i = 0; i <= numSamples; i++) {
                 const t = i / numSamples;
                 // Compute point on Bezier curve
@@ -386,66 +385,29 @@ class GameView {
                     3 * oneMinusT*oneMinusT * t * controlPoint1Y +
                     3 * oneMinusT * t*t * controlPoint2Y +
                     t*t*t * endCenter.y;
-                
-                // Compute derivative (tangent) for normal
-                const dx_dt = 
-                    3 * oneMinusT*oneMinusT * (controlPoint1X - startCenter.x) +
-                    6 * oneMinusT * t * (controlPoint2X - controlPoint1X) +
-                    3 * t*t * (endCenter.x - controlPoint2X);
-                const dy_dt = 
-                    3 * oneMinusT*oneMinusT * (controlPoint1Y - startCenter.y) +
-                    6 * oneMinusT * t * (controlPoint2Y - controlPoint1Y) +
-                    3 * t*t * (endCenter.y - controlPoint2Y);
-                
-                // Normalize the tangent to get the direction vector
-                const len = Math.sqrt(dx_dt*dx_dt + dy_dt*dy_dt);
-                let tx, ty;
-                if (len > 0) {
-                    tx = dx_dt / len;
-                    ty = dy_dt / len;
-                } else {
-                    // If tangent is zero, use the direction from start to end
-                    tx = dx / length;
-                    ty = dy / length;
-                }
-                // Normal vector (perpendicular to tangent): rotate 90 degrees counterclockwise: (-ty, tx)
-                const nx = -ty;
-                const ny = tx;
-                
-                // Width at this point: taper from head (t=0) to tail (t=1)
-                const width = baseWidth * (1 - t * taperFactor);
-                const halfWidth = width / 2;
-                
-                // Left and right points
-                pointsLeft.push({
-                    x: x + nx * halfWidth,
-                    y: y + ny * halfWidth
-                });
-                pointsRight.push({
-                    x: x - nx * halfWidth,
-                    y: y - ny * halfWidth
-                });
+                centerPoints.push({x, y});
             }
             
-            // Build the path data: left edge from head to tail, then right edge from tail to head
-            let d = `M ${pointsLeft[0].x} ${pointsLeft[0].y}`;
-            for (let i = 1; i < pointsLeft.length; i++) {
-                d += ` L ${pointsLeft[i].x} ${pointsLeft[i].y}`;
+            // Create segments for the body with tapered stroke-width
+            for (let i = 0; i < numSamples; i++) {
+                const startPoint = centerPoints[i];
+                const endPoint = centerPoints[i + 1];
+                
+                // Calculate widths at start and end of segment
+                const tStart = i / numSamples;
+                const tEnd = (i + 1) / numSamples;
+                const widthStart = baseWidth * (1 - tStart * taperFactor);
+                const widthEnd = baseWidth * (1 - tEnd * taperFactor);
+                const avgWidth = (widthStart + widthEnd) / 2;
+                
+                const segmentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                segmentPath.setAttribute('d', `M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`);
+                segmentPath.setAttribute('fill', 'none');
+                segmentPath.setAttribute('stroke', '#e74c3c'); // red
+                segmentPath.setAttribute('stroke-width', avgWidth);
+                segmentPath.setAttribute('data-jump', `${start}-${end}`);
+                this.svgElement.appendChild(segmentPath);
             }
-            // Now go to the right edge at tail (which is the last point in pointsLeft? Actually, pointsLeft[numSamples] is at tail)
-            // But we want to go to the right edge at tail: pointsRight[numSamples]
-            d += ` L ${pointsRight[numSamples].x} ${pointsRight[numSamples].y}`;
-            for (let i = numSamples-1; i >= 0; i--) {
-                d += ` L ${pointsRight[i].x} ${pointsRight[i].y}`;
-            }
-            d += ` Z`; // close the path
-            
-            const bodyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-            bodyPath.setAttribute('d', d);
-            bodyPath.setAttribute('fill', '#e74c3c'); // red
-            bodyPath.setAttribute('stroke', 'none');
-            bodyPath.setAttribute('data-jump', `${start}-${end}`);
-            this.svgElement.appendChild(bodyPath);
             
             // Now, draw the head and tail, but scaled down to match the width at the ends
             // Direction from tail to head: (startCenter - endCenter)
@@ -1972,18 +1934,14 @@ class GameView {
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Tail: a tapering whip tail - slender triangle pointing backward, scaled by size
-        const tailLength = 5 * size; // length of the tail
-        const tailWidth = 2 * size; // base width
-        const tailPoints = `
-            0,0 
-            ${-tailLength},${-tailWidth/2} 
-            ${-tailLength},${tailWidth/2}
-        `;
-        const tailPolygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-        tailPolygon.setAttribute('points', tailPoints.trim());
-        tailPolygon.setAttribute('fill', '#e74c3c');
-        group.appendChild(tailPolygon);
+        // Tail: a fine point - small circle at the tip
+        const tailRadius = 1.5 * size; // radius of the tail point
+        const tailCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        tailCircle.setAttribute('cx', 0);
+        tailCircle.setAttribute('cy', 0);
+        tailCircle.setAttribute('r', tailRadius);
+        tailCircle.setAttribute('fill', '#e74c3c');
+        group.appendChild(tailCircle);
 
         return group;
     }
