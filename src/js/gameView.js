@@ -1878,12 +1878,14 @@ class GameView {
 
     // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
     // PRD-1: Elongated teardrop/snout ~4.0 long x 2.6 wide at neck, rounded nose, fill #e74c3c
-    // Forked tongue: two prongs ~1.8 long, splayed 30 deg, stroke #c0392b width ~0.4, pointing forward
-    // NO eyes. Entire head+tongue within ONE 10-unit tile.
+    // Forked tongue: two prongs ~2.2 long, splayed 30 deg, stroke #c0392b width ~0.55, projecting forward
+    // NO eyes. Entire head+tongue within ONE 10-unit tile. Head offset toward body side for containment.
     _createHeadElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const angle = Math.atan2(uy, ux); // in radians
-        group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
+        // Offset head toward back (body side) by 0.8 viewBox units so forward-projecting tongue stays in tile
+        const backOffset = 0.8;
+        group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI}) translate(${-backOffset}, 0)`);
 
         // Head: elongated ellipse ~4.0 long x 2.6 wide (rx=2.0, ry=1.3 before size scaling), fill #e74c3c
         const headEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
@@ -1894,14 +1896,14 @@ class GameView {
         headEllipse.setAttribute('fill', '#e74c3c');
         group.appendChild(headEllipse);
 
-        // Forked tongue: two prongs ~1.8 long, splayed 30 deg (15 deg each side), stroke #c0392b width ~0.4
-        // Y-shape: snout -> fork point -> two tips
-        const tongueLength = 1.8 * size;        // prong length
-        const forkOffset = 1.2 * size;          // distance from snout to fork point
-        const splayAngle = 15 * Math.PI / 180;  // 15 deg each side = 30 deg total splay
-        const strokeWidth = 0.4 * size;         // stroke width
+        // Forked tongue: two prongs ~2.2 long, splayed 30 deg (15 deg each side), stroke #c0392b width ~0.55
+        // Y-shape: snout -> fork point -> two tips. Dimensions in absolute viewBox units for visibility.
+        const tongueLength = 2.2;               // prong length (viewBox units)
+        const forkOffset = 0.1;                 // minimal offset from snout to fork point
+        const splayAngle = 15 * Math.PI / 180;  // 15 deg each side = 30 deg total splay (within 28-34 deg)
+        const strokeWidth = 0.55;               // stroke width (viewBox units)
 
-        const snoutX = 2.0 * size;              // snout at ellipse edge (rx)
+        const snoutX = 2.0 * size;              // snout at ellipse edge (rx, scaled)
         const forkX = snoutX + forkOffset;
         const forkY = 0;
         const tip1X = forkX + tongueLength * Math.cos(splayAngle);
