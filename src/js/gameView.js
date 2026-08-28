@@ -1541,12 +1541,6 @@ class GameView {
                 // Play settle sound
                 this.playAudio('settle');
 
-                // Check for ladder or snake at the end position (if applicable)
-                if (this.model.Ladders.has(endTile)) {
-                    this.playAudio('ladder');
-                } else if (this.model.Snakes.has(endTile)) {
-                    this.playAudio('snake');
-                }
 
                 console.log(`[gameView] move complete at ${Date.now()}`);
                 resolve();
@@ -1561,12 +1555,6 @@ class GameView {
                 console.log(`[gameView] direct move fallback triggered after ${FALLBACK_TIME}ms`);
                 // Play settle sound
                 this.playAudio('settle');
-                // Check for ladder or snake at the end position (if applicable)
-                if (this.model.Ladders.has(endTile)) {
-                    this.playAudio('ladder');
-                } else if (this.model.Snakes.has(endTile)) {
-                    this.playAudio('snake');
-                }
                 resolve();
             };
 
