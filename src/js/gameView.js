@@ -353,6 +353,11 @@ class GameView {
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
             
+            // Guard against zero-length snakes (should not happen in normal gameplay)
+            if (length === 0) {
+                continue;
+            }
+            
             // Perpendicular vector (normalized)
             const nx = -dy / length;
             const ny = dx / length;
@@ -369,7 +374,7 @@ class GameView {
             // Sample the Bezier curve for the center line
             const numSamples = 20;
             const baseWidth = 4.0; // in viewBox units
-            const taperFactor = 0.5; // width at tail is baseWidth * (1 - taperFactor) = baseWidth * 0.5
+            const taperFactor = 1.0; // width tapers to zero at the tail for a fine point
             const centerPoints = [];
             for (let i = 0; i <= numSamples; i++) {
                 const t = i / numSamples;
@@ -409,7 +414,7 @@ class GameView {
                 this.svgElement.appendChild(segmentPath);
             }
             
-            // Now, draw the head and tail, but scaled down to match the width at the ends
+            // Draw the head as a filled red circle with white eyes and forked tongue
             // Direction from tail to head: (startCenter - endCenter)
             const headDx = startCenter.x - endCenter.x;
             const headDy = startCenter.y - endCenter.y;
@@ -422,13 +427,7 @@ class GameView {
             const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy, headSize);
             this.svgElement.appendChild(headGroup);
             
-            // Direction from head to tail: (endCenter - startCenter) = (-headDx, -headDy)
-            const tailUx = -headUx;
-            const tailUy = -headUy;
-            // Size of tail proportional to width at tail (t=1): baseWidth * (1 - taperFactor)
-            const tailSize = baseWidth * (1 - taperFactor) / 2.0;
-            const tailGroup = this._createTailElement(endCenter.x, endCenter.y, tailUx, tailUy, tailSize);
-            this.svgElement.appendChild(tailGroup);
+            // Tail is tapered to a fine point via the body stroke-width; no separate tail element needed.
         }
     }
 
