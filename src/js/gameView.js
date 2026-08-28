@@ -689,6 +689,9 @@ class GameView {
                     // Button is shown, do not autoRoll yet.
                 } else {
                     // Start auto-play
+                    if (this.controller) {
+                        this.controller.resetGame();
+                    }
                     this.autoRoll();
                 }
             }
@@ -767,12 +770,10 @@ class GameView {
                 } else {
                     // Start auto-play after assets loaded
                     // Also reset the game to ensure token positions are updated with loaded assets
-                    setTimeout(() => {
-                        if (this.controller) {
-                            this.controller.resetGame();
-                        }
-                        this.autoRoll();
-                    }, 0);
+                    if (this.controller) {
+                        this.controller.resetGame();
+                    }
+                    this.autoRoll();
                 }
             }
         }

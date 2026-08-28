@@ -23,7 +23,7 @@ modelCode = modelCode.replace(
 );
 // Actually, let's just replace it with assigning to a variable we can access
 modelCode = modelCode.replace(
-    '// Attach to window for browser compatibility - export global\n    if (typeof window !== \'undefined\') {\n        window.GameModel = GameModel;\n    }',
+    '// Attach to window for browser compatibility - export global\nif (typeof window !== \'undefined\') {\n    window.GameModel = GameModel;\n}',
     '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameModel = GameModel;'
 );
 
@@ -32,7 +32,7 @@ vm.runInContext(modelCode, context, { filename: './src/js/gameModel.js', display
 // Load the controller
 let controllerCode = fs.readFileSync('./src/js/gameController.js', 'utf8');
 controllerCode = controllerCode.replace(
-    '// Attach to window for browser compatibility\n    if (typeof window !== \'undefined\') {\n        window.GameController = GameController;\n    }',
+    '// Attach to window for browser compatibility\nif (typeof window !== \'undefined\') {\n    window.GameController = GameController;\n}',
     '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameController = GameController;'
 );
 vm.runInContext(controllerCode, context, { filename: './src/js/gameController.js', displayErrors: true });
@@ -40,7 +40,7 @@ vm.runInContext(controllerCode, context, { filename: './src/js/gameController.js
 // Load the view
 let viewCode = fs.readFileSync('./src/js/gameView.js', 'utf8');
 viewCode = viewCode.replace(
-    '// Attach to window for browser compatibility\n    if (typeof window !== \'undefined\') {\n        window.GameView = GameView;\n    }',
+    '// Attach to window for browser compatibility\nif (typeof window !== \'undefined\') {\n    window.GameView = GameView;\n}',
     '// Export for testing\n    if (typeof window === \'undefined\') {\n        window = {};\n    }\n    window.GameView = GameView;'
 );
 vm.runInContext(viewCode, context, { filename: './src/js/gameView.js', displayErrors: true });
@@ -69,7 +69,8 @@ const mockView = {
     onTripleSixPenalty: () => {},
     onCapture: () => {},
     onGameWin: () => {},
-    onReset: () => {}
+    onReset: () => {},
+    playAudio: () => {}
 };
 
 // Test 1: Initial state
