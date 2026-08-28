@@ -27,3 +27,6 @@ included below as a courtesy and for the licence-gate audit trail.
 - Interface Sounds: https://kenney.nl/media/pages/assets/interface-sounds/fa43c1dd4d-1677589452/kenney_interface-sounds.zip
 - Impact Sounds:   https://kenney.nl/media/pages/assets/impact-sounds/87b4ddecda-1677589768/kenney_impact-sounds.zip
 - Digital Audio:   https://kenney.nl/media/pages/assets/digital-audio/216eac4753-1677590265/kenney_digital-audio.zip
+
+capture.ogg - Impact Sounds pack - impactGeneric_light_002.ogg - Katti capture / piece knocked back to start (CC0, Kenney.nl)
+enter.ogg - Interface Sounds pack - drop_001.ogg - Piece enters the board from staging (CC0, Kenney.nl)
