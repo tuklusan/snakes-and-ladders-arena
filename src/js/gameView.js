@@ -56,6 +56,8 @@ class GameView {
         this.isAudioUnlocked = false;
         this._deferredUnlock = false;
         this.hasProbedAutoplay = false;
+        // Detect kiosk mode (--app / standalone display mode)
+        this.isKioskMode = window.matchMedia('(display-mode: standalone)').matches;
         this.startButtonElement = document.createElement('button');
         this.startButtonElement.textContent = 'Click to start the arena';
         Object.assign(this.startButtonElement.style, {
@@ -803,8 +805,17 @@ class GameView {
      * Probe autoplay policy by trying to play a silent audio.
      * If allowed (resolved), we do nothing (button not shown).
      * If blocked (rejected), we show the start button to unlock audio via user gesture.
+     * In non-kiosk mode, we ALWAYS show the button regardless of browser permission state.
      */
     probeAutoplay() {
+        // In non-kiosk mode, always show the start button and wait for user click.
+        // This bypasses browser permission persistence entirely.
+        if (!this.isKioskMode) {
+            this.showStartButton();
+            return Promise.resolve();
+        }
+
+        // Kiosk mode: probe autoplay policy normally
         // Use the first loaded audio asset, or create a temporary one if none are loaded yet.
         // We'll use the 'enter' sound if available, otherwise create a new Audio object.
         let audio = null;
@@ -833,17 +844,16 @@ class GameView {
                     audio.muted = false;
                 })
                 .catch(() => {
-                    // Autoplay blocked (normal browser): show the button to unlock audio via user gesture.
+                    // Autoplay blocked even in kiosk: show the button to unlock audio via user gesture.
                     this.showStartButton();
-                    // Reset the audio state (we don't want to leave it in a clean state for later use )
+                    // Reset the audio state
                     audio.pause();
                     audio.currentTime = 0;
                     audio.volume = originalVolume;
                     audio.muted = false;
                 });
         } else {
-            // If play() returned undefined, treat as blocked (some browsers return undefined and then reject later?).
-            // To be safe, we show the button.
+            // If play() returned undefined, treat as blocked
             this.showStartButton();
             audio.pause();
             audio.currentTime = 0;
