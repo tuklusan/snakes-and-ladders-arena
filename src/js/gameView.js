@@ -113,7 +113,7 @@ class GameView {
     }
 
     // Constants
-    static PAUSE_DURATION = 500;   // ms settle at landing and destination tiles
+    static PAUSE_DURATION = 300;   // ms settle at landing and destination tiles (tuned for natural feel)
 
     // Helper function to get the center of a tile in viewBox coordinates (0-100)
     getViewBoxCenter(tile) {
@@ -746,19 +746,24 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
-                // Probe autoplay policy
+                // Probe autoplay policy - wait for result before deciding to auto-start
                 if (!this.hasProbedAutoplay) {
                     this.hasProbedAutoplay = true;
-                    this.probeAutoplay();
+                    this.probeAutoplay().then(() => {
+                        // Probe completed. Check if start button is shown (autoplay blocked) or not (autoplay allowed)
+                        if (!this.startButtonElement.parentNode) {
+                            // Autoplay allowed (kiosk): auto-start the game
+                            console.log('[gameView] Autoplay allowed, starting game automatically');
+                            if (this.controller) {
+                                this.controller.resetGame();
+                            }
+                            this.autoRoll();
+                        } else {
+                            // Autoplay blocked (normal browser): button is shown, wait for user click
+                            console.log('[gameView] Autoplay blocked, start button shown, waiting for user click');
+                        }
+                    });
                 }
-                // Start auto-play after assets loaded
-                // Also reset the game to ensure token positions are updated with loaded assets
-                setTimeout(() => {
-                    if (this.controller) {
-                        this.controller.resetGame();
-                    }
-                    this.autoRoll();
-                }, 0);
             }
         }
     }
@@ -1526,12 +1531,8 @@ class GameView {
                 // Play settle sound
                 this.playAudio('settle');
 
-                // Check for ladder or snake at the end position (if applicable)
-                if (this.model.Ladders.has(endTile)) {
-                    this.playAudio('ladder');
-                } else if (this.model.Snakes.has(endTile)) {
-                    this.playAudio('snake');
-                }
+                // PRD-3: NO ladder/snake sound on instant/direct (non-animated) moves
+                // Ladder/snake sounds only play during animated jumps in _animateStepByStep
 
                 console.log(`[gameView] move complete at ${Date.now()}`);
                 resolve();
@@ -1546,12 +1547,7 @@ class GameView {
                 console.log(`[gameView] direct move fallback triggered after ${FALLBACK_TIME}ms`);
                 // Play settle sound
                 this.playAudio('settle');
-                // Check for ladder or snake at the end position (if applicable)
-                if (this.model.Ladders.has(endTile)) {
-                    this.playAudio('ladder');
-                } else if (this.model.Snakes.has(endTile)) {
-                    this.playAudio('snake');
-                }
+                // PRD-3: NO ladder/snake sound on instant/direct (non-animated) moves
                 resolve();
             };
 
@@ -1871,63 +1867,46 @@ class GameView {
     }
 
     // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
+    // PRD-1: Elongated teardrop/snout ~4.0 long x 2.6 wide at neck, rounded nose, fill #e74c3c
+    // Forked tongue: two prongs ~1.8 long, splayed 30 deg, stroke #c0392b width ~0.4, pointing forward
+    // NO eyes. Entire head+tongue within ONE 10-unit tile.
     _createHeadElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const angle = Math.atan2(uy, ux); // in radians
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Head base: circle - scaled by size
-        const headCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        headCircle.setAttribute('cx', 0);
-        headCircle.setAttribute('cy', 0);
-        headCircle.setAttribute('r', 3 * size); // Set to 3 as required, scaled
-        headCircle.setAttribute('fill', '#e74c3c'); // Changed from #111 to red for better visibility
-        group.appendChild(headCircle);
+        // Head: elongated ellipse ~4.0 long x 2.6 wide (rx=2.0, ry=1.3 before size scaling), fill #e74c3c
+        const headEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+        headEllipse.setAttribute('cx', 0);
+        headEllipse.setAttribute('cy', 0);
+        headEllipse.setAttribute('rx', 2.0 * size);
+        headEllipse.setAttribute('ry', 1.3 * size);
+        headEllipse.setAttribute('fill', '#e74c3c');
+        group.appendChild(headEllipse);
 
-        // Eyes: two circles - scaled by size
-        const eyeOffsetX = 2 * size;
-        const eyeOffsetY = 1 * size;
-        const eyeRadius = 1.2 * size; // Increased from 0.8 to 1.2, scaled
+        // Forked tongue: two prongs ~1.8 long, splayed 30 deg (15 deg each side), stroke #c0392b width ~0.4
+        // Y-shape: snout -> fork point -> two tips
+        const tongueLength = 1.8 * size;        // prong length
+        const forkOffset = 1.2 * size;          // distance from snout to fork point
+        const splayAngle = 15 * Math.PI / 180;  // 15 deg each side = 30 deg total splay
+        const strokeWidth = 0.4 * size;         // stroke width
 
-        // Left eye (top-right in the head's coordinate system)
-        const eye1 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        eye1.setAttribute('cx', eyeOffsetX);
-        eye1.setAttribute('cy', -eyeOffsetY);
-        eye1.setAttribute('r', eyeRadius);
-        eye1.setAttribute('fill', '#fff');
-        group.appendChild(eye1);
+        const snoutX = 2.0 * size;              // snout at ellipse edge (rx)
+        const forkX = snoutX + forkOffset;
+        const forkY = 0;
+        const tip1X = forkX + tongueLength * Math.cos(splayAngle);
+        const tip1Y = forkY + tongueLength * Math.sin(splayAngle);
+        const tip2X = forkX + tongueLength * Math.cos(-splayAngle);
+        const tip2Y = forkY + tongueLength * Math.sin(-splayAngle);
 
-        // Right eye (bottom-right)
-        const eye2 = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        eye2.setAttribute('cx', eyeOffsetX);
-        eye2.setAttribute('cy', eyeOffsetY);
-        eye2.setAttribute('r', eyeRadius);
-        eye2.setAttribute('fill', '#fff');
-        group.appendChild(eye2);
-
-        // Tongue: two lines - scaled by size
-        const tongueStartX = 4 * size;
-        const tongueStartY = 0;
-        const tongueLength = 2 * size; // Shortened to fit within tile
-        const tongueOffset = 0.7 * size; // Increased from 0.5 to 0.7, scaled
-
-        const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        tongueLine1.setAttribute('x1', tongueStartX);
-        tongueLine1.setAttribute('y1', tongueStartY);
-        tongueLine1.setAttribute('x2', tongueStartX + tongueLength);
-        tongueLine1.setAttribute('y2', -tongueOffset);
-        tongueLine1.setAttribute('stroke', '#c0392b');
-        tongueLine1.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
-        group.appendChild(tongueLine1);
-
-        const tongueLine2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        tongueLine2.setAttribute('x1', tongueStartX);
-        tongueLine2.setAttribute('y1', tongueStartY);
-        tongueLine2.setAttribute('x2', tongueStartX + tongueLength);
-        tongueLine2.setAttribute('y2', tongueOffset);
-        tongueLine2.setAttribute('stroke', '#c0392b');
-        tongueLine2.setAttribute('stroke-width', 0.8 * size); // Increased from 0.5 to 0.8, scaled
-        group.appendChild(tongueLine2);
+        // Single path for the forked tongue (snout->fork, fork->tip1, fork->tip2)
+        const tonguePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        tonguePath.setAttribute('d', `M ${snoutX} 0 L ${forkX} ${forkY} M ${forkX} ${forkY} L ${tip1X} ${tip1Y} M ${forkX} ${forkY} L ${tip2X} ${tip2Y}`);
+        tonguePath.setAttribute('fill', 'none');
+        tonguePath.setAttribute('stroke', '#c0392b');
+        tonguePath.setAttribute('stroke-width', strokeWidth);
+        tonguePath.setAttribute('stroke-linecap', 'round');
+        group.appendChild(tonguePath);
 
         return group;
     }

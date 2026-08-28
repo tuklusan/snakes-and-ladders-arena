@@ -63,7 +63,7 @@ body {
 .game-token {
     position: absolute;
     pointer-events: none;
-    transition: left 150ms linear, top 150ms linear;
+    transition: left 250ms linear, top 250ms linear;
 }
 
 /* Dice */
