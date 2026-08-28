@@ -307,7 +307,7 @@ class GameView {
             const rail1 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             rail1.setAttribute('d', `M ${rail1StartX} ${rail1StartY} L ${rail1EndX} ${rail1EndY}`);
             rail1.setAttribute('stroke', '#2ecc71'); // green
-            rail1.setAttribute('stroke-width', '1.5');
+            rail1.setAttribute('stroke-width', '0.8');
             rail1.setAttribute('fill', 'none');
             rail1.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(rail1);
@@ -315,7 +315,7 @@ class GameView {
             const rail2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
             rail2.setAttribute('d', `M ${rail2StartX} ${rail2StartY} L ${rail2EndX} ${rail2EndY}`);
             rail2.setAttribute('stroke', '#2ecc71'); // green
-            rail2.setAttribute('stroke-width', '1.5');
+            rail2.setAttribute('stroke-width', '0.8');
             rail2.setAttribute('fill', 'none');
             rail2.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(rail2);
@@ -336,7 +336,7 @@ class GameView {
                 const rung = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 rung.setAttribute('d', `M ${rungStartX} ${rungStartY} L ${rungEndX} ${rungEndY}`);
                 rung.setAttribute('stroke', '#2ecc71'); // green
-                rung.setAttribute('stroke-width', '1.5');
+                rung.setAttribute('stroke-width', '0.8');
                 rung.setAttribute('fill', 'none');
                 rung.setAttribute('data-jump', `${start}-${end}`);
                 this.svgElement.appendChild(rung);
@@ -348,7 +348,7 @@ class GameView {
             const startCenter = this.model.tileToViewBoxCenter(start);
             const endCenter = this.model.tileToViewBoxCenter(end);
             
-            // Draw the snake body with sinuous S-curve as a tapered stroked path
+            // Draw the snake body with sine wave undulation as a tapered stroked path
             const dx = endCenter.x - startCenter.x;
             const dy = endCenter.y - startCenter.y;
             const length = Math.sqrt(dx*dx + dy*dy);
@@ -358,51 +358,51 @@ class GameView {
                 continue;
             }
             
-            // Perpendicular vector (normalized)
-            const nx = -dy / length;
-            const ny = dx / length;
+            // Unit vector along the snake (head to tail)
+            const ux = dx / length;
+            const uy = dy / length;
             
-            // Amplitude for the S-curve (undulation)
-            const amplitude = Math.min(12, length / 4); // tweak for natural look
+            // Perpendicular vector (normalized, pointing to the left of the direction head->tail)
+            const px = -uy;
+            const py = ux;
             
-            // Control points positioned on opposite sides of the line to create an S shape
-            const controlPoint1X = startCenter.x + nx * amplitude * 0.5;
-            const controlPoint1Y = startCenter.y + ny * amplitude * 0.5;
-            const controlPoint2X = endCenter.x - nx * amplitude * 0.5;
-            const controlPoint2Y = endCenter.y - ny * amplitude * 0.5;
+            // Parameters for sine wave undulation
+            const amplitude = 1.5; // A ~1.5 viewBox units
+            const waveNumber = 2.7; // k ~2.7
             
-            // Sample the Bezier curve for the center line
+            // Number of samples for the sine wave
             const numSamples = 20;
-            const baseWidth = 4.0; // in viewBox units
-            const taperFactor = 1.0; // width tapers to zero at the tail for a fine point
-            const centerPoints = [];
+            
+            // Calculate points along the sine wave
+            const points = [];
             for (let i = 0; i <= numSamples; i++) {
-                const t = i / numSamples;
-                // Compute point on Bezier curve
-                const oneMinusT = 1 - t;
-                const x = 
-                    oneMinusT*oneMinusT*oneMinusT * startCenter.x +
-                    3 * oneMinusT*oneMinusT * t * controlPoint1X +
-                    3 * oneMinusT * t*t * controlPoint2X +
-                    t*t*t * endCenter.x;
-                const y = 
-                    oneMinusT*oneMinusT*oneMinusT * startCenter.y +
-                    3 * oneMinusT*oneMinusT * t * controlPoint1Y +
-                    3 * oneMinusT * t*t * controlPoint2Y +
-                    t*t*t * endCenter.y;
-                centerPoints.push({x, y});
+                const t = i / numSamples; // t from 0 (head) to 1 (tail)
+                
+                // Base point on the straight line from head to tail
+                const baseX = startCenter.x + t * dx;
+                const baseY = startCenter.y + t * dy;
+                
+                // Perpendicular offset: A * sin(k * pi * t)
+                const offset = amplitude * Math.sin(waveNumber * Math.PI * t);
+                
+                // Final point with undulation
+                const pointX = baseX + offset * px;
+                const pointY = baseY + offset * py;
+                
+                points.push({x: pointX, y: pointY});
             }
             
-            // Create segments for the body with tapered stroke-width
+            // Create segments for the body with tapered stroke-width and round line caps
+            const baseWidth = 4.0; // head width in viewBox units
             for (let i = 0; i < numSamples; i++) {
-                const startPoint = centerPoints[i];
-                const endPoint = centerPoints[i + 1];
+                const startPoint = points[i];
+                const endPoint = points[i + 1];
                 
-                // Calculate widths at start and end of segment
+                // Calculate widths at start and end of segment (taper from head to tail)
                 const tStart = i / numSamples;
                 const tEnd = (i + 1) / numSamples;
-                const widthStart = baseWidth * (1 - tStart * taperFactor);
-                const widthEnd = baseWidth * (1 - tEnd * taperFactor);
+                const widthStart = baseWidth * (1.0 - tStart); // taper to 0 at tail
+                const widthEnd = baseWidth * (1.0 - tEnd);
                 const avgWidth = (widthStart + widthEnd) / 2;
                 
                 const segmentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -410,20 +410,22 @@ class GameView {
                 segmentPath.setAttribute('fill', 'none');
                 segmentPath.setAttribute('stroke', '#e74c3c'); // red
                 segmentPath.setAttribute('stroke-width', avgWidth);
+                segmentPath.setAttribute('stroke-linecap', 'round'); // round line caps
                 segmentPath.setAttribute('data-jump', `${start}-${end}`);
                 this.svgElement.appendChild(segmentPath);
             }
             
             // Draw the head as a filled red circle with white eyes and forked tongue
-            // Direction from tail to head: (startCenter - endCenter)
-            const headDx = startCenter.x - endCenter.x;
-            const headDy = startCenter.y - endCenter.y;
+            // Direction from head to tail: (endCenter - startCenter) so tongue points forward along snake
+            const headDx = endCenter.x - startCenter.x;
+            const headDy = endCenter.y - startCenter.y;
             const headLength = Math.sqrt(headDx*headDx + headDy*headDy);
             const headUx = headDx / headLength;
             const headUy = headDy / headLength;
             
             // Size of head proportional to width at head (t=0): baseWidth
-            const headSize = baseWidth / 2.0; // adjust as needed
+            const desiredHeadRadius = 2.0; // viewBox units
+            const headSize = desiredHeadRadius / 3.0;
             const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy, headSize);
             this.svgElement.appendChild(headGroup);
             
@@ -816,7 +818,7 @@ class GameView {
         const playPromise = audio.play();
 
         if (playPromise !== undefined) {
-            playPromise
+            return playPromise
                 .then(() => {
                     // Autoplay allowed (e.g., in kiosk with --autoplay-policy=no-user-gesture-required)
                     // We do not show the button. Reset the audio state.
@@ -842,6 +844,7 @@ class GameView {
             audio.currentTime = 0;
             audio.volume = originalVolume;
             audio.muted = false;
+            return Promise.resolve(); // Return resolved promise for consistency
         }
     }
 
@@ -874,6 +877,8 @@ class GameView {
         }
         
         console.log('[gameView] Audio unlocked via user interaction');
+        // Trigger the first dice roll after unlocking audio
+        this.autoRoll();
     }
 
     clearTimeouts() {
@@ -912,7 +917,7 @@ class GameView {
     }
 
     // Auto-roll after a delay
-    autoRoll() {
+    async autoRoll() {
         // Clear any existing autoRoll and gameOver timeouts
         if (this.autoRollTimeout) {
             clearTimeout(this.autoRollTimeout);
@@ -930,7 +935,7 @@ class GameView {
         // Check if we need to probe autoplay
         if (!this.hasProbedAutoplay) {
             this.hasProbedAutoplay = true;
-            this.probeAutoplay();
+            await this.probeAutoplay();
             // If the button is now shown, we wait for the user to click it.
             if (this.startButtonElement.parentNode) {
                 return;
@@ -1903,7 +1908,7 @@ class GameView {
         // Tongue: two lines - scaled by size
         const tongueStartX = 4 * size;
         const tongueStartY = 0;
-        const tongueLength = 3 * size; // Increased from 2 to 3, scaled
+        const tongueLength = 2 * size; // Shortened to fit within tile
         const tongueOffset = 0.7 * size; // Increased from 0.5 to 0.7, scaled
 
         const tongueLine1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
