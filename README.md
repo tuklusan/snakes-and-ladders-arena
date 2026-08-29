@@ -39,11 +39,11 @@ The server sends `Cache-Control: no-store` so every reload picks up the latest c
 
 ## 🖼️ Screenshots
 
-| Board view | Speckled snakes & ladders |
-|------------|---------------------------|
-| ![Full arena](validation_output/all_fixes_validation.png) | ![Close-up snakes](validation_output/oi2_snake_validation.png) |
+| Board view | Speckled snakes & ladders | Tongue detail |
+|------------|---------------------------|---------------|
+| ![Full arena](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/all_fixes_validation.png) | ![Speckled snakes](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/oi2_snake_validation.png) | ![Forked tongues](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/snake_tongues_validation.png) |
 
-*Screenshots captured with headless Puppeteer from the running arena.*
+*Screenshots captured with headless Puppeteer from the running arena (auto-refreshed on each push).*
 
 ---
 
