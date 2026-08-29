@@ -270,6 +270,34 @@ class GameView {
             this.svgElement.removeChild(this.svgElement.firstChild);
         }
 
+        // Ensure speckle filter exists in SVG defs (OI-2)
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const speckleFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        speckleFilter.setAttribute('id', 'snakeSpeckle');
+        speckleFilter.setAttribute('x', '0');
+        speckleFilter.setAttribute('y', '0');
+        speckleFilter.setAttribute('width', '100%');
+        speckleFilter.setAttribute('height', '100%');
+        const feTurbulence = document.createElementNS('http://www.w3.org/2000/svg', 'feTurbulence');
+        feTurbulence.setAttribute('type', 'fractalNoise');
+        feTurbulence.setAttribute('baseFrequency', '0.9');
+        feTurbulence.setAttribute('numOctaves', '4');
+        feTurbulence.setAttribute('stitchTiles', 'stitch');
+        feTurbulence.setAttribute('result', 'noise');
+        const feColorMatrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+        feColorMatrix.setAttribute('in', 'noise');
+        feColorMatrix.setAttribute('type', 'matrix');
+        feColorMatrix.setAttribute('values', '0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.02  0 0 0 1 0');
+        const feBlend = document.createElementNS('http://www.w3.org/2000/svg', 'feBlend');
+        feBlend.setAttribute('in', 'SourceGraphic');
+        feBlend.setAttribute('in2', 'noise');
+        feBlend.setAttribute('mode', 'multiply');
+        speckleFilter.appendChild(feTurbulence);
+        speckleFilter.appendChild(feColorMatrix);
+        speckleFilter.appendChild(feBlend);
+        defs.appendChild(speckleFilter);
+        this.svgElement.appendChild(defs);
+
         // Draw ladders with two rails and rungs
         for (const [start, end] of this.model.Ladders) {
             const startCenter = this.getViewBoxCenter(start);
@@ -375,6 +403,11 @@ class GameView {
             // Number of samples for the sine wave
             const numSamples = 20;
             
+            // OI-2: Uniform body width with small head/tail zones
+            const BODY_WIDTH = 2.4; // constant width for main body
+            const HEAD_ZONE = 0.08; // first 8% = head zone
+            const TAIL_ZONE = 0.08; // last 8% = tail zone
+            
             // Calculate points along the sine wave
             const points = [];
             for (let i = 0; i <= numSamples; i++) {
@@ -394,25 +427,48 @@ class GameView {
                 points.push({x: pointX, y: pointY});
             }
             
-            // Create segments for the body with tapered stroke-width and round line caps
-            const baseWidth = 4.0; // head width in viewBox units
+            // Create segments for the body with uniform width (OI-2)
+            // Main body: constant width; Head zone: constant width; Tail zone: 3-segment taper
             for (let i = 0; i < numSamples; i++) {
                 const startPoint = points[i];
                 const endPoint = points[i + 1];
                 
-                // Calculate widths at start and end of segment (taper from head to tail)
                 const tStart = i / numSamples;
                 const tEnd = (i + 1) / numSamples;
-                const widthStart = baseWidth * (1.0 - tStart); // taper to 0 at tail
-                const widthEnd = baseWidth * (1.0 - tEnd);
+                
+                // Determine width for this segment
+                let widthStart, widthEnd;
+                if (tEnd <= HEAD_ZONE) {
+                    // Head zone: constant body width (head element provides shape)
+                    widthStart = BODY_WIDTH;
+                    widthEnd = BODY_WIDTH;
+                } else if (tStart >= 1 - TAIL_ZONE) {
+                    // Tail zone: 3-segment taper from BODY_WIDTH -> 0.4 -> 0.15 -> 0
+                    const tailProgress = (tStart - (1 - TAIL_ZONE)) / TAIL_ZONE; // 0 to 1 across tail zone
+                    if (tailProgress < 0.33) {
+                        widthStart = BODY_WIDTH;
+                        widthEnd = BODY_WIDTH * 0.17; // ~0.4
+                    } else if (tailProgress < 0.66) {
+                        widthStart = BODY_WIDTH * 0.17;
+                        widthEnd = BODY_WIDTH * 0.06; // ~0.15
+                    } else {
+                        widthStart = BODY_WIDTH * 0.06;
+                        widthEnd = 0.05; // fine whip point
+                    }
+                } else {
+                    // Main body: uniform width
+                    widthStart = BODY_WIDTH;
+                    widthEnd = BODY_WIDTH;
+                }
                 const avgWidth = (widthStart + widthEnd) / 2;
                 
                 const segmentPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 segmentPath.setAttribute('d', `M ${startPoint.x} ${startPoint.y} L ${endPoint.x} ${endPoint.y}`);
                 segmentPath.setAttribute('fill', 'none');
-                segmentPath.setAttribute('stroke', '#e74c3c'); // red
+                segmentPath.setAttribute('stroke', '#1a1a1a'); // dark base for speckle filter
                 segmentPath.setAttribute('stroke-width', avgWidth);
-                segmentPath.setAttribute('stroke-linecap', 'round'); // round line caps
+                segmentPath.setAttribute('stroke-linecap', 'round');
+                segmentPath.setAttribute('filter', 'url(#snakeSpeckle)'); // OI-2: speckled pattern
                 segmentPath.setAttribute('data-jump', `${start}-${end}`);
                 this.svgElement.appendChild(segmentPath);
             }
@@ -429,7 +485,7 @@ class GameView {
             animationPath.setAttribute('data-snake-animation', 'true');
             this.svgElement.appendChild(animationPath);
             
-            // Draw the head as a filled red circle with white eyes and forked tongue
+            // Draw the head as a filled ellipse with forked tongue (resized to match body width)
             // Direction from tail to head: (startCenter - endCenter) so tongue points outward from mouth
             const headDx = startCenter.x - endCenter.x;
             const headDy = startCenter.y - endCenter.y;
@@ -437,13 +493,32 @@ class GameView {
             const headUx = headDx / headLength;
             const headUy = headDy / headLength;
             
-            // Size of head proportional to width at head (t=0): baseWidth
-            const desiredHeadRadius = 2.0; // viewBox units
-            const headSize = desiredHeadRadius / 3.0;
+            // OI-2: Head size matches body width (BODY_WIDTH = 2.4)
+            const headSize = BODY_WIDTH / 3.0; // ~0.8
             const headGroup = this._createHeadElement(startCenter.x, startCenter.y, headUx, headUy, headSize);
+            // Apply same speckle filter to head
+            const headEllipse = headGroup.querySelector('ellipse');
+            if (headEllipse) {
+                headEllipse.setAttribute('stroke', '#1a1a1a');
+                headEllipse.setAttribute('filter', 'url(#snakeSpeckle)');
+            }
             this.svgElement.appendChild(headGroup);
             
-            // Tail is tapered to a fine point via the body stroke-width; no separate tail element needed.
+            // OI-2: Explicit tail element - fine whip point
+            const tailGroup = this._createTailElement(
+                points[points.length - 1].x, 
+                points[points.length - 1].y, 
+                ux, uy, // direction head->tail (same as body)
+                headSize
+            );
+            // Apply speckle filter to tail
+            const tailCircle = tailGroup.querySelector('circle');
+            if (tailCircle) {
+                tailCircle.setAttribute('stroke', '#1a1a1a');
+                tailCircle.setAttribute('filter', 'url(#snakeSpeckle)');
+            }
+            tailGroup.setAttribute('data-jump', `${start}-${end}`);
+            this.svgElement.appendChild(tailGroup);
         }
     }
 
@@ -585,6 +660,39 @@ class GameView {
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '0';
         svg.setAttribute('viewBox', '0 0 100 100');
+        
+        // Add defs with speckle filter for snakes (OI-2)
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const speckleFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        speckleFilter.setAttribute('id', 'snakeSpeckle');
+        speckleFilter.setAttribute('x', '0');
+        speckleFilter.setAttribute('y', '0');
+        speckleFilter.setAttribute('width', '100%');
+        speckleFilter.setAttribute('height', '100%');
+        
+        const feTurbulence = document.createElementNS('http://www.w3.org/2000/svg', 'feTurbulence');
+        feTurbulence.setAttribute('type', 'fractalNoise');
+        feTurbulence.setAttribute('baseFrequency', '0.9');
+        feTurbulence.setAttribute('numOctaves', '4');
+        feTurbulence.setAttribute('stitchTiles', 'stitch');
+        feTurbulence.setAttribute('result', 'noise');
+        
+        const feColorMatrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+        feColorMatrix.setAttribute('in', 'noise');
+        feColorMatrix.setAttribute('type', 'matrix');
+        feColorMatrix.setAttribute('values', '0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.02  0 0 0 1 0');
+        
+        const feBlend = document.createElementNS('http://www.w3.org/2000/svg', 'feBlend');
+        feBlend.setAttribute('in', 'SourceGraphic');
+        feBlend.setAttribute('in2', 'noise');
+        feBlend.setAttribute('mode', 'multiply');
+        
+        speckleFilter.appendChild(feTurbulence);
+        speckleFilter.appendChild(feColorMatrix);
+        speckleFilter.appendChild(feBlend);
+        defs.appendChild(speckleFilter);
+        svg.appendChild(defs);
+        
         this.boardElement.appendChild(svg);
         this.svgElement = svg;
         this.drawSnakesAndLadders();
@@ -1891,7 +1999,8 @@ class GameView {
     }
 
     // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
-    // PRD-1: Elongated teardrop/snout ~4.0 long x 2.6 wide at neck, rounded nose, fill #e74c3c
+    // OI-2: Small head matching body width, speckled yellow/black via filter, forked tongue
+    // Head: ellipse matching body width (rx=BODY_WIDTH/2=1.2, ry=0.8), dark base for speckle filter
     // Forked tongue: two prongs ~2.2 long, splayed 30 deg, stroke #c0392b width ~0.55, projecting forward
     // NO eyes. Entire head+tongue within ONE 10-unit tile. Head offset toward body side for containment.
     _createHeadElement(cx, cy, ux, uy, size = 1.0) {
@@ -1901,13 +2010,14 @@ class GameView {
         const backOffset = 0.8;
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI}) translate(${-backOffset}, 0)`);
 
-        // Head: elongated ellipse ~4.0 long x 2.6 wide (rx=2.0, ry=1.3 before size scaling), fill #e74c3c
+        // OI-2: Head ellipse matches body width (BODY_WIDTH = 2.4)
+        // rx = 1.2 (half body width), ry = 0.8 (slightly less for streamlined shape)
         const headEllipse = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
         headEllipse.setAttribute('cx', 0);
         headEllipse.setAttribute('cy', 0);
-        headEllipse.setAttribute('rx', 2.0 * size);
-        headEllipse.setAttribute('ry', 1.3 * size);
-        headEllipse.setAttribute('fill', '#e74c3c');
+        headEllipse.setAttribute('rx', 1.2 * size);
+        headEllipse.setAttribute('ry', 0.8 * size);
+        headEllipse.setAttribute('fill', '#1a1a1a'); // dark base for speckle filter
         group.appendChild(headEllipse);
 
         // Forked tongue: two prongs ~2.2 long, splayed 30 deg (15 deg each side), stroke #c0392b width ~0.55
@@ -1917,7 +2027,7 @@ class GameView {
         const splayAngle = 15 * Math.PI / 180;  // 15 deg each side = 30 deg total splay (within 28-34 deg)
         const strokeWidth = 0.55;               // stroke width (viewBox units)
 
-        const snoutX = 2.0 * size;              // snout at ellipse edge (rx, scaled)
+        const snoutX = 1.2 * size;              // snout at ellipse edge (rx, scaled)
         const forkX = snoutX + forkOffset;
         const forkY = 0;
         const tip1X = forkX + tongueLength * Math.cos(splayAngle);
@@ -1938,18 +2048,19 @@ class GameView {
     }
 
     // Create an SVG group for a snake tail, positioned at (cx, cy) and facing in the direction (ux, uy)
+    // OI-2: Fine whip point tail - small circle at tip, speckled via filter
     _createTailElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        const angle = Math.atan2(uy, ux); // in radians
+        const angle = Math.atan2(uy, ux); // in radians (direction head->tail)
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI})`);
 
-        // Tail: a fine point - small circle at the tip
-        const tailRadius = 1.5 * size; // radius of the tail point
+        // OI-2: Fine whip point - very small circle
+        const tailRadius = 0.15 * size; // fine point
         const tailCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
         tailCircle.setAttribute('cx', 0);
         tailCircle.setAttribute('cy', 0);
         tailCircle.setAttribute('r', tailRadius);
-        tailCircle.setAttribute('fill', '#e74c3c');
+        tailCircle.setAttribute('fill', '#1a1a1a'); // dark base for speckle filter
         group.appendChild(tailCircle);
 
         return group;
