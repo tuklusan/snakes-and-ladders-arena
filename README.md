@@ -48,12 +48,14 @@ In normal browsers, autoplay is blocked — the game waits for a user gesture. T
 
 *In kiosk mode (`--app` / standalone) the button is hidden and the arena starts automatically.*
 
-### Visual Details
-| Speckled snakes & ladders | Forked tongues |
-|---------------------------|----------------|
-| ![Speckled snakes](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/oi2_snake_validation.png) | ![Forked tongues](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/snake_tongues_validation.png) |
+### Gameplay at 30s and 90s
+Real mid-game captures from a properly running session (start button clicked, audio unlocked, auto-play active).
 
-*All screenshots captured with headless Puppeteer from the running arena (auto-refreshed on each push).*
+| 30 seconds | 90 seconds |
+|------------|------------|
+| ![30s](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_30s.png) | ![90s](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_90s.png) |
+
+*Captured with headless Puppeteer at exact timestamps after start button click.*
 
 ---
 
