@@ -418,9 +418,9 @@ class GameView {
             }
             
             // Draw the head as a filled red circle with white eyes and forked tongue
-            // Direction from head to tail: (endCenter - startCenter) so tongue points forward along snake
-            const headDx = endCenter.x - startCenter.x;
-            const headDy = endCenter.y - startCenter.y;
+            // Direction from tail to head: (startCenter - endCenter) so tongue points outward from mouth
+            const headDx = startCenter.x - endCenter.x;
+            const headDy = startCenter.y - endCenter.y;
             const headLength = Math.sqrt(headDx*headDx + headDy*headDy);
             const headUx = headDx / headLength;
             const headUy = headDy / headLength;
