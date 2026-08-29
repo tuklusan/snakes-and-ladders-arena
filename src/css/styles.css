@@ -229,6 +229,7 @@ body {
     position: relative;
     z-index: 1;
     border: 1px solid #bbb;
+    font-size: 50%; /* OI-1: reduce tile numbers to 50% of default size */
 }
 
 

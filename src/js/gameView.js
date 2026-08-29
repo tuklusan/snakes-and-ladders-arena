@@ -322,10 +322,10 @@ class GameView {
             rail2.setAttribute('data-jump', `${start}-${end}`);
             this.svgElement.appendChild(rail2);
             
-            // Draw rungs (perpendicular lines between rails)
+            // Draw rungs (perpendicular lines between rails) — intermediate only, no endpoint rungs (OI-3)
             const numRungs = Math.max(2, Math.floor(length / 5)); // at least 2 rungs, spaced every 5 viewBox units
-            for (let i = 0; i <= numRungs; i++) {
-                const t = i / numRungs; // position along ladder from 0 to 1
+            for (let i = 1; i < numRungs; i++) {
+                const t = i / numRungs; // position along ladder from 0 to 1 (exclusive)
                 const rungCenterX = startCenter.x + t * dx;
                 const rungCenterY = startCenter.y + t * dy;
                 
@@ -416,6 +416,18 @@ class GameView {
                 segmentPath.setAttribute('data-jump', `${start}-${end}`);
                 this.svgElement.appendChild(segmentPath);
             }
+            
+            // Create a single continuous path for the full snake body (for animation)
+            // This path is invisible but provides the complete path for token animation
+            const fullPathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+            const animationPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            animationPath.setAttribute('d', fullPathD);
+            animationPath.setAttribute('fill', 'none');
+            animationPath.setAttribute('stroke', 'none'); // invisible
+            animationPath.setAttribute('stroke-width', '0');
+            animationPath.setAttribute('data-jump', `${start}-${end}`);
+            animationPath.setAttribute('data-snake-animation', 'true');
+            this.svgElement.appendChild(animationPath);
             
             // Draw the head as a filled red circle with white eyes and forked tongue
             // Direction from tail to head: (startCenter - endCenter) so tongue points outward from mouth
@@ -1374,8 +1386,10 @@ class GameView {
             if (this.moveId !== moveId) return;
             console.log(`[gameView] has jump from ${jumpStart} to ${jumpEnd}`);
             // Find the SVG path element for this jump
-            const pathSelector = `[data-jump="${jumpStart}-${jumpEnd}"]`;
-            const path = this.svgElement.querySelector(pathSelector);
+            // For snakes, prefer the full continuous animation path (data-snake-animation)
+            const snakeAnimationSelector = `[data-jump="${jumpStart}-${jumpEnd}"][data-snake-animation="true"]`;
+            const ladderOrSegmentSelector = `[data-jump="${jumpStart}-${jumpEnd}"]`;
+            const path = this.svgElement.querySelector(snakeAnimationSelector) || this.svgElement.querySelector(ladderOrSegmentSelector);
             if (!path) {
                 console.error(`[gameView] SVG path not found for jump ${jumpStart}-${jumpEnd}`);
                 // Fallback: direct move
