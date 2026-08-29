@@ -39,11 +39,21 @@ The server sends `Cache-Control: no-store` so every reload picks up the latest c
 
 ## 🖼️ Screenshots
 
-| Board view | Speckled snakes & ladders | Tongue detail |
-|------------|---------------------------|---------------|
-| ![Full arena](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/all_fixes_validation.png) | ![Speckled snakes](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/oi2_snake_validation.png) | ![Forked tongues](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/snake_tongues_validation.png) |
+### Initial State (Audio Gate)
+In normal browsers, autoplay is blocked — the game waits for a user gesture. The **“Click to start the arena”** button appears over the board; clicking it unlocks audio and begins auto-play.
 
-*Screenshots captured with headless Puppeteer from the running arena (auto-refreshed on each push).*
+| Before click | After click (mid-game) |
+|--------------|------------------------|
+| ![Start button](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_start_button.png) | ![Mid-game](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_midgame.png) |
+
+*In kiosk mode (`--app` / standalone) the button is hidden and the arena starts automatically.*
+
+### Visual Details
+| Speckled snakes & ladders | Forked tongues |
+|---------------------------|----------------|
+| ![Speckled snakes](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/oi2_snake_validation.png) | ![Forked tongues](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/snake_tongues_validation.png) |
+
+*All screenshots captured with headless Puppeteer from the running arena (auto-refreshed on each push).*
 
 ---
 
