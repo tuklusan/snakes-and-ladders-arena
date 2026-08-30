@@ -12,15 +12,29 @@ document.addEventListener('DOMContentLoaded', () => {
         // Reset the game to set initial state
         controller.resetGame();
 
-        // Expose for debugging (optional)
-        window.gameModel = model;
-        window.gameController = controller;
-        window.gameView = view;
+        // Expose for debugging (optional) - guarded by DEBUG flag - DEF-0002 fix
+        const DEBUG = false; // Set to true for development
+        if (DEBUG) {
+            window.gameModel = model;
+            window.gameController = controller;
+            window.gameView = view;
+        }
     } catch (e) {
         // Show error in the container instead of a blocking alert
         const container = document.getElementById('game-container');
         if (container) {
-            container.innerHTML = `<div style="color:red; padding:20px;">Error: ${e}</div><div style="color:red; padding:20px;">Stack: ${e.stack}</div>`;
+            // Use textContent to prevent XSS - DEF-0001 fix
+            container.innerHTML = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.style.color = 'red';
+            errorDiv.style.padding = '20px';
+            errorDiv.textContent = `Error: ${e}`;
+            const stackDiv = document.createElement('div');
+            stackDiv.style.color = 'red';
+            stackDiv.style.padding = '20px';
+            stackDiv.textContent = `Stack: ${e.stack}`;
+            container.appendChild(errorDiv);
+            container.appendChild(stackDiv);
         }
         console.error(e);
     }

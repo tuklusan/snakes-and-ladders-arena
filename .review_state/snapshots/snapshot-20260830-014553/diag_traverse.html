@@ -1,0 +1,52 @@
+<!doctype html><meta charset=utf-8><title>traverse2</title>
+<style>body{margin:0;font:12px monospace}#f{width:1280px;height:600px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre;font:12px monospace}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>sampling...</pre>
+<script>
+// v2: no distance gate. Every sample maps to the cell whose box CONTAINS the
+// token centre, so nothing is discarded. A stepped move yields consecutive
+// integers; a straight-line move yields an arbitrary diagonal of cells.
+var seqs=[[],[],[],[]], boxes=null, started=Date.now();
+function build(d){
+  var m=[];
+  for(var n=1;n<=100;n++){
+    var c=d.querySelector('[data-tile="'+n+'"]');
+    if(c){var r=c.getBoundingClientRect(); m.push({n:n,l:r.left,t:r.top,r:r.right,b:r.bottom});}
+  }
+  return m.length===100?m:null;
+}
+function hit(m,x,y){
+  for(var i=0;i<m.length;i++){var c=m[i]; if(x>=c.l&&x<c.r&&y>=c.t&&y<c.b) return c.n;}
+  return 0; // 0 = off-grid (staging or in transit outside the board)
+}
+setInterval(function(){
+  var fr=document.getElementById("f"), d=fr.contentDocument;
+  try{
+    if(!boxes) boxes=build(d);
+    if(boxes){
+      var toks=d.querySelectorAll(".game-token");
+      for(var i=0;i<toks.length&&i<4;i++){
+        var r=toks[i].getBoundingClientRect();
+        var n=hit(boxes,r.left+r.width/2,r.top+r.height/2);
+        var s=seqs[i];
+        if(s.length===0||s[s.length-1]!==n) s.push(n);
+      }
+    }
+  }catch(e){}
+  var out=[], t=((Date.now()-started)/1000)|0;
+  out.push("elapsed "+t+"s  v2: every sample mapped to containing cell (0 = off-grid)");
+  for(var i=0;i<4;i++){
+    var s=seqs[i].filter(function(v){return v!==0;});
+    var step=0, leap=0, leaps=[];
+    for(var k=1;k<s.length;k++){
+      var dl=Math.abs(s[k]-s[k-1]);
+      if(dl===1) step++; else { leap++; if(leaps.length<8) leaps.push(s[k-1]+">"+s[k]); }
+    }
+    var pct = (step+leap)>0 ? Math.round(100*step/(step+leap)) : 0;
+    out.push("P"+(i+1)+" onGridVisits="+s.length+" adjacent="+step+" nonAdjacent="+leap+"  adjacency="+pct+"%"
+             +(leaps.length?("  ["+leaps.join(" ")+"]"):""));
+    out.push("   "+s.slice(-46).join(" "));
+  }
+  document.getElementById("out").textContent=out.join("\n");
+},33);
+</script>

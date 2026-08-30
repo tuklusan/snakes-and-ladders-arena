@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "timestamp": "2026-08-30T03:41:07.777Z",
+  "duration_ms": 31793,
+  "state": {
+    "tokensOnBoard": 1,
+    "diceHasImage": true
+  },
+  "errors": []
+}

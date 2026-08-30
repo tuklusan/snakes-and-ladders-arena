@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Debug Test</title>
+</head>
+<body>
+    <h1>Debug Test</h1>
+    <div id="debug-output"></div>
+    
+    <script src="src/js/gameModel.js"></script>
+    <script src="src/js/gameController.js"></script>
+    <script src="src/js/gameView.js"></script>
+    <script>
+        console.log("Scripts loaded");
+        document.getElementById("debug-output").innerHTML += "<p>Scripts loaded</p>";
+        
+        // Check if GameModel is defined
+        if (typeof GameModel !== 'undefined') {
+            console.log("GameModel is defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameModel is defined</p>";
+            try {
+                const model = new GameModel();
+                console.log("GameModel instantiated:", model);
+                document.getElementById("debug-output").innerHTML += "<p>GameModel instantiated successfully</p>";
+            } catch (e) {
+                console.log("Error instantiating GameModel:", e);
+                document.getElementById("debug-output").innerHTML += "<p>Error instantiating GameModel: " + e + "</p>";
+            }
+        } else {
+            console.log("GameModel is NOT defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameModel is NOT defined</p>";
+        }
+        
+        // Check if GameController is defined
+        if (typeof GameController !== 'undefined') {
+            console.log("GameController is defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameController is defined</p>";
+        } else {
+            console.log("GameController is NOT defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameController is NOT defined</p>";
+        }
+        
+        // Check if GameView is defined
+        if (typeof GameView !== 'undefined') {
+            console.log("GameView is defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameView is defined</p>";
+        } else {
+            console.log("GameView is NOT defined");
+            document.getElementById("debug-output").innerHTML += "<p>GameView is NOT defined</p>";
+        }
+    </script>
+</body>
+</html>

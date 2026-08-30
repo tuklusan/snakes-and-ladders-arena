@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 90" width="440" height="180">
+  <!-- REFERENCE for snake HEAD and TAIL style (based on user's example image).
+       A board snake runs head-tile -> tail-tile. Head faces OUTWARD (snout+tongue
+       point away from the body); tail tapers to a thin point away from the body. -->
+  <rect width="220" height="90" fill="#ffffff"/>
+  <!-- Example snake, head on the RIGHT (snout/tongue right), tail on the LEFT. Black like the example. -->
+  <!-- BODY: smooth curve, tapering slightly toward the tail -->
+  <path d="M 30 55 C 55 30, 85 30, 105 48 C 120 62, 140 62, 158 48"
+        fill="none" stroke="#111" stroke-width="12" stroke-linecap="round"/>
+  <!-- TAIL (left end): a thin tapering point extending past the body end -->
+  <path d="M 34 52 L 30 55 L 34 58 L 16 56 Z" fill="#111"/>
+  <!-- HEAD (right end): an oval/teardrop snout, wider than the body, oriented along the body axis -->
+  <ellipse cx="166" cy="47" rx="14" ry="9" fill="#111" transform="rotate(-18 166 47)"/>
+  <!-- EYES: two small dots on the head -->
+  <circle cx="168" cy="42" r="1.7" fill="#fff"/>
+  <circle cx="172" cy="49" r="1.7" fill="#fff"/>
+  <!-- FORKED TONGUE: a thin line from the snout that splits into a Y, pointing outward (away from body) -->
+  <path d="M 179 46 L 190 44 M 190 44 L 196 41 M 190 44 L 196 47"
+        fill="none" stroke="#c0392b" stroke-width="1.6" stroke-linecap="round"/>
+  <text x="10" y="84" font-family="sans-serif" font-size="8" fill="#555">Snake head+tongue (right, faces outward) and tapered tail (left). Board snakes: draw this at each snake's head/tail tile, rotated to the head-&gt;tail axis.</text>
+</svg>

@@ -1,0 +1,6 @@
+# Test artifacts - regenerated on demand, never committed
+shots/
+*.log
+output.txt
+crprofile/
+node_modules/

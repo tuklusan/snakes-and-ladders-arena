@@ -1,0 +1,16 @@
+<!doctype html><meta charset=utf-8>
+<iframe id=f src="index.html" width="1280" height="700" style="border:0"></iframe><pre id=out>x</pre>
+<script>
+setTimeout(function(){
+ var d=document.getElementById("f").contentDocument, L=[];
+ var st=d.getElementById("staging")||d.getElementById("staging-area")||d.querySelector(".staging,.staging-area");
+ if(st){var r=st.getBoundingClientRect();L.push("staging L="+r.left.toFixed(0)+" R="+r.right.toFixed(0)+" T="+r.top.toFixed(0)+" B="+r.bottom.toFixed(0));}
+ else L.push("staging element NOT FOUND");
+ d.querySelectorAll(".game-token").forEach(function(t,i){
+   var r=t.getBoundingClientRect();
+   var inSt = st ? (r.left>=st.getBoundingClientRect().left-1 && r.right<=st.getBoundingClientRect().right+1) : false;
+   L.push("token"+i+" L="+r.left.toFixed(0)+" R="+r.right.toFixed(0)+" T="+r.top.toFixed(0)+" parent="+(t.parentElement.id||t.parentElement.className)+" insideStaging="+inSt);
+ });
+ document.getElementById("out").textContent=L.join("\n");
+},5000);
+</script>

@@ -1,0 +1,73 @@
+<!doctype html><meta charset=utf-8>
+<iframe id=f src="index.html" width="900" height="600" style="border:0"></iframe><pre id=out>x</pre>
+<script>
+// Drive a SIX-tile walk with no jump at either end: tile 3, roll 6 -> tile 9.
+// 9 is neither a ladder foot nor a snake head, and the path passes OVER tile 7
+// (a ladder foot) which must not trigger. Expected: 3 4 5 6 7 8 9.
+//
+// NOTE: clearTimeouts() alone no longer halts the arena - the turn loop now
+// re-arms through promise chains, so the running game overwrites any forced
+// state. autoRoll must be stubbed out as well, and we must wait for any move
+// already in flight to finish before seeding the board.
+var boot=setInterval(function(){
+  var fr=document.getElementById("f"), w=fr.contentWindow;
+  var ok=false;
+  try{ ok=!!(w.gameController&&w.gameModel&&w.gameView&&fr.contentDocument.querySelector('[data-tile="9"]')); }catch(e){}
+  if(ok){ clearInterval(boot); setTimeout(quiesce, 1000); }
+},200);
+
+function quiesce(){
+  var w=document.getElementById("f").contentWindow;
+  var v=w.gameView;
+  try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
+  v.autoRoll = function(){};              // stop the loop re-arming
+  setTimeout(main, 6000);                 // let any in-flight move finish
+}
+
+function main(){
+  var fr=document.getElementById("f"), d=fr.contentDocument, w=fr.contentWindow;
+  var m=w.gameModel, v=w.gameView, c=w.gameController;
+  var cells={},cw=40;
+  for(var n=1;n<=100;n++){var e=d.querySelector('[data-tile="'+n+'"]');
+    if(e){var r=e.getBoundingClientRect();cells[n]={x:r.left+r.width/2,y:r.top+r.height/2};cw=r.width;}}
+  function near(x,y){var b=null,bd=1e9;
+    for(var k in cells){var dx=cells[k].x-x,dy=cells[k].y-y,dd=dx*dx+dy*dy;if(dd<bd){bd=dd;b=+k;}}
+    return {t:b,d:Math.sqrt(bd)};}
+  var tok=d.querySelectorAll(".game-token")[0];
+
+  m.pawn_positions[0]=3; m.pawn_positions[1]=50; m.pawn_positions[2]=60; m.pawn_positions[3]=70;
+  m.active_player=0; m.consecutive_sixes=0; m.game_over=false;
+  v.previousPositions=[3,50,60,70];
+  try{ v.positionTokenOnTile(0,3); }catch(e){}
+  w.Math.random=function(){ return (6-1)/6 + 0.01; };   // force a 6
+
+  var before = m.pawn_positions[0];
+  var seq=[], t0=Date.now();
+  var s=setInterval(function(){
+    var r=tok.getBoundingClientRect();
+    var h=near(r.left+r.width/2,r.top+r.height/2);
+    if(h.d<cw*0.45){ if(!seq.length||seq[seq.length-1].t!==h.t) seq.push({t:h.t,ms:Date.now()-t0}); }
+  },20);
+
+  var err=null;
+  try{ c.rollDice(); }catch(e){ err=e.message; }
+
+  setTimeout(function(){
+    clearInterval(s);
+    var tiles=seq.map(function(x){return x.t;});
+    var L=[];
+    L.push("SIX-TILE WALK: tile 3, forced roll 6, expect 3 4 5 6 7 8 9");
+    L.push("rollDice error : "+(err||"none"));
+    L.push("position before: "+before+"   after: "+m.pawn_positions[0]+"   lastRoll: "+m.lastRoll);
+    L.push("   (after must be 9 - NOT 14; tile 7 is a ladder foot it only passes over)");
+    L.push("");
+    L.push("observed: "+tiles.join(" "));
+    L.push("timings : "+seq.map(function(x){return x.t+"@"+x.ms+"ms";}).join("  "));
+    var need=[4,5,6,7,8,9], missing=need.filter(function(n){return tiles.indexOf(n)<0;});
+    L.push("");
+    L.push("missing tiles: "+(missing.length?missing.join(", "):"none"));
+    L.push(missing.length? "FAIL - the walk skips tiles" : "PASS - every tile visited");
+    document.getElementById("out").textContent=L.join("\n");
+  }, 16000);
+}
+</script>

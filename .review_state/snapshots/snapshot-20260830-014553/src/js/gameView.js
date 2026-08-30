@@ -1,6 +1,10 @@
 // Game View - Handles rendering and user interface
+console.log("!!! gameView.js LOADED !!!");
+console.log("DEFINITELY RUNNING THIS LINE - SHOULD APPEAR IN CONSOLE");
 class GameView {
     constructor() {
+        console.log("!!! gameView constructor START !!!");
+        console.log("gameView constructor called");
         this.model = null;
         this.controller = null;
         this.assets = {
@@ -20,7 +24,6 @@ class GameView {
         this.boardElement = null;
         this.tokenElements = []; // array of div elements for tokens
         this.diceElement = null;
-        this.stagingElement = null;
         // this.playerInfoElement = null; // Removed per requirement
         this.loadingOverlay = null;
         this.autoRollTimeout = null;
@@ -44,10 +47,6 @@ class GameView {
         this.assetError = this.assetError.bind(this);
         this.autoRoll = this.autoRoll.bind(this);
         this.handleGameOver = this.handleGameOver.bind(this);
-
-        // Bind asset handlers for correct 'this' context - DEF-010 fix
-        this.assetLoaded = this.assetLoaded.bind(this);
-        this.assetError = this.assetError.bind(this);
         // Expose instance for debugging
         if (typeof window !== 'undefined') {
             window.gameViewInstance = this;
@@ -148,6 +147,7 @@ class GameView {
         // Handle tile 0 (off-board staging)
         if (tile === 0) {
             const stagingRect = this.stagingElement.getBoundingClientRect();
+            const containerRect = this.container.getBoundingClientRect();
             const stripLeft = stagingRect.left - containerRect.left;
             const stripWidth = stagingRect.width;
             const x = stripLeft + (playerId + 0.5) * (stripWidth / 4);
@@ -255,6 +255,9 @@ class GameView {
     // Position a token on a given tile
     positionTokenOnTile(playerId, tile) {
         const pos = this.getTokenPositionFromTile(tile, playerId);
+        if (tile === 26 && playerId === 0) {
+            console.log();
+        }
         if (pos) {
             this.setTokenPositionFromPixel(pos.x, pos.y, this.tokenElements[playerId]);
         }
@@ -657,6 +660,38 @@ class GameView {
         svg.style.pointerEvents = 'none';
         svg.style.zIndex = '0';
         svg.setAttribute('viewBox', '0 0 100 100');
+        
+        // Add defs with speckle filter for snakes (OI-2)
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const speckleFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+        speckleFilter.setAttribute('id', 'snakeSpeckle');
+        speckleFilter.setAttribute('x', '0');
+        speckleFilter.setAttribute('y', '0');
+        speckleFilter.setAttribute('width', '100%');
+        speckleFilter.setAttribute('height', '100%');
+        
+        const feTurbulence = document.createElementNS('http://www.w3.org/2000/svg', 'feTurbulence');
+        feTurbulence.setAttribute('type', 'fractalNoise');
+        feTurbulence.setAttribute('baseFrequency', '0.9');
+        feTurbulence.setAttribute('numOctaves', '4');
+        feTurbulence.setAttribute('stitchTiles', 'stitch');
+        feTurbulence.setAttribute('result', 'noise');
+        
+        const feColorMatrix = document.createElementNS('http://www.w3.org/2000/svg', 'feColorMatrix');
+        feColorMatrix.setAttribute('in', 'noise');
+        feColorMatrix.setAttribute('type', 'matrix');
+        feColorMatrix.setAttribute('values', '0 0 0 0 0.1  0 0 0 0 0.05  0 0 0 0 0.02  0 0 0 1 0');
+        
+        const feBlend = document.createElementNS('http://www.w3.org/2000/svg', 'feBlend');
+        feBlend.setAttribute('in', 'SourceGraphic');
+        feBlend.setAttribute('in2', 'noise');
+        feBlend.setAttribute('mode', 'multiply');
+        
+        speckleFilter.appendChild(feTurbulence);
+        speckleFilter.appendChild(feColorMatrix);
+        speckleFilter.appendChild(feBlend);
+        defs.appendChild(speckleFilter);
+        svg.appendChild(defs);
         
         this.boardElement.appendChild(svg);
         this.svgElement = svg;
@@ -1619,12 +1654,7 @@ class GameView {
             }
 
             const FALLBACK_TIME = 1000; // 1 second fallback
-            let transitionHandled = false; // DEF-011 fix: guard against multiple transitionend events
             const onTransitionEnd = () => {
-                // DEF-011 fix: guard against multiple transitionend events
-                if (transitionHandled) return;
-                transitionHandled = true;
-                
                 // Clear fallback timeout
                 clearTimeout(timeoutId);
                 // Clean up pending entry
@@ -1662,11 +1692,6 @@ class GameView {
 
     // Update dice display
     updateDice(face) {
-        // Validate dice face parameter - DEF-014 fix
-        if (face < 1 || face > 6 || !Number.isInteger(face)) {
-            console.error(`[gameView] Invalid dice face: ${face}. Must be integer 1-6.`);
-            return;
-        }
         // Static dice face
         this.diceElement.style.backgroundImage = `url('${this.assets.diceFaces[face-1].src}')`;
         this.diceElement.style.backgroundSize = 'contain';
@@ -1719,7 +1744,6 @@ class GameView {
         const frames = 12; // number of frames in the tumble sheet (1536px / 128px)
         let currentFrame = 0;
         let startTime;
-        let animationFrameId = null; // DEF-013 fix: track animation frame ID
         const duration = 1000; // 1 second for tumble animation
 
         // Return a promise that resolves when the animation settles
@@ -1728,11 +1752,6 @@ class GameView {
             // Timeout fallback: resolve after 1200ms if animation doesn't complete naturally
             const timeoutId = setTimeout(() => {
                 this.debugLog(`animateDiceRoll timeout fallback triggered`);
-                // DEF-013 fix: cancel animation frame on timeout
-                if (animationFrameId !== null) {
-                    cancelAnimationFrame(animationFrameId);
-                    animationFrameId = null;
-                }
                 resolve();
             }, 1200);
             const animate = (timestamp) => {
@@ -1838,8 +1857,7 @@ class GameView {
                 text += ` but landed on a snake at ${record.landed} and slid down to ${record.to}!`;
                 break;
             case 'capture':
-                // DEF-015 fix: guard against missing captured property
-                const capturedPlayerNum = (record.captured !== undefined && record.captured !== null) ? record.captured + 1 : 'unknown';
+                const capturedPlayerNum = record.captured + 1;
                 text += ` and captured Player ${capturedPlayerNum}'s token!`;
                 break;
             case 'win':
@@ -1982,14 +2000,14 @@ class GameView {
 
     // Create an SVG group for a snake head, positioned at (cx, cy) and facing in the direction (ux, uy)
     // OI-2: Small head matching body width, speckled yellow/black via filter, forked tongue
-    // Head: ellipse matching body width (BODY_WIDTH = 2.4)
+    // Head: ellipse matching body width (rx=BODY_WIDTH/2=1.2, ry=0.8), dark base for speckle filter
     // Forked tongue: two prongs ~2.2 long, splayed 30 deg, stroke #c0392b width ~0.55, projecting forward
     // NO eyes. Entire head+tongue within ONE 10-unit tile. Head offset toward body side for containment.
     _createHeadElement(cx, cy, ux, uy, size = 1.0) {
         const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         const angle = Math.atan2(uy, ux); // in radians
         // Offset head toward back (body side) by 0.8 viewBox units so forward-projecting tongue stays in tile
-        const backOffset = 0.8 * size; // DEF-016 fix: scale backOffset with size
+        const backOffset = 0.8;
         group.setAttribute('transform', `translate(${cx},${cy}) rotate(${angle * 180 / Math.PI}) translate(${-backOffset}, 0)`);
 
         // OI-2: Head ellipse matches body width (BODY_WIDTH = 2.4)
@@ -2000,17 +2018,14 @@ class GameView {
         headEllipse.setAttribute('rx', 1.2 * size);
         headEllipse.setAttribute('ry', 0.8 * size);
         headEllipse.setAttribute('fill', '#1a1a1a'); // dark base for speckle filter
-        // DEF-019 fix: apply speckle filter to head
-        headEllipse.setAttribute('filter', 'url(#snakeSpeckle)');
         group.appendChild(headEllipse);
 
         // Forked tongue: two prongs ~2.2 long, splayed 30 deg (15 deg each side), stroke #c0392b width ~0.55
         // Y-shape: snout -> fork point -> two tips. Dimensions in absolute viewBox units for visibility.
-        // DEF-016 fix: scale all size-dependent values
-        const tongueLength = 2.2 * size;               // prong length (viewBox units)
-        const forkOffset = 0.1 * size;                 // minimal offset from snout to fork point
-        const splayAngle = 15 * Math.PI / 180;         // 15 deg each side = 30 deg total splay (within 28-34 deg)
-        const strokeWidth = 0.55 * size;               // stroke width (viewBox units) - DEF-016 fix
+        const tongueLength = 2.2;               // prong length (viewBox units)
+        const forkOffset = 0.1;                 // minimal offset from snout to fork point
+        const splayAngle = 15 * Math.PI / 180;  // 15 deg each side = 30 deg total splay (within 28-34 deg)
+        const strokeWidth = 0.55;               // stroke width (viewBox units)
 
         const snoutX = 1.2 * size;              // snout at ellipse edge (rx, scaled)
         const forkX = snoutX + forkOffset;
@@ -2020,15 +2035,13 @@ class GameView {
         const tip2X = forkX + tongueLength * Math.cos(-splayAngle);
         const tip2Y = forkY + tongueLength * Math.sin(-splayAngle);
 
-        // DEF-017 fix: Use continuous path to avoid rounded cap artifacts at fork point
-        // Single continuous path: snout -> fork -> tip1, then fork -> tip2
+        // Single path for the forked tongue (snout->fork, fork->tip1, fork->tip2)
         const tonguePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        tonguePath.setAttribute('d', `M ${snoutX} 0 L ${forkX} ${forkY} L ${tip1X} ${tip1Y} M ${forkX} ${forkY} L ${tip2X} ${tip2Y}`);
+        tonguePath.setAttribute('d', `M ${snoutX} 0 L ${forkX} ${forkY} M ${forkX} ${forkY} L ${tip1X} ${tip1Y} M ${forkX} ${forkY} L ${tip2X} ${tip2Y}`);
         tonguePath.setAttribute('fill', 'none');
         tonguePath.setAttribute('stroke', '#c0392b');
         tonguePath.setAttribute('stroke-width', strokeWidth);
         tonguePath.setAttribute('stroke-linecap', 'round');
-        tonguePath.setAttribute('stroke-linejoin', 'round'); // DEF-017 fix: round join at fork
         group.appendChild(tonguePath);
 
         return group;
@@ -2048,8 +2061,6 @@ class GameView {
         tailCircle.setAttribute('cy', 0);
         tailCircle.setAttribute('r', tailRadius);
         tailCircle.setAttribute('fill', '#1a1a1a'); // dark base for speckle filter
-        // DEF-019 fix: apply speckle filter to tail
-        tailCircle.setAttribute('filter', 'url(#snakeSpeckle)');
         group.appendChild(tailCircle);
 
         return group;
@@ -2057,6 +2068,7 @@ class GameView {
 }
 
 // Attach to window for browser compatibility
+console.log("!!! Attaching GameView to window !!!");
 if (typeof window !== 'undefined') {
     window.GameView = GameView;
 }

@@ -1,0 +1,79 @@
+<!doctype html><meta charset=utf-8><title>errors</title>
+<style>body{margin:0;font:13px monospace}#f{width:1300px;height:300px;border:0}
+#out{background:#111;color:#0f0;padding:8px;white-space:pre}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>waiting...</pre>
+<script>
+// Headless, deterministic error gate. Drives the real controller through many
+// rolls and reports anything the game throws. No real display, no screenshot —
+// the verdict is plain text so it can be grepped from --dump-dom.
+var errors=[], warns=[], hooked=false, done=false;
+var ROLLS = 120;
+
+function hook(w){
+  if(hooked||!w) return;
+  try{
+    w.addEventListener("error", function(e){
+      errors.push("window.onerror: "+(e.message||e.error)+" @"+(e.filename||"?")+":"+(e.lineno||"?"));
+    });
+    w.addEventListener("unhandledrejection", function(e){
+      var r=e.reason; errors.push("unhandledrejection: "+((r&&r.message)||r));
+    });
+    var ce=w.console.error, cw=w.console.warn;
+    w.console.error=function(){ errors.push("console.error: "+[].join.call(arguments," ")); return ce.apply(this,arguments); };
+    w.console.warn =function(){ warns.push([].join.call(arguments," ")); return cw.apply(this,arguments); };
+    hooked=true;
+  }catch(e){}
+}
+
+function report(extra){
+  var uniq=[], seen={};
+  for(var i=0;i<errors.length;i++){ var k=errors[i].slice(0,140);
+    if(!seen[k]){seen[k]=1;uniq.push(errors[i]);} }
+  var L=[];
+  L.push("HEADLESS ERROR GATE");
+  L.push("rolls driven : "+extra.rolls);
+  L.push("errors       : "+errors.length+"   distinct: "+uniq.length);
+  L.push("warnings     : "+warns.length);
+  L.push("final state  : "+extra.state);
+  L.push("");
+  L.push(errors.length===0 ? "PASS - game threw nothing across "+extra.rolls+" rolls"
+                           : "FAIL - game is throwing");
+  L.push("");
+  L.push("--- distinct errors ---");
+  L.push(uniq.slice(0,15).join("\n") || "(none)");
+  document.getElementById("out").textContent=L.join("\n");
+}
+
+var boot=setInterval(function(){
+  var fr=document.getElementById("f"), w=fr.contentWindow;
+  hook(w);
+  var ready=false;
+  try{ ready = !!(w.gameController && w.gameModel && w.gameView
+                 && fr.contentDocument.querySelector('[data-tile="100"]')); }catch(e){}
+  if(ready){ clearInterval(boot); run(); }
+},50);
+
+function run(){
+  var fr=document.getElementById("f"), w=fr.contentWindow;
+  var m=w.gameModel, v=w.gameView, c=w.gameController;
+  // stop the arena driving itself; we drive it, so the run is deterministic
+  try{ v.clearTimeouts && v.clearTimeouts(); }catch(e){}
+  v.autoRoll = function(){};
+  // cycle the die through 1..6 so entries, ladders, snakes, sixes and triple
+  // sixes all get exercised
+  var seq=[1,6,6,6,2,3,4,5,6,1,2,6,6,3,5,4], k=0;
+  w.Math.random = function(){ var d=seq[k++ % seq.length]; return (d-1)/6 + 0.01; };
+  var n=0;
+  (function step(){
+    if(n>=ROLLS){
+      var st="positions=["+m.pawn_positions.join(",")+"] over="+m.game_over;
+      report({rolls:n, state:st});
+      done=true; return;
+    }
+    n++;
+    try{ if(!m.game_over) c.rollDice(); else c.resetGame(); }
+    catch(e){ errors.push("THROWN by rollDice: "+e.message); }
+    setTimeout(step, 120);
+  })();
+}
+</script>

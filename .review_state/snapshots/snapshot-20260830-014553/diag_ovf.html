@@ -1,0 +1,12 @@
+<!doctype html><meta charset=utf-8>
+<iframe id=f src="index.html" style="width:100%;height:600px;border:0"></iframe><pre id=out>x</pre>
+<script>
+setTimeout(function(){
+ var d=document.getElementById("f").contentDocument, w=document.getElementById("f").contentWindow;
+ var L=[];
+ L.push("iframe innerWidth="+w.innerWidth+" scrollWidth="+d.documentElement.scrollWidth+" hOverflow="+(d.documentElement.scrollWidth>w.innerWidth+1));
+ L.push("scrollHeight="+d.documentElement.scrollHeight+" vOverflow="+(d.documentElement.scrollHeight>600+1));
+ var b=d.getElementById("game-board"); if(b){var r=b.getBoundingClientRect();L.push("board L="+r.left.toFixed(0)+" R="+r.right.toFixed(0)+" W="+r.width.toFixed(0));}
+ document.getElementById("out").textContent=L.join("\n");
+},4000);
+</script>

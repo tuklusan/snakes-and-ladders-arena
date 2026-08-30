@@ -1,0 +1,49 @@
+<!doctype html><meta charset=utf-8><title>progress</title>
+<style>body{margin:0;font:14px monospace}#f{width:1280px;height:620px;border:0}
+#out{background:#111;color:#0f0;padding:10px;white-space:pre;font:bold 16px monospace}</style>
+<iframe id=f src="index.html"></iframe><pre id=out>starting...</pre>
+<script>
+var errors=[], samples=0, changes=0, last=null, started=Date.now(), hooked=false;
+var games=0, resets=0, prevOver=false;
+setInterval(function(){
+  var fr=document.getElementById("f"), w=fr.contentWindow, d=fr.contentDocument;
+  if(!hooked){
+    try{
+      w.onerror=function(m,s,l){ if(errors.length<10) errors.push(String(m)+" @"+String(s).split("/").pop()+":"+l); return false; };
+      w.addEventListener("unhandledrejection",function(e){ if(errors.length<10) errors.push("unhandled promise: "+e.reason); });
+      hooked=true;
+    }catch(e){}
+  }
+  var s="waiting for model";
+  try{
+    var m=w.gameModel;
+    if(m){
+      samples++;
+      var cur=m.pawn_positions.join(",");
+      if(last!==null && cur!==last) changes++;
+      last=cur;
+      var over=!!m.game_over;
+      if(over&&!prevOver) games++;
+      if(!over&&prevOver) resets++;
+      prevOver=over;
+      var t=((Date.now()-started)/1000)|0;
+      var progressing = changes>0;
+      s ="ELAPSED: "+t+"s\n"
+        +"POSITIONS: ["+m.pawn_positions.join(", ")+"]\n"
+        +"POSITION_CHANGES: "+changes+"\n"
+        +"GAMES_COMPLETED: "+games+"   RESETS: "+resets+"\n"
+        +"JS_ERRORS: "+errors.length+"\n"
+        +(errors.length?("  "+errors.slice(0,4).join("\n  ")+"\n"):"")
+        +"\nPROGRESS_"+(progressing?"PASS":"FAIL")+"   ERRORS_"+(errors.length===0?"PASS":"FAIL");
+      // Add board dimensions
+      var gv = w.gameViewInstance;
+      if (gv && gv.boardElement) {
+        s += "\nBOARD_WIDTH: "+gv.boardElement.clientWidth;
+        s += "\nBOARD_HEIGHT: "+gv.boardElement.clientHeight;
+      }
+    }
+  }catch(e){ s="ERR "+e.message; }
+  document.getElementById("out").textContent=s;
+ console.log(s);
+},500);
+</script>

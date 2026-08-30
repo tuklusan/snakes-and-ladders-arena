@@ -1,0 +1,577 @@
+[
+  {
+    "path": "diag_accept_test.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "dice_debug.html",
+    "category": "diagnostic",
+    "reason": "Debug page"
+  },
+  {
+    "path": "test_output.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "collect_timestamps.js",
+    "category": "temp",
+    "reason": "Temporary file"
+  },
+  {
+    "path": "test_harness_fixed_with_logs.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_twogames.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "debug_harness.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_harness_debug.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_dice_direct.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "walk6.html",
+    "category": "test_artifact",
+    "reason": "Test page"
+  },
+  {
+    "path": "errors.txt",
+    "category": "log",
+    "reason": "Error log"
+  },
+  {
+    "path": "favicon.ico",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "diag_live_test.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_diag2.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_harness3.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_console_short.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "debug_harness2.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "diag_accept.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "final_output.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "debug_game2.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_dice_final.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_traverse_debug.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "diag_accept_test2.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_index2.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "debug_harness4.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_index.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_ovf.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_snake.html",
+    "category": "test_artifact",
+    "reason": "Test HTML page"
+  },
+  {
+    "path": "test_diag.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_fixed.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_dwell.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "dom.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "TASK_COMPLETED.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "simple_dice_test.html",
+    "category": "diagnostic",
+    "reason": "Test page"
+  },
+  {
+    "path": "debug_test.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "header.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "diag_traverse.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "simple_test.html",
+    "category": "diagnostic",
+    "reason": "Test page"
+  },
+  {
+    "path": "test_harness_fixed.js.bak",
+    "category": "backup",
+    "reason": "Backup file"
+  },
+  {
+    "path": "verification_result.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "debug_game.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "diag_live_fast.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "dice_test.html",
+    "category": "diagnostic",
+    "reason": "Test page"
+  },
+  {
+    "path": "diag_console.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "server.pid",
+    "category": "temp",
+    "reason": "Process ID file"
+  },
+  {
+    "path": "test_index3.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_loop_bounded.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "test_diag5.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_align.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_dice_settle.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_walk.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "diag_r107.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "debug_game3.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_console.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_progress.html.bak",
+    "category": "backup",
+    "reason": "Backup file"
+  },
+  {
+    "path": "test_harness2.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_events.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "diag_stage.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "debug_harness3.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_diag3.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "debug_game5.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_dice_actual.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "dump.html",
+    "category": "temp",
+    "reason": "Temporary file"
+  },
+  {
+    "path": "diag_sweep.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_console_long.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_errors.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_finish.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_live.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_diag4.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "_t.html",
+    "category": "temp",
+    "reason": "Temporary file"
+  },
+  {
+    "path": "debug_output.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "test_debug.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "harness_output.txt",
+    "category": "temp",
+    "reason": "Temporary text file"
+  },
+  {
+    "path": "diag_overseer.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_harness_debug2.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "debug_harness5.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "diag_msg.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "diag_accept.html.bak",
+    "category": "backup",
+    "reason": "Backup file"
+  },
+  {
+    "path": "debug.html",
+    "category": "diagnostic",
+    "reason": "Debug page"
+  },
+  {
+    "path": "diag_probe.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "test_harness_fixed.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "debug_game4.js",
+    "category": "diagnostic",
+    "reason": "Debug script"
+  },
+  {
+    "path": "test_harness.js",
+    "category": "test_artifact",
+    "reason": "Test script"
+  },
+  {
+    "path": "diag_progress.html",
+    "category": "diagnostic",
+    "reason": "Diagnostic page"
+  },
+  {
+    "path": "src/js/gameView.js.backup",
+    "category": "backup",
+    "reason": "Backup file"
+  },
+  {
+    "path": "src/assets/audio/enter.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/capture.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/settle.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/triple_six.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/snake.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/roll.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/win.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/six.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/step.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/gameover.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/ladder.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/audio/turn.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "src/assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.svg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/enter.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/capture.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/settle.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/triple_six.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/snake.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/roll.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/win.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/six.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/step.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/gameover.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/ladder.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/audio/turn.ogg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/reference/ladder_source.jpg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/reference/snake_head_tail_reference.svg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/reference/snake_example.jpg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/reference/ladder_reference.svg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  },
+  {
+    "path": "assets/images/board/Snakes_and_Ladders_-_Board_Game_Corrected.svg",
+    "category": "binary_asset",
+    "reason": "Binary asset"
+  }
+]

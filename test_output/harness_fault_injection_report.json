@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-08-30T03:41:07.894Z",
+  "total_tests": 10,
+  "passed": 10,
+  "failed": 0,
+  "results": [
+    {
+      "test": "missing_api_key",
+      "passed": true,
+      "note": "Harness should fail closed"
+    },
+    {
+      "test": "empty_response",
+      "passed": true,
+      "note": "Harness should detect empty response"
+    },
+    {
+      "test": "truncated_output",
+      "passed": true,
+      "note": "Harness should detect truncation"
+    },
+    {
+      "test": "invalid_json",
+      "passed": true,
+      "note": "Harness should detect invalid JSON"
+    },
+    {
+      "test": "retry_exhaustion",
+      "passed": true,
+      "note": "Harness should fail after max retries"
+    },
+    {
+      "test": "snapshot_identity",
+      "passed": true,
+      "note": "Harness should validate snapshot identity"
+    },
+    {
+      "test": "candidate_ingress",
+      "passed": true,
+      "note": "Harness should enforce provenance"
+    },
+    {
+      "test": "secret_redaction",
+      "passed": true,
+      "note": "Harness should redact secrets"
+    },
+    {
+      "test": "closed_defect_recurrence",
+      "passed": true,
+      "note": "Harness should handle recurrence"
+    },
+    {
+      "test": "stale_cache",
+      "passed": true,
+      "note": "Harness should invalidate stale cache"
+    }
+  ]
+}

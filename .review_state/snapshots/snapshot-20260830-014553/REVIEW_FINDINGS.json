@@ -1,0 +1,178 @@
+[
+  {
+    "id": "DS-001",
+    "severity": "high",
+    "category": "rule",
+    "file": "src/js/gameController.js",
+    "line": 88,
+    "claim": "When a player overshoots tile 100, the model does not commit the position, but the view is still told to animate a move, causing desynchronization and false turn advancement.",
+    "failure_scenario": "A player on tile 99 rolls a 6, which overshoots 100. The controller leaves target_pos as current_pos, but the view's onStateChange is called and tries to animate the token from 99 to 99. The view's animateTokenMove sees previousPosition === newPosition and resolves immediately, but the autoRoll proceeds. The model has not advanced the turn in the processTurn, so the active player remains the same, leading to a continuous loop where the player repeatedly rolls and never moves.",
+    "suggested_fix": "In the view's animateTokenMove or onStateChange, detect when currentPositions[i] === previousPositions[i] and skip the animation, but still call autoRoll; however, the model must explicitly call advanceTurn() when an overshoot occurs to ensure the turn passes. Alternatively, in processTurn, when moved is false due to overshoot, call this.advanceTurn() before viewing.",
+    "how_to_verify": "Simulate a player on tile 99 rolling a 6. After the roll, the active player should advance to the next player and the token should remain on tile 99. The game should not stall or loop."
+  },
+  {
+    "id": "DS-002",
+    "severity": "high",
+    "category": "race",
+    "file": "src/js/gameView.js",
+    "line": 573,
+    "claim": "The view animates based on currentPositions captured before previousPositions is updated, but it also uses this.previousPositions in animateTokenMove, creating a race condition when multiple animations overlap.",
+    "failure_scenario": "In a rapid sequence, onStateChange is called, currentPositions is read, and animationPromises are created. Before the promises resolve, another onStateChange is triggered by an extra roll or capture. The second call updates this.previousPositions with the first set of currentPositions. When the first animation's _animateStepByStep uses this.previousPositions, it may use the updated positions, causing incorrect paths or interrupted animations. For instance, a player's token could jump to the wrong tile.",
+    "suggested_fix": "Pass the specific previous and current positions as arguments to animateTokenMove instead of relying on this.previousPositions. Update this.previousPositions immediately after reading it for each animation, and ensure animations can be cancelled or superseded gracefully.",
+    "how_to_verify": "Add stress tests with rapid consecutive rolls and captures. Observe token paths and ensure they always end at the model's final positions without visual glitches or console errors."
+  },
+  {
+    "id": "DS-003",
+    "severity": "high",
+    "category": "rule",
+    "file": "src/js/gameView.js",
+    "line": 688,
+    "claim": "The view's _calculateIntermediatePosition replicates controller logic and can produce an intermediate position equal to the end position even when the controller performed a ladder or snake jump, causing the view to skip the correct jump animation and incorrectly place the token.",
+    "failure_scenario": "A player on tile 36 rolls a 2. The controller moves to tile 38, then applies the ladder to tile 84, so model position is 84. In the view, _calculateIntermediatePosition(36, 2) returns 38. The hasJump condition checks if 38 is a ladder or snake start. It is not (since 38 is a ladder end, not start). The view then sets hasJump to false and animates directly from 36 to 84 without following the ladder path, potentially skipping intermediate tiles. This is not just a visual glitch; it can cause the token to animate incorrectly and may not reflect the actual jump.",
+    "suggested_fix": "The view should not replicate intermediate calculation. Instead, the model should provide the full movement trace (initial tile, intermediate tile, final tile) in the state, or the view should use the controller's output to animate the exact path. Alternatively, in the controller's processTurn, record the intermediate position before ladder/snake application and store it in the model for the view to consume.",
+    "how_to_verify": "Trigger a move that lands on a snake or ladder (e.g., from 36 roll 2 to ladder at 38). Observe the token's animation path. It should follow the SVG connector from 38 to 84, not a straight line."
+  },
+  {
+    "id": "DS-004",
+    "severity": "medium",
+    "category": "stall",
+    "file": "src/js/gameView.js",
+    "line": 851,
+    "claim": "The _animateDirectMove relies on a transitionend event, but if the token's CSS transition is interrupted or the token is moved again before the transition completes, the event may never fire, causing the Promise to hang and the autoRoll to rely solely on the watchdog.",
+    "failure_scenario": "A token is moved with _animateDirectMove. Before the transition ends, another onStateChange occurs (e.g., due to a capture affecting the same token). The new animation sets a new position and may remove the transitionend listener or cause a different transition. The original transitionend event might never fire for the first listener, leaving the Promise unresolved. The watchdog eventually fires, but if the new animation also hangs, the game may stall indefinitely.",
+    "suggested_fix": "Add a fallback timeout to _animateDirectMove in addition to the transitionend listener. Use a single transitionend listener with a flag or use the Web Animations API for more reliable animation promises. Ensure all animation promises always resolve within a bounded time.",
+    "how_to_verify": "Simulate rapid captures and moves involving the same token. Monitor the console for promises that never resolve and ensure autoRoll proceeds within the expected time (all animations complete within watchdog time)."
+  },
+  {
+    "id": "DS-005",
+    "severity": "medium",
+    "category": "stall",
+    "file": "src/js/gameView.js",
+    "line": 756,
+    "claim": "In _animateStepByStep, the requestAnimationFrame loop for jumping may fail to resolve if the tab is backgrounded or if requestAnimationFrame is throttled, relying only on the watchdog to proceed.",
+    "failure_scenario": "During a long-running autonomous game, the browser tab becomes inactive, throttling requestAnimationFrame. The jump animation loop stops progressing. The Promise never resolves, and the autoRoll is not called. The watchdog eventually fires and calls autoRoll, but the animation may be incomplete, leaving the token in a wrong position. Over time, repeated backgrounding could desynchronize the view from the model.",
+    "suggested_fix": "Use a fallback timeout for the jump animation as well, or use a promise-based animation that resolves regardless of frame scheduling (e.g., setInterval with check). Ensure all animation promises resolve within the watchdog timeout.",
+    "how_to_verify": "Run the game and periodically switch browser tabs or minimize during ladder/snake animations. Observe if tokens become stuck or the animation freezes."
+  },
+  {
+    "id": "DS-006",
+    "severity": "medium",
+    "category": "stall",
+    "file": "src/js/gameView.js",
+    "line": 534,
+    "claim": "The game over restart timeout is not cleared when resetGame is called from elsewhere, potentially causing a duplicate autoRoll and race condition.",
+    "failure_scenario": "After a game win, handleGameOver sets a 10-second timeout to restart. Before the timeout fires, the user (or a test) calls controller.resetGame() manually. The view.onReset() calls clearTimeouts(), which clears gameOverTimeout. However, if the reset happens after the timeout already fired but before the autoRoll call, a new game may start and then the old timeout's callback still runs, calling autoRoll again and potentially causing a second roll for the same turn.",
+    "suggested_fix": "In handleGameOver, use a flag or store the restart timeout and always clear it in onReset. Ensure that after reset, the game over sequence is not re-entrant. Add a guard in autoRoll to check if the game is in the expected state before rolling.",
+    "how_to_verify": "Add a test that triggers a win and immediately calls controller.resetGame() before 10 seconds. Observe if two autoRoll calls occur, leading to double moves or turn skipping."
+  },
+  {
+    "id": "DS-1-001",
+    "severity": "high",
+    "category": "race",
+    "file": "src/js/gameView.js",
+    "line": 609,
+    "claim": "The watchdog timeout can fire after animations already settled and cleared it, causing proceed() to schedule an extra autoRoll even though the game may have advanced.",
+    "failure_scenario": "onStateChange sets watchdogId and then Promise.all resolves; proceed() clears watchdogId but does not set it to null. The later setTimeout already has a reference to watchdogId from closure, but clearTimeout happened. This is actually safe because clearTimeout prevents the callback from firing. However, if a new onStateChange starts before the old watchdog fires (e.g., due to an async ordering bug), the old settled flag is false and the old watchdog can call proceed() for the new move, advancing the turn early while animations from the new move are still running.",
+    "suggested_fix": "Use a unique move token/id per onStateChange and have the watchdog callback check that the move id is still current before calling proceed().",
+    "how_to_verify": "Log timestamps when watchdog fires vs when the next onStateChange starts; ensure no watchdog belongs to a previous move."
+  },
+  {
+    "id": "DS-1-002",
+    "severity": "high",
+    "category": "stall",
+    "file": "src/js/gameView.js",
+    "line": 851,
+    "claim": "The _animateDirectMove promise only resolves on 'transitionend', but if the token's CSS transition property is missing, disabled, or the element is removed/not rendered, transitionend never fires and the watchdog is the only fallback.",
+    "failure_scenario": "Token element has no CSS transition property defined in the stylesheet. In _animateDirectMove, after setting startPos and endPos, the browser does not emit a transitionend event because no transition is applied. The promise never resolves, but the watchdog in onStateChange eventually fires after ~3.1s and proceeds, causing a 3.1s stall for every direct move. Over an infinite run this constantly stalls.",
+    "suggested_fix": "Add a fallback setTimeout in _animateDirectMove that resolves the promise after a bounded delay if transitionend has not fired, or add an inline CSS transition property to token elements.",
+    "how_to_verify": "Inspect computed style of token elements; verify a transition property is set. Or temporarily disable CSS transitions and observe no stall."
+  },
+  {
+    "id": "DS-1-003",
+    "severity": "medium",
+    "category": "logic",
+    "file": "src/js/gameView.js",
+    "line": 706,
+    "claim": "When a token is captured and sent back to staging (endTile=0), _animateStepByStep's step-by-step loop can try to move from a board tile to a higher tile if the dieRoll was positive, but the loop only increments by 1 and does not handle moving off-board to 0.",
+    "failure_scenario": "Player A is on tile 5 and rolls a 6 to land on tile 11, which is occupied and non-safe. The controller sends the opponent's position to 0. The view's onStateChange sees currentPositions[opponent]=0 and previousPositions[opponent]=11. animateTokenMove for opponent uses _animateDirectMove (because isStepByStep is false for endTile=0), which is fine. But if the condition for _animateStepByStep were ever true for a captured opponent (e.g., if a ladder/snake move is misclassified), the loop would try to move from 11 to intermediatePos=11+dieRoll=17, which is not the new position, and the logic falls apart. This is latent but not currently triggered.",
+    "suggested_fix": "Add an explicit check in animateTokenMove to always use _animateDirectMove when newPosition === 0 (capture).",
+    "how_to_verify": "Add a temporary log in _animateStepByStep for endTile===0 and run many games; confirm it never triggers."
+  },
+  {
+    "id": "DS-1-004",
+    "severity": "medium",
+    "category": "resource-leak",
+    "file": "src/js/gameView.js",
+    "line": 851,
+    "claim": "The transitionend event listener added in _animateDirectMove is never removed if the token is hidden or detached before the transition completes, causing a listener leak on every direct move.",
+    "failure_scenario": "When a game over occurs during an in-progress direct move animation, onReset is called and clearTimeouts only clears timeouts, not pending transitionend listeners. The token remains in the DOM, so the listener eventually fires, but if conditions changed, the listener still references stale game state and plays sounds incorrectly. Across an unbounded run, listeners accumulate.",
+    "suggested_fix": "Store the listener reference and remove it in onReset, or use { once: true } for the event listener option.",
+    "how_to_verify": "Use Chrome DevTools to inspect token element's event listeners before and after many captures; count should not grow."
+  },
+  {
+    "id": "DS-1-005",
+    "severity": "medium",
+    "category": "logic",
+    "file": "src/js/gameView.js",
+    "line": 689,
+    "claim": "The view's _calculateIntermediatePosition replicates the model's movement rules, violating the architecture contract that the view must never consult the rules.",
+    "failure_scenario": "If the model's entering rule changes (e.g., allow 2 or 5 to enter), the view's intermediate-position calculation in _animateStepByStep becomes stale. For example, a player at 0 rolls a 2 (which model now allows to enter tile 1): controller sets position to 1, but _calculateIntermediatePosition returns 0 because it only allows 1 or 6. The while loop in _animateStepByStep has current===intermediatePos, so no hops occur, then it pauses and directly sets token to 1 without step animation. The view no longer mirrors the model's move decision.",
+    "suggested_fix": "Have the controller/model expose the actual intermediate tile after the move resolution, or pass it via a method on the model rather than re-computing in the view.",
+    "how_to_verify": "Modify model entry rule to allow a 2, run a game, and observe token movement from staging; currently it would teleport instead of hopping."
+  },
+  {
+    "id": "DS-1-006",
+    "severity": "low",
+    "category": "resource-leak",
+    "file": "src/js/gameView.js",
+    "line": 377,
+    "claim": "The loadingTimeout can fire after assets already loaded because assetLoaded clears it but does not set this.isAssetsHandled in all paths, causing autoRoll to be scheduled twice.",
+    "failure_scenario": "All assets load before the 5-second timeout. assetLoaded sets isAssetsLoaded=true, clears loadingTimeout, sets loadingTimeout=null, sets isAssetsHandled=true, hides overlay, and calls autoRoll(). Later the timeout is null so no double call. However, if some assets fail and the loadingTimeout fires first, it sets isAssetsHandled=true and calls autoRoll(). Later an asset can still finish loading, call assetLoaded(), see isAssetsHandled is true, so it does not call autoRoll. This is correct. No concrete failure.",
+    "suggested_fix": "No change needed; confirm no double autoRoll occurs.",
+    "how_to_verify": "Add logs for autoRoll calls and run a game; count should remain 1 per move cycle."
+  },
+  {
+    "id": "DS-1-007",
+    "severity": "medium",
+    "category": "race",
+    "file": "src/js/gameView.js",
+    "line": 615,
+    "claim": "If a token's animation promise rejects (e.g., SVG path calculation throws), the catch handles it, but the watchdog may have already fired and scheduled autoRoll, then the catch also calls proceed, scheduling a second autoRoll for the same move.",
+    "failure_scenario": "animateTokenMove rejects due to an unexpected error (e.g., getScreenCTM returns null and matrixTransform throws). The watchdog fires at 3.1s, calls proceed() which schedules autoRoll. Then the rejection propagates, the catch calls proceed() again. Because proceed has a settled flag, the second call is ignored; but if the watchdog fired first and set settled=true, the catch's proceed is ignored, so only one autoRoll is scheduled. No double scheduling. This is safe but relies on the settled flag which is per onStateChange.",
+    "suggested_fix": "No change required.",
+    "how_to_verify": "Introduce a forced error in the animation path and observe that autoRoll is not called twice."
+  },
+  {
+    "id": "DS-1-008",
+    "severity": "low",
+    "category": "off-by-one",
+    "file": "src/js/gameView.js",
+    "line": 254,
+    "claim": "The cell textContent displays the tile number but the CSS boustrophedon calculation in getViewBoxCenter and the DOM grid generation use the same formula, so tile positions are consistent; no off-by-one.",
+    "failure_scenario": "N/A - reviewed formula: logicalRow = 9 - row, col = (logicalRow % 2 === 0) ? colInRow : (9 - colInRow). This maps tile 1 to bottom-left, tile 10 to bottom-right, tile 11 to second-row-left? Wait, check: bottom row (row=9, logicalRow=0) col from 0 to 9 gives tiles 1 to 10. Second row from bottom (row=8, logicalRow=1) col reversed gives tiles 20 to 11. So tile 11 is at col 9 (left side? Actually visual left is col 0). This is correct for boustrophedon. The helper getViewBoxCenter uses same logic. No defect.",
+    "suggested_fix": "No change.",
+    "how_to_verify": "Compare tile labels in DOM to positions computed by getViewBoxCenter; they align."
+  },
+  {
+    "id": "DS-1-009",
+    "severity": "medium",
+    "category": "stall",
+    "file": "src/js/gameView.js",
+    "line": 870,
+    "claim": "animateDiceRoll falls back to a setTimeout but if the callback is provided and the fallback fires, the callback may later be called again by the main animation path if the tumble sheet loads during the fallback delay, causing duplicate callbacks and possibly advancing the turn twice.",
+    "failure_scenario": "At game start, diceTumbleSheet is not loaded. animateDiceRoll called with callback. It schedules a setTimeout for 500ms and returns. The tumble sheet finishes loading at 200ms, setting diceTumbleSheet.complete=true. The original call did not re-check, so only the fallback will run and call callback once. No duplicate callback. If the tumble sheet was loaded but complete false at call time, then it becomes true later, still no duplicate because the function already returned. So this is safe.",
+    "suggested_fix": "No change.",
+    "how_to_verify": "Add logs in animateDiceRoll to count callback invocations; should be once per roll."
+  },
+  {
+    "id": "DS-1-010",
+    "severity": "high",
+    "category": "logic",
+    "file": "src/js/gameView.js",
+    "line": 718,
+    "claim": "The view looks up the SVG path for a jump by `${intermediatePos}-${endTile}`, but snake paths may have data-jump where start > end, and the lookup only matches if the model's map keys are ordered start-to-end; however the model's Snakes map may store [head, tail] or [tail, head] depending on convention.",
+    "failure_scenario": "If the model stores a snake as [head=99, tail=4] (start > end), the SVG path data-jump is '99-4'. In _animateStepByStep, intermediatePos is 99 and endTile is 4, so the selector is '99-4', which matches. If the model stores [tail=4, head=99] (start < end), the selector becomes '4-99', which does not match the SVG path with '99-4', so the view does not find the path and falls back to direct move. The view then teleports the token across the snake instead of animating along it. This is a defect if the model uses tail-first ordering for some snakes.",
+    "suggested_fix": "Normalize the selector to check both orders, or have the model expose a canonical start/end for each jump.",
+    "how_to_verify": "Inspect the model's Snakes map; if any entry has start > end, the view should match it. Test a move that lands on a snake head and confirm animation follows the path instead of teleporting."
+  }
+]
