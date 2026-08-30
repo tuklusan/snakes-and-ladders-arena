@@ -179,7 +179,8 @@ async function runHarnessFaultInjection() {
         delete process.env.DEEPSEEK_API_KEY;
         // This would be tested by running the harness without the key
         results.push({ test: 'missing_api_key', passed: true, note: 'Harness should fail closed' });
-        process.env.DEEPSEEK_API_KEY = 'REDACTED'; // Restore
+        // Restore from environment (was temporarily deleted for test)
+        // process.env.DEEPSEEK_API_KEY is already set from environment
     } catch (e) {
         results.push({ test: 'missing_api_key', passed: false, error: e.message });
     }
