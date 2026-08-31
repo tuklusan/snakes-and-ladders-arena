@@ -1,41 +1,71 @@
 // Main entry point for the game
-document.addEventListener('DOMContentLoaded', () => {
-    try {
-        // Create model, view, and controller using the global constructors
-        const model = new GameModel();
-        const view = new GameView();
-        const controller = new GameController(model, view);
+(function() {
+    'use strict';
 
+    // Factory function for dependency injection - improves modularity and testability
+    function createGameDependencies() {
+        return {
+            model: new GameModel(),
+            view: new GameView(),
+            controller: null // will be set after view creation
+        };
+    }
+
+    function initGame() {
+        const deps = createGameDependencies();
+        deps.controller = new GameController(deps.model, deps.view);
+        
         // Initialize the view with model and controller
-        view.init(model, controller);
+        deps.view.init(deps.model, deps.controller);
 
         // Reset the game to set initial state
-        controller.resetGame();
+        deps.controller.resetGame();
 
-        // Expose for debugging (optional) - guarded by DEBUG flag - DEF-0002 fix
+        // Expose for debugging (optional) - guarded by DEBUG flag
         const DEBUG = false; // Set to true for development
         if (DEBUG) {
-            window.gameModel = model;
-            window.gameController = controller;
-            window.gameView = view;
+            window.gameModel = deps.model;
+            window.gameController = deps.controller;
+            window.gameView = deps.view;
         }
-    } catch (e) {
-        // Show error in the container instead of a blocking alert
+    }
+
+    function handleError(e) {
         const container = document.getElementById('game-container');
         if (container) {
-            // Use textContent to prevent XSS - DEF-0001 fix
             container.innerHTML = '';
             const errorDiv = document.createElement('div');
             errorDiv.style.color = 'red';
             errorDiv.style.padding = '20px';
-            errorDiv.textContent = `Error: ${e}`;
-            const stackDiv = document.createElement('div');
-            stackDiv.style.color = 'red';
-            stackDiv.style.padding = '20px';
-            stackDiv.textContent = `Stack: ${e.stack}`;
+            errorDiv.textContent = `Error: ${e.message || e}`;
             container.appendChild(errorDiv);
-            container.appendChild(stackDiv);
+            
+            // Only show stack if available - don't assume it exists
+            if (e.stack) {
+                const stackDiv = document.createElement('div');
+                stackDiv.style.color = 'red';
+                stackDiv.style.padding = '20px';
+                stackDiv.textContent = `Stack: ${e.stack}`;
+                container.appendChild(stackDiv);
+            }
         }
         console.error(e);
     }
-});
+
+    // Check if document is already loaded (for cases where script loads after DOMContentLoaded)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initGame);
+    } else {
+        // DOMContentLoaded already fired
+        initGame();
+    }
+
+    // Global error handler for uncaught errors
+    window.addEventListener('error', function(event) {
+        handleError(event.error);
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+        handleError(event.reason);
+    });
+})();

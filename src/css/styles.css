@@ -63,7 +63,17 @@ body {
 .game-token {
     position: absolute;
     pointer-events: none;
-    transition: left 250ms linear, top 250ms linear;
+    transition: left 250ms linear, top 250ms linear, transform 250ms linear;
+    z-index: 10; /* Ensure tokens appear above board cells */
+}
+
+.game-token.move-to-board {
+    transition: transform 1.5s ease-in-out, left 250ms linear, top 250ms linear;
+    transform: scale(1.2);
+}
+
+.game-token.return-to-staging {
+    animation: bounce 0.4s ease-out;
 }
 
 /* Dice */
@@ -79,12 +89,15 @@ body {
     margin-top: 15px;
     flex: 0 0 60px;
     min-height: 60px;
+    position: relative; /* Enable absolute positioning for children if needed */
 }
 
 /* Player info panel */
 #player-info {
     position: absolute;
     top: 50%;
+    left: 16px;
+    right: 16px;
     transform: translateY(-50%);
     background: rgba(0,0,0,0.6);
     color: #fff;
@@ -127,14 +140,14 @@ body {
 }
 
 /* Highlight active player */
-#player-info div.active-player {
+#player-info > div.active-player {
     border: 2px solid #ffeb3b;
     border-radius: 6px;
     padding: 4px;
     background: rgba(255, 235, 59, 0.2);
 }
 
-#player-info div.active-player span:nth-child(2) {
+#player-info > div.active-player div:nth-child(2) {
     color: #ffeb3b;
 }
 
@@ -180,10 +193,6 @@ body {
     #game-container {
         margin: 10px;
         padding: 15px;
-        width: auto;
-        height: auto;
-        max-width: 100%;
-        max-height: 100vh;
     }
     
     #dice-container {
@@ -217,14 +226,8 @@ body {
         width: 20px;
         height: 20px;
     }
-}  /* Staging area animations */
-.game-token.move-to-board {
-  transition: transform 1.5s ease-in-out;
-  transform: scale(1.2);
-}
-.game-token.return-to-staging {
-  animation: bounce 0.4s ease-out;
-}
+} 
+
 @keyframes bounce {
   0% { transform: scale(1); }
   30% { transform: scale(1.2); }
@@ -239,9 +242,6 @@ body {
     border: 1px solid #bbb;
     font-size: 50%; /* OI-1: reduce tile numbers to 50% of default size */
 }
-
-
-
 
 
 /* Left margin title panel */
@@ -294,9 +294,8 @@ body {
 #right-commentary-panel {
     flex: 1 1 0;
     min-height: 0;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
+    pointer-events: none; /* Allow clicks to pass through to game */
 }
 
 #right-commentary-panel #commentary-content {

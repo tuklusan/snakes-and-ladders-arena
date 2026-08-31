@@ -1,7 +1,7 @@
 {
   "success": true,
-  "timestamp": "2026-08-30T03:40:35.417Z",
-  "duration_ms": 31990,
+  "timestamp": "2026-08-30T23:47:11.112Z",
+  "duration_ms": 31717,
   "state": {
     "tokensOnBoard": 3,
     "diceHasImage": true

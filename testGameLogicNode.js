@@ -41,7 +41,8 @@ const controller = new window.GameController(model, {
     onExtraRoll: () => {},
     onTripleSixPenalty: () => {},
     onGameWin: () => {},
-    onReset: () => {}
+    onReset: () => {},
+    playAudio: () => {}
 });
 controller.rollDice = function() { 
     const dieRoll = 1;
@@ -138,7 +139,8 @@ const mockView = {
         console.assert(targetPos === 5, 'Capture should happen at tile 5');
     },
     onGameWin: () => {},
-    onReset: () => {}
+    onReset: () => {},
+    playAudio: () => {}
 };
 const controller2 = new window.GameController(model, mockView);
 controller2.rollDice = function() { 
@@ -170,7 +172,8 @@ const mockView2 = {
     onTripleSixPenalty: () => {},
     onCapture: () => {},
     onGameWin: () => {},
-    onReset: () => {}
+    onReset: () => {},
+    playAudio: () => {}
 };
 const controller3 = new window.GameController(model, mockView2);
 controller3.rollDice = controller.rollDice; // reuse the same function
@@ -208,7 +211,8 @@ const mockView3 = {
     },
     onCapture: () => {},
     onGameWin: () => {},
-    onReset: () => {}
+    onReset: () => {},
+    playAudio: () => {}
 };
 const controller4 = new window.GameController(model, mockView3);
 controller4.rollDice = controller.rollDice;
