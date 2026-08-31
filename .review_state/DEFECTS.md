@@ -11,7 +11,7 @@
 ---
 
 ### DEF-0001: DOM XSS via unsanitized innerHTML
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/main.js:17
 - **Severity:** medium
 - **Category:** security
@@ -29,7 +29,7 @@
 ---
 
 ### DEF-0002: Global debug objects exposed
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/main.js:11-13
 - **Severity:** low
 - **Category:** security
@@ -46,7 +46,7 @@
 ---
 
 ### DEF-0003: Scripts execute before footer parsed
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** index.html:32-36
 - **Severity:** medium
 - **Category:** bug
@@ -63,7 +63,7 @@
 ---
 
 ### DEF-0004: Undefined stagingElement in off-board positioning
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:148
 - **Severity:** high
 - **Category:** bug
@@ -80,7 +80,7 @@
 ---
 
 ### DEF-0005: Unused SVG speckle filter created every draw
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:272-298
 - **Severity:** medium
 - **Category:** performance
@@ -97,7 +97,7 @@
 ---
 
 ### DEF-0006: Leftover debug console.log statements at file top
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:2-3
 - **Severity:** low
 - **Category:** maintainability
@@ -114,7 +114,7 @@
 ---
 
 ### DEF-0007: Dead code with empty console.log for tile 26
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:257-259
 - **Severity:** low
 - **Category:** maintainability
@@ -131,7 +131,7 @@
 ---
 
 ### DEF-0008: Redundant redeclaration of containerRect
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:144-149
 - **Severity:** low
 - **Category:** maintainability
@@ -148,7 +148,7 @@
 ---
 
 ### DEF-0009: Unbound methods used as event handlers
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:844-870
 - **Severity:** critical
 - **Category:** bug
@@ -165,7 +165,7 @@
 ---
 
 ### DEF-0010: Multiple transitionend events cause duplicate settle
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:1657-1671
 - **Severity:** medium
 - **Category:** bug
@@ -182,7 +182,7 @@
 ---
 
 ### DEF-0011: Fallback path does not clean up pending transition
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:1624-1639
 - **Severity:** medium
 - **Category:** bug
@@ -199,7 +199,7 @@
 ---
 
 ### DEF-0012: Timeout fallback does not cancel animation loop
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:1753-1756
 - **Severity:** medium
 - **Category:** bug
@@ -216,7 +216,7 @@
 ---
 
 ### DEF-0013: No validation of dice face parameter
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:1694-1700
 - **Severity:** low
 - **Category:** bug
@@ -233,7 +233,7 @@
 ---
 
 ### DEF-0014: Capture event assumes record.captured exists
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:1859-1862
 - **Severity:** low
 - **Category:** bug
@@ -250,7 +250,7 @@
 ---
 
 ### DEF-0015: Head and tongue scaling inconsistencies
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:2010-2036
 - **Severity:** medium
 - **Category:** bug
@@ -267,7 +267,7 @@
 ---
 
 ### DEF-0017: Tongue path multiple subpaths causing artifacts
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:2039-2044
 - **Severity:** low
 - **Category:** bug
@@ -284,7 +284,7 @@
 ---
 
 ### DEF-0018: Debug console.log left in production code
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:2071
 - **Severity:** low
 - **Category:** maintainability
@@ -301,7 +301,7 @@
 ---
 
 ### DEF-0019: Comments promise speckled filter but none applied
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameView.js:2020-2063
 - **Severity:** low
 - **Category:** documentation
@@ -318,7 +318,7 @@
 ---
 
 ### DEF-0021: Fixed width/height cause overflow on small screens
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:18-31
 - **Severity:** high
 - **Category:** bug
@@ -335,7 +335,7 @@
 ---
 
 ### DEF-0022: Absolute positioning leads to unpredictable placement
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:85-99
 - **Severity:** high
 - **Category:** bug
@@ -352,7 +352,7 @@
 ---
 
 ### DEF-0023: top/right in media query have no effect
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:70-82
 - **Severity:** medium
 - **Category:** bug
@@ -369,7 +369,7 @@
 ---
 
 ### DEF-0024: Commentary panel scrolling disabled
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:286-302
 - **Severity:** high
 - **Category:** bug
@@ -386,7 +386,7 @@
 ---
 
 ### DEF-0025: Active player name selector mismatch
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:137-138
 - **Severity:** medium
 - **Category:** bug
@@ -403,7 +403,7 @@
 ---
 
 ### DEF-0027: Duplicate selector for game-board-container
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/css/styles.css:249-278
 - **Severity:** low
 - **Category:** maintainability
@@ -420,7 +420,7 @@
 ---
 
 ### DEF-0028: bindEvents method does not bind any events
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameController.js:11-16
 - **Severity:** medium
 - **Category:** architecture
@@ -437,7 +437,7 @@
 ---
 
 ### DEF-0029: Redundant event determination logic
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameController.js:128-145
 - **Severity:** low
 - **Category:** maintainability
@@ -454,7 +454,7 @@
 ---
 
 ### DEF-0030: Direct assignment bypasses encapsulation
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameController.js:64-66
 - **Severity:** low
 - **Category:** maintainability
@@ -471,7 +471,7 @@
 ---
 
 ### DEF-0031: Triple six penalty record misleading fields
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameController.js:55-62
 - **Severity:** low
 - **Category:** docs
@@ -488,7 +488,7 @@
 ---
 
 ### DEF-0033: Only first captured opponent recorded
-- **Status:** OPEN
+- **Status:** CLOSED - NO FURTHER ACTION
 - **File:** src/js/gameController.js:99-105
 - **Severity:** low
 - **Category:** bug
