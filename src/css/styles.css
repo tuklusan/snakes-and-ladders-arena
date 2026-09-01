@@ -14,7 +14,7 @@ body {
     line-height: 1.6;
 }
 
-/* Game container - DEF-0021: responsive width/height */
+/* Game container - DEF-0021: responsive width/height, pure CSS Grid */
 #game-container {
     position: relative;
     width: 100%;
@@ -79,7 +79,7 @@ body {
     animation: bounce 0.4s ease-out;
 }
 
-/* Dice - DEF-0023: proper positioning context */
+/* Dice - Grid item in right column wrapper */
 #dice-container {
     width: 60px;
     height: 60px;
@@ -88,193 +88,8 @@ body {
     background-position: center;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    align-self: center;
-    margin-top: 15px;
-    flex: 0 0 60px;
-    min-height: 60px;
-    position: relative; /* Enable absolute positioning for children if needed */
+    margin: 0 auto 15px; /* centered horizontally, space below */
 }
-
-/* Player info panel - DEF-0022: fixed positioning with flex layout */
-#player-info {
-    position: relative; /* Changed from absolute to relative for flex flow */
-    background: rgba(0,0,0,0.6);
-    color: #fff;
-    padding: 12px;
-    border-radius: 8px;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    align-items: center;
-    min-width: 200px;
-    height: auto;
-    flex: 0 0 auto;
-}
-
-/* Player info items */
-#player-info > div {
-    text-align: center;
-    min-width: 60px;
-    margin: 8px 0;
-}
-
-#player-info div div div:first-child {
-    width: 24px;
-    height: 24px;
-    margin: 0 auto 4px;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-}
-
-#player-info div div div:nth-child(2) {
-    display: block;
-    font-weight: bold;
-    font-size: 1rem;
-}
-
-#player-info div div div:nth-child(3) {
-    display: block;
-    font-size: 0.85rem;
-    opacity: 0.9;
-}
-
-/* Highlight active player - DEF-0025: fixed selector (div not span) */
-#player-info > div.active-player {
-    border: 2px solid #ffeb3b;
-    border-radius: 6px;
-    padding: 4px;
-    background: rgba(255, 235, 59, 0.2);
-}
-
-#player-info > div.active-player > div:nth-child(2) {
-    color: #ffeb3b;
-}
-
-/* Roll button */
-#roll-button {
-    display: block;
-    margin: 25px auto;
-    padding: 12px 30px;
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: #fff;
-    background: #4caf50;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-}
-
-#roll-button:hover:not(:disabled) {
-    background: #43a047;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
-}
-
-#roll-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-}
-
-/* Extra roll state */
-#roll-button.extra-roll {
-    background: #ff9800;
-}
-
-#roll-button.extra-roll:hover {
-    background: #fb8c00;
-}
-
-/* Responsive adjustments */
-@media (max-width: 600px) {
-    #game-container {
-        margin: 10px;
-        padding: 15px;
-        min-height: auto;
-        flex-direction: column;
-        align-items: center;
-    }
-    
-    #dice-container {
-        width: 50px;
-        height: 50px;
-        position: static; /* DEF-0023: static position, centered by flex */
-        margin: 10px auto;
-    }
-    
-    #player-info {
-        position: relative; /* DEF-0022: relative, not absolute */
-        width: 100%;
-        max-width: 100%;
-        flex-direction: row;
-        justify-content: space-around;
-        padding: 10px;
-        margin: 10px 0;
-    }
-    
-    #roll-button {
-        padding: 10px 25px;
-        font-size: 1rem;
-    }
-    
-    #player-info > div {
-        min-width: 50px;
-    }
-    
-    #player-info div div:first-child {
-        width: 20px;
-        height: 20px;
-    }
-    
-    #game-board {
-        max-width: 100%;
-    }
-    
-    #left-title-panel {
-        grid-column: 1 / -1;
-        grid-row: 1;
-        height: 60px;
-        order: -1;
-    }
-    
-    #left-title-panel .title-content {
-        writing-mode: horizontal-tb;
-        transform: none;
-        text-orientation: mixed;
-    }
-    
-    #game-board-container {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        order: 0;
-    }
-    
-    #right-column-wrapper {
-        grid-column: 1 / -1;
-        grid-row: 3;
-        max-height: 200px;
-        order: 1;
-    }
-}
-
-@keyframes bounce {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.2); }
-  60% { transform: scale(0.8); }
-  100% { transform: scale(1); }
-}
-
-/* Cell borders and z-index */
-.cell {
-    position: relative;
-    z-index: 1;
-    border: 1px solid #bbb;
-    font-size: 50%; /* OI-1: reduce tile numbers to 50% of default size */
-}
-
 
 /* Left margin title panel - Grid column 1 */
 #left-title-panel {
@@ -286,24 +101,11 @@ body {
     height: 100%;
 }
 
-/* Game board container - Grid column 2 */
-#game-board-container {
-    grid-column: 2;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 4px;
-    box-sizing: border-box;
-    min-height: 0;
-}
-
 #left-title-panel .title-content {
     writing-mode: vertical-rl;
     text-orientation: sideways;
     text-align: center;
-    transform: rotate(180deg); /* Optional: makes it read bottom-to-top instead of top-to-bottom */
+    transform: rotate(180deg); /* makes it read bottom-to-top */
     font-family: 'Arial', sans-serif;
     color: #333;
 }
@@ -321,6 +123,19 @@ body {
     font-style: italic;
 }
 
+/* Game board container - Grid column 2 */
+#game-board-container {
+    grid-column: 2;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    box-sizing: border-box;
+    min-height: 0;
+}
+
 /* Right column wrapper for commentary - Grid column 3 */
 #right-column-wrapper {
     grid-column: 3;
@@ -330,14 +145,26 @@ body {
     min-height: 0;
 }
 
+/* Dice container - centered in right column wrapper */
+#dice-container {
+    width: 60px;
+    height: 60px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    margin: 0 auto 15px; /* centered horizontally, space below */
+}
+
 /* Commentary panel - DEF-0024: scrolling enabled */
 #right-commentary-panel {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
-    /* pointer-events: none; REMOVED - DEF-0024: was preventing scrolling */
 }
 
+/* Commentary content with scroll */
 #right-commentary-panel #commentary-content {
     flex: 1;
     overflow-y: auto; /* Required for scrolling */
@@ -368,6 +195,12 @@ body {
     background: #a8a8a8;
 }
 
+/* Firefox scrollbar */
+#right-commentary-panel #commentary-content {
+    scrollbar-width: thin;
+    scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
 /* Footer */
 #app-footer {
     width: 100%;
@@ -377,7 +210,9 @@ body {
     line-height: 20px;
     text-align: center;
     border-top: 1px solid #ddd;
-    font-size: 0; /* to remove whitespace */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 #app-footer a {
     font-size: 14px;
@@ -394,7 +229,7 @@ body {
 .commentary-player-2 { color: #2ecc71; } /* Green */
 .commentary-player-3 { color: #f1c40f; } /* Yellow */
 
-/* Responsive adjustments for panels */
+/* Responsive adjustments */
 @media (max-width: 1200px) {
     #game-container {
         grid-template-columns: 80px 1fr 250px;
@@ -418,4 +253,61 @@ body {
         font-size: 0.75rem;
         padding: 8px;
     }
+}
+
+@media (max-width: 600px) {
+    #game-container {
+        margin: 10px;
+        padding: 15px;
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto;
+        gap: 12px;
+    }
+    
+    #left-title-panel {
+        grid-column: 1;
+        grid-row: 1;
+        height: 60px;
+        order: -1;
+    }
+    
+    #left-title-panel .title-content {
+        writing-mode: horizontal-tb;
+        transform: none;
+        text-orientation: mixed;
+    }
+    
+    #game-board-container {
+        grid-column: 1;
+        grid-row: 2;
+        order: 0;
+    }
+    
+    #right-column-wrapper {
+        grid-column: 1;
+        grid-row: 3;
+        max-height: 200px;
+        order: 1;
+    }
+    
+    #dice-container {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 10px;
+    }
+}
+
+@keyframes bounce {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.2); }
+  60% { transform: scale(0.8); }
+  100% { transform: scale(1); }
+}
+
+/* Cell borders and z-index */
+.cell {
+    position: relative;
+    z-index: 1;
+    border: 1px solid #bbb;
+    font-size: 50%; /* OI-1: reduce tile numbers to 50% of default size */
 }

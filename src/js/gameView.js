@@ -54,6 +54,7 @@ class GameView {
         // Detect kiosk mode (--app / standalone display mode)
         this.isKioskMode = window.matchMedia('(display-mode: standalone)').matches;
         this.startButtonElement = document.createElement('button');
+        this.startButtonElement.id = 'start-arena-btn';
         this.startButtonElement.textContent = 'Click to start the arena';
         Object.assign(this.startButtonElement.style, {
             position: 'absolute',
@@ -571,62 +572,19 @@ class GameView {
             return;
         }
 
-        // Set container styles for three-column flex layout
-        this.container.style.position = 'relative';
-        this.container.style.width = '620px';
-        this.container.style.height = '434px';
-        this.container.style.margin = '0 auto';
-        this.container.style.padding = '0';
-        this.container.style.boxSizing = 'border-box';
-        this.container.style.display = 'flex';
-        this.container.style.flexDirection = 'row';
-        this.container.style.alignItems = 'stretch';
-        this.container.style.gap = '0px';
-        this.container.style.overflow = 'hidden';
-        console.log(`[gameView] container width: ${this.container.style.width}, height: ${this.container.style.height}`);
-
-        // Configure the three columns with exact widths
-        this.leftTitlePanel.style.flex = '0 0 60px'; // COLUMN 1: 60px width
-        this.leftTitlePanel.style.display = 'flex';
-        this.leftTitlePanel.style.flexDirection = 'column';
-        this.leftTitlePanel.style.alignItems = 'center';
-        this.leftTitlePanel.style.padding = '4px';
-        this.leftTitlePanel.style.boxSizing = 'border-box';
-
-        this.gameBoardContainer.style.flex = '0 0 380px'; // COLUMN 2: 380px width
-        this.gameBoardContainer.style.display = 'flex';
-        this.gameBoardContainer.style.flexDirection = 'column';
-        this.gameBoardContainer.style.alignItems = 'center';
-        this.gameBoardContainer.style.gap = '6px';
-        this.gameBoardContainer.style.position = 'relative';
-        this.gameBoardContainer.style.padding = '4px';
-        this.gameBoardContainer.style.boxSizing = 'border-box';
-
-        this.rightCommentaryPanel.style.flex = '0 0 auto'; // Fixed height, will be set below
-        this.rightCommentaryPanel.style.display = 'flex';
-        this.rightCommentaryPanel.style.flexDirection = 'column';
-        this.rightCommentaryPanel.style.alignItems = 'center';
-        this.rightCommentaryPanel.style.gap = '10px';
-        this.rightCommentaryPanel.style.position = 'relative';
-        this.rightCommentaryPanel.style.padding = '4px';
-        this.rightCommentaryPanel.style.boxSizing = 'border-box';
-        // Set height to align commentary bottom with staging bottom
-        this.rightCommentaryPanel.style.height = '374px';
+                // NOTE: Layout is handled entirely by CSS Grid (styles.css).
+        // JS should NOT set inline styles on container or columns.
+        // We only create dynamic content: cells, SVG, staging, dice, tokens.
 
         // Create board element inside game-board-container
         console.log("About to create board element");
         this.boardElement = document.createElement('div');
         this.boardElement.id = 'game-board';
-        this.boardElement.style.width = '380px';
-        this.boardElement.style.height = '380px';
-        this.boardElement.style.backgroundColor = '#f8f9fa';
         this.boardElement.style.display = 'grid';
         this.boardElement.style.gridTemplateColumns = 'repeat(10, 1fr)';
         this.boardElement.style.gridTemplateRows = 'repeat(10, 1fr)';
         console.log("Created board element:", this.boardElement);
         this.gameBoardContainer.appendChild(this.boardElement);
-        console.log("Board element appended to gameBoardContainer. Children count:", this.gameBoardContainer.children.length);
-        console.log("Last child is board element:", this.gameBoardContainer.lastElementChild === this.boardElement);
 
         // Force layout to ensure dimensions are non-zero in test environments
         this.boardElement.offsetWidth;
@@ -671,71 +629,19 @@ class GameView {
         // Create staging area below board
         this.stagingElement = document.createElement('div');
         this.stagingElement.id = 'staging-area';
-        this.stagingElement.style.width = '380px';
-        this.stagingElement.style.height = '40px';
-        this.stagingElement.style.backgroundColor = 'rgba(0,0,0,0.1)'; // for debugging, can be removed
         this.stagingElement.style.display = 'flex';
         this.stagingElement.style.justifyContent = 'space-around';
         this.stagingElement.style.alignItems = 'center';
         this.gameBoardContainer.appendChild(this.stagingElement);
 
-        // Removed playerInfoPanel per requirement - no bottom panel needed
-
-        // Debug: log positions
-        const boardRect = this.boardElement.getBoundingClientRect();
-        const stagingRect = this.stagingElement.getBoundingClientRect();
-        // const playerInfoRect = this.playerInfoElement.getBoundingClientRect(); // Removed per requirement
-        const gameBoardContainerRect = this.gameBoardContainer.getBoundingClientRect();
-        console.log('[gameView] board rect:', JSON.stringify(boardRect));
-        console.log('[gameView] staging rect:', JSON.stringify(stagingRect));
-        // console.log('[gameView] playerInfo rect:', JSON.stringify(playerInfoRect)); // Removed per requirement
-        console.log('[gameView] gameBoardContainer rect:', JSON.stringify(gameBoardContainerRect));
-        console.log('[gameView] DEBUG: Before computed style logs');
-        console.log('[gameView] gameBoardContainer computed style:', window.getComputedStyle(this.gameBoardContainer).cssText);
-        // console.log('[gameView] playerInfo computed style:', window.getComputedStyle(this.playerInfoElement).cssText); // Removed per requirement
-
-        // Create the right column wrapper that will hold the dice, indicator, and commentary panel
-        this.rightColumnWrapper = document.createElement('div');
-        this.rightColumnWrapper.id = 'right-column-wrapper';
-        // Set flex properties to take remaining space (matching original right-commentary-panel)
-        this.rightColumnWrapper.style.flex = '1 1 auto';
-        this.rightColumnWrapper.style.display = 'flex';
-        this.rightColumnWrapper.style.flexDirection = 'column';
-        console.log('[gameView] Created rightColumnWrapper with flex: 1 1 auto');
-
-        // Create dice container
-        this.diceElement = document.createElement('div');
-        this.diceElement.id = 'dice-container';
-        this.diceElement.style.width = '60px';
-        this.diceElement.style.height = '60px';
-        this.diceElement.style.backgroundSize = 'contain';
-        this.diceElement.style.backgroundRepeat = 'no-repeat';
-        this.diceElement.style.backgroundPosition = 'center';
-        // Override any absolute positioning from CSS
-        this.diceElement.style.position = 'static';
-        console.log('[gameView] Created diceElement with position: static');
-
-        // Add dice to the wrapper (turn indicator removed)
-        this.rightColumnWrapper.appendChild(this.diceElement);
-
-        // Now we need to insert the wrapper in place of the right-commentary-panel
-        // First, remove the right-commentary-panel from the game container
-        this.container.removeChild(this.rightCommentaryPanel);
-        console.log('[gameView] Removed rightCommentaryPanel from container');
-
-        // Then add the wrapper to the game container
-        this.container.appendChild(this.rightColumnWrapper);
-        console.log('[gameView] Added rightColumnWrapper to container');
-
-        // Finally, add the right-commentary-panel to the wrapper (it will be the third child)
-        this.rightColumnWrapper.appendChild(this.rightCommentaryPanel);
-        console.log('[gameView] Added rightCommentaryPanel to rightColumnWrapper');
-        
-        // Ensure the commentary content can scroll and doesn't prevent the column from shrinking
-        this.commentaryElement.style.minHeight = '0';
-        // Ensure the commentary panel takes remaining space in the wrapper
-        this.rightCommentaryPanel.style.flex = '1 1 auto';
-        console.log('[gameView] Set commentaryElement minHeight: 0 and rightCommentaryPanel flex: 1 1 auto');
+        // Dice element is already in HTML (right-column-wrapper); just get reference
+        this.diceElement = document.getElementById('dice-container');
+        if (!this.diceElement) {
+            console.error('dice-container not found in HTML');
+        } else {
+            this.diceElement.style.position = 'static';
+            console.log('[gameView] Found diceElement in HTML');
+        }
 
         // Create token elements (as children of container, absolutely positioned for game logic)
         for (let i = 0; i < 4; i++) {
@@ -751,8 +657,7 @@ class GameView {
         }
         // Size tokens after all DOM is created
         this.sizeTokens();
-        console.log("DOM creation complete");
-    }
+        console.log("DOM creation complete");    }
 
     loadAssets() {
         // Calculate total assets to load

@@ -22,11 +22,14 @@
         deps.controller.resetGame();
 
         // Expose for debugging (optional) - guarded by DEBUG flag
+        // Also expose in test environment (when test=1 URL parameter is present)
         const DEBUG = false; // Set to true for development
-        if (DEBUG) {
+        const IS_TEST = window.location.search.includes('test=1');
+        if (DEBUG || IS_TEST) {
             window.gameModel = deps.model;
             window.gameController = deps.controller;
             window.gameView = deps.view;
+            console.log('[main] Test mode: exposing gameModel, gameController, gameView to window');
         }
     }
 
