@@ -28,8 +28,8 @@ class GameView {
         this.loadingTimeout = null; // timeout to hide loading overlay after a delay
         this.audioElements = {} // HTMLAudioElement for each sound
         this.previousPositions = [0,0,0,0]; // to track token positions for animation
-        this.pendingCaptureOpponentId = null;
-        this.pendingCaptureTile = null;
+        this.pendingCaptureOpponentIds = []; // array of captured opponent IDs for Katti
+        this.pendingCaptureTiles = []; // array of tiles where captures occurred
         this.isAssetsHandled = false; // flag to prevent handling asset load completion multiple times
         this.svgElement = null; // SVG overlay for snakes and ladders
         this.pendingTransitions = new Map(); // map of token element to {listener, timeoutId} for pending direct move transitions
@@ -1111,9 +1111,11 @@ class GameView {
 
     // Handle capture of an opponent's token
     onCapture(opponentId, finalPos) {
-        // Store capture info for delayed processing
-        this.pendingCaptureOpponentId = opponentId;
-        this.pendingCaptureTile = finalPos;
+        // Store capture info for delayed processing (support multiple captures)
+        this.pendingCaptureOpponentIds = this.pendingCaptureOpponentIds || [];
+        this.pendingCaptureTiles = this.pendingCaptureTiles || [];
+        this.pendingCaptureOpponentIds.push(opponentId);
+        this.pendingCaptureTiles.push(finalPos);
         // Do NOT play capture sound here
     }
 
@@ -1196,9 +1198,12 @@ class GameView {
 
         let animationPromises = [];
         for (let i = 0; i < this.model.NUM_PLAYERS; i++) {
-            // Skip animating the captured opponent token in this batch; it will be handled later
-            if (this.pendingCaptureOpponentId !== null && i === this.pendingCaptureOpponentId && 
-                currentPositions[i] === 0 && this.previousPositions[i] === this.pendingCaptureTile) {
+            // Skip animating the captured opponent tokens in this batch; they will be handled later
+            const isCaptured = this.pendingCaptureOpponentIds && this.pendingCaptureOpponentIds.length > 0 &&
+                this.pendingCaptureOpponentIds.includes(i) &&
+                currentPositions[i] === 0 &&
+                this.pendingCaptureTiles.includes(this.previousPositions[i]);
+            if (isCaptured) {
                 continue;
             }
             
@@ -1249,21 +1254,25 @@ class GameView {
             // Generate commentary for the turn that just completed
             this.generateCommentary();
             
-            // Handle pending capture if any
-            if (this.pendingCaptureOpponentId !== null) {
-                this.debugLog(`Handling pending capture for opponent ${this.pendingCaptureOpponentId} from tile ${this.pendingCaptureTile}`);
-                // Play the capture sound
+            // Handle pending captures if any
+            if (this.pendingCaptureOpponentIds && this.pendingCaptureOpponentIds.length > 0) {
+                // Play the capture sound once for all captures
                 this.playAudio('capture');
-                // Animate the opponent token from the pendingCaptureTile to tile 0 (staging)
-                await this._animateDirectMove(this.pendingCaptureTile, 0, this.pendingCaptureOpponentId);
-                // Check if this is still the current move after the await (in case a new turn started during the animation)
-                if (this.moveId !== currentMoveId) {
-                    // Do not clear the pending capture variables as they belong to a newer turn
-                    return;
+                // Animate each captured opponent token from its tile to tile 0 (staging)
+                for (let i = 0; i < this.pendingCaptureOpponentIds.length; i++) {
+                    const opponentId = this.pendingCaptureOpponentIds[i];
+                    const captureTile = this.pendingCaptureTiles[i];
+                    this.debugLog(`Handling pending capture for opponent ${opponentId} from tile ${captureTile}`);
+                    await this._animateDirectMove(captureTile, 0, opponentId);
+                    // Check if this is still the current move after the await
+                    if (this.moveId !== currentMoveId) {
+                        // Do not clear the pending capture variables as they belong to a newer turn
+                        return;
+                    }
                 }
                 // Clear the pending capture variables only if we are still the current turn
-                this.pendingCaptureOpponentId = null;
-                this.pendingCaptureTile = null;
+                this.pendingCaptureOpponentIds = [];
+                this.pendingCaptureTiles = [];
             }
             
             // Schedule the next autoRoll with a 900ms delay only if we are still the current turn

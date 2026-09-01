@@ -20,17 +20,17 @@ body {
     width: 100%;
     max-width: 800px;
     height: auto;
-    min-height: 600px;
     margin: 0 auto;
     padding: 16px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: 100px 1fr 180px;
+    grid-template-rows: auto;
     gap: 16px;
     box-sizing: border-box;
+    align-items: start;
 }
 
 /* Loading overlay (created by JS) */
@@ -234,8 +234,8 @@ body {
     }
     
     #left-title-panel {
-        flex: 0 0 auto;
-        width: 100%;
+        grid-column: 1 / -1;
+        grid-row: 1;
         height: 60px;
         order: -1;
     }
@@ -246,10 +246,17 @@ body {
         text-orientation: mixed;
     }
     
-    #right-commentary-panel {
-        width: 100%;
+    #game-board-container {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        order: 0;
+    }
+    
+    #right-column-wrapper {
+        grid-column: 1 / -1;
+        grid-row: 3;
         max-height: 200px;
-        order: 3;
+        order: 1;
     }
 }
 
@@ -269,18 +276,19 @@ body {
 }
 
 
-/* Left margin title panel */
+/* Left margin title panel - Grid column 1 */
 #left-title-panel {
-    flex: 0 0 100px;
+    grid-column: 1;
     display: flex;
     align-items: center;
     justify-content: center;
     pointer-events: none; /* Allow clicks to pass through to game */
+    height: 100%;
 }
 
-/* Game board container - DEF-0027: single definition */
+/* Game board container - Grid column 2 */
 #game-board-container {
-    flex: 1;
+    grid-column: 2;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -313,13 +321,13 @@ body {
     font-style: italic;
 }
 
-/* Right column wrapper for commentary */
+/* Right column wrapper for commentary - Grid column 3 */
 #right-column-wrapper {
+    grid-column: 3;
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
-    flex: 0 0 180px;
 }
 
 /* Commentary panel - DEF-0024: scrolling enabled */
@@ -388,32 +396,14 @@ body {
 
 /* Responsive adjustments for panels */
 @media (max-width: 1200px) {
-    #left-title-panel {
-        flex: 0 0 80px;
-    }
-    
-    #right-column-wrapper {
-        flex: 0 0 250px;
-    }
-    
-    #game-board-container {
-        flex: 1;
-        position: relative;
+    #game-container {
+        grid-template-columns: 80px 1fr 250px;
     }
 }
 
 @media (max-width: 900px) {
-    #left-title-panel {
-        flex: 0 0 60px;
-    }
-    
-    #right-column-wrapper {
-        flex: 0 0 200px;
-    }
-    
-    #game-board-container {
-        flex: 1;
-        position: relative;
+    #game-container {
+        grid-template-columns: 60px 1fr 200px;
     }
     
     #left-title-panel .title-main {
