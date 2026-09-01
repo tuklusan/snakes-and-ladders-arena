@@ -4,15 +4,7 @@ class GameController {
     constructor(model, view) {
         this.model = model;
         this.view = view;
-        this.bindEvents();
         this.turnStartPlayerPositions = []; // to snapshot player positions at start of turn for triple six penalty
-    }
-
-    bindEvents() {
-        // Listen for roll dice request from the view
-        // In a more decoupled architecture, we would use events.
-        // For now, we assume the view has a method to set the controller's rollDice method as a handler.
-        // We'll set it up in the view's init.
     }
 
     // This method is called by the view when the user requests to roll the dice
@@ -69,17 +61,17 @@ class GameController {
             this.advanceTurn();
             // Notify view of the penalty (we'll let the view handle audio/visuals)
             this.view.onTripleSixPenalty();
-            // Create turn record for triple six penalty
+            // Create turn record for triple six penalty - DEF-0031 fix: clarify fields
             const record = {
                 mover: activePlayer,
                 roll: dieRoll,
                 from: current_pos,
-                landed: turn_start_position, // landed same as from (no movement)
-                to: turn_start_position,
+                landed: current_pos, // landed same as from (no movement executed)
+                to: turn_start_position, // position after penalty (turn start)
                 event: 'triple_six',
                 captured: null
             };
-            this.model.lastTurnRecord = record;
+            this.model.setLastTurnRecord(record);
             this.view.onStateChange();
             return; // Turn ends
         }
@@ -108,7 +100,7 @@ class GameController {
 
         // Entity Traversal (Ladders & Snakes) and Capture only apply if we moved
         let finalPos = target_pos;
-        let capturedPlayerId = null;
+        let capturedPlayerIds = []; // DEF-0033 fix: array to store all captured opponents
         let event = 'move'; // default, may change
 
         if (moved) {
@@ -132,12 +124,10 @@ class GameController {
                         this.model.setPlayerPosition(opponent, 0); // Opponent sent back to off-board
                         // Notify view of capture
                         this.view.onCapture(opponent, finalPos);
-                        if (capturedPlayerId === null) {
-                            capturedPlayerId = opponent;
-                        }
+                        capturedPlayerIds.push(opponent); // DEF-0033 fix: record all captured
                     }
                 }
-                if (capturedPlayerId !== null) {
+                if (capturedPlayerIds.length > 0) {
                     event = 'capture';
                 }
             }
@@ -158,23 +148,12 @@ class GameController {
                 landed: landedPos,
                 to: 100,
                 event: 'win',
-                captured: capturedPlayerId !== null ? capturedPlayerId : null
+                captured: capturedPlayerIds.length > 0 ? capturedPlayerIds : null // DEF-0033 fix
             };
-            this.model.lastTurnRecord = record;
+            this.model.setLastTurnRecord(record);
             this.view.onGameWin(activePlayer);
             this.view.onStateChange();
             return;
-        }
-
-        // Determine event if not already set (ladder/snake/capture)
-        if (event === 'move') {
-            if (!moved) {
-                event = 'no_move';
-            } else if (this.model.Ladders.has(landedPos)) {
-                event = 'ladder';
-            } else if (this.model.Snakes.has(landedPos)) {
-                event = 'snake';
-            }
         }
 
         // Turn Arbitrator
@@ -196,9 +175,9 @@ class GameController {
             landed: landedPos,
             to: finalPos,
             event: event,
-            captured: capturedPlayerId !== null ? capturedPlayerId : null
+            captured: capturedPlayerIds.length > 0 ? capturedPlayerIds : null // DEF-0033 fix
         };
-        this.model.lastTurnRecord = record;
+        this.model.setLastTurnRecord(record);
 
         // Notify view that the state has changed (for rendering)
         this.view.onStateChange();

@@ -493,6 +493,10 @@ class GameModel {
         return this.lastTurnRecord;
     }
 
+    setLastTurnRecord(record) {
+        this.lastTurnRecord = record;
+    }
+
     getLastMoveIntermediatePosition() {
         return this.lastMoveIntermediatePosition;
     }

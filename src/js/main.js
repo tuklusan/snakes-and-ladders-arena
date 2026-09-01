@@ -37,6 +37,7 @@
             const errorDiv = document.createElement('div');
             errorDiv.style.color = 'red';
             errorDiv.style.padding = '20px';
+            // DEF-0001 fix: use textContent to prevent DOM XSS
             errorDiv.textContent = `Error: ${e.message || e}`;
             container.appendChild(errorDiv);
             
@@ -45,6 +46,7 @@
                 const stackDiv = document.createElement('div');
                 stackDiv.style.color = 'red';
                 stackDiv.style.padding = '20px';
+                // DEF-0001 fix: use textContent to prevent DOM XSS
                 stackDiv.textContent = `Stack: ${e.stack}`;
                 container.appendChild(stackDiv);
             }

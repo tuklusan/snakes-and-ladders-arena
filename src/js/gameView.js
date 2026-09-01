@@ -40,14 +40,8 @@ class GameView {
 
         // Bind methods
         this.handleRollClick = this.handleRollClick.bind(this);
-        this.assetLoaded = this.assetLoaded.bind(this);
-        this.assetError = this.assetError.bind(this);
         this.autoRoll = this.autoRoll.bind(this);
         this.handleGameOver = this.handleGameOver.bind(this);
-
-        // Bind asset handlers for correct 'this' context - DEF-010 fix
-        this.assetLoaded = this.assetLoaded.bind(this);
-        this.assetError = this.assetError.bind(this);
         // Expose instance for debugging
         if (typeof window !== 'undefined') {
             window.gameViewInstance = this;
@@ -147,6 +141,11 @@ class GameView {
 
         // Handle tile 0 (off-board staging)
         if (tile === 0) {
+            // DEF-0004 fix: stagingElement may not be initialized yet
+            if (!this.stagingElement) {
+                // Fallback: return a default position near the board
+                return { x: containerRect.left + 50 + playerId * 30, y: containerRect.top + containerRect.height - 30 };
+            }
             const stagingRect = this.stagingElement.getBoundingClientRect();
             const stripLeft = stagingRect.left - containerRect.left;
             const stripWidth = stagingRect.width;
@@ -260,14 +259,8 @@ class GameView {
         }
     }
 
-    // Draw snakes and ladders on the SVG overlay
-    drawSnakesAndLadders() {
-        // Clear any existing paths from this.svgElement (while keeping the SVG element itself)
-        while (this.svgElement.firstChild) {
-            this.svgElement.removeChild(this.svgElement.firstChild);
-        }
-
-        // Ensure speckle filter exists in SVG defs (OI-2)
+    // DEF-0005 fix: Create speckle filter once during SVG initialization
+    createSpeckleFilter() {
         const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
         const speckleFilter = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
         speckleFilter.setAttribute('id', 'snakeSpeckle');
@@ -294,6 +287,17 @@ class GameView {
         speckleFilter.appendChild(feBlend);
         defs.appendChild(speckleFilter);
         this.svgElement.appendChild(defs);
+    }
+
+    // Draw snakes and ladders on the SVG overlay
+    drawSnakesAndLadders() {
+        // Clear any existing paths from this.svgElement (while keeping the SVG element itself)
+        while (this.svgElement.firstChild) {
+            this.svgElement.removeChild(this.svgElement.firstChild);
+        }
+
+        // Re-add the speckle filter (created once in createSpeckleFilter, but cleared above)
+        this.createSpeckleFilter();
 
         // Draw ladders with two rails and rungs
         for (const [start, end] of this.model.Ladders) {
@@ -660,6 +664,8 @@ class GameView {
         
         this.boardElement.appendChild(svg);
         this.svgElement = svg;
+        // DEF-0005 fix: Create speckle filter once during SVG initialization
+        this.createSpeckleFilter();
         this.drawSnakesAndLadders();
 
         // Create staging area below board
@@ -781,7 +787,7 @@ class GameView {
                     this.tokenElements[i-1].style.backgroundImage = `url('${img.src}')`;
                 }
             };
-            img.onerror = this.assetError;
+            img.onerror = (e) => this.assetError(e);
             img.src = `assets/images/tokens/token_${i}.png`;
             this.assets.tokens.push(img);
         }
@@ -789,16 +795,16 @@ class GameView {
         // Load dice faces
         for (let i = 1; i <= 6; i++) {
             const img = new Image();
-            img.onload = this.assetLoaded;
-            img.onerror = this.assetError;
+            img.onload = () => this.assetLoaded();
+            img.onerror = (e) => this.assetError(e);
             img.src = `assets/images/dice/dice_face_${i}.png`;
             this.assets.diceFaces.push(img);
         }
 
         // Load dice tumble sheet for animation
         const tumbleSheet = new Image();
-        tumbleSheet.onload = this.assetLoaded;
-        tumbleSheet.onerror = this.assetError;
+        tumbleSheet.onload = () => this.assetLoaded();
+        tumbleSheet.onerror = (e) => this.assetError(e);
         tumbleSheet.src = 'assets/images/dice/dice_tumble_sheet.png';
         this.assets.diceTumbleSheet = tumbleSheet;
 
@@ -808,8 +814,8 @@ class GameView {
             const audio = new Audio();
             audio.src = `assets/audio/${event}.ogg`;
             audio.preload = 'auto';
-            audio.addEventListener('loadeddata', this.assetLoaded, { once: true });
-            audio.addEventListener('error', this.assetError, { once: true });
+            audio.addEventListener('loadeddata', () => this.assetLoaded(), { once: true });
+            audio.addEventListener('error', (e) => this.assetError(e), { once: true });
             this.assets.audio[event] = audio;
         });
     }

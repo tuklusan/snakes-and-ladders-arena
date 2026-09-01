@@ -14,20 +14,23 @@ body {
     line-height: 1.6;
 }
 
-/* Game container */
+/* Game container - DEF-0021: responsive width/height */
 #game-container {
     position: relative;
-    width: 800px;
-    height: 600px;
+    width: 100%;
+    max-width: 800px;
+    height: auto;
+    min-height: 600px;
     margin: 0 auto;
-    padding: 0;
+    padding: 16px;
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 16px;
+    box-sizing: border-box;
 }
 
 /* Loading overlay (created by JS) */
@@ -46,12 +49,12 @@ body {
     z-index: 1000;
 }
 
-/* Board */
+/* Board - DEF-0026: responsive board size */
 #game-board {
     position: relative;
-    width: 380px;
-    height: 380px;
-    
+    width: 100%;
+    max-width: 380px;
+    aspect-ratio: 1 / 1;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
@@ -76,7 +79,7 @@ body {
     animation: bounce 0.4s ease-out;
 }
 
-/* Dice */
+/* Dice - DEF-0023: proper positioning context */
 #dice-container {
     width: 60px;
     height: 60px;
@@ -92,13 +95,9 @@ body {
     position: relative; /* Enable absolute positioning for children if needed */
 }
 
-/* Player info panel */
+/* Player info panel - DEF-0022: fixed positioning with flex layout */
 #player-info {
-    position: absolute;
-    top: 50%;
-    left: 16px;
-    right: 16px;
-    transform: translateY(-50%);
+    position: relative; /* Changed from absolute to relative for flex flow */
     background: rgba(0,0,0,0.6);
     color: #fff;
     padding: 12px;
@@ -109,6 +108,7 @@ body {
     align-items: center;
     min-width: 200px;
     height: auto;
+    flex: 0 0 auto;
 }
 
 /* Player info items */
@@ -139,7 +139,7 @@ body {
     opacity: 0.9;
 }
 
-/* Highlight active player */
+/* Highlight active player - DEF-0025: fixed selector (div not span) */
 #player-info > div.active-player {
     border: 2px solid #ffeb3b;
     border-radius: 6px;
@@ -147,7 +147,7 @@ body {
     background: rgba(255, 235, 59, 0.2);
 }
 
-#player-info > div.active-player div:nth-child(2) {
+#player-info > div.active-player > div:nth-child(2) {
     color: #ffeb3b;
 }
 
@@ -193,24 +193,26 @@ body {
     #game-container {
         margin: 10px;
         padding: 15px;
+        min-height: auto;
+        flex-direction: column;
+        align-items: center;
     }
     
     #dice-container {
         width: 50px;
         height: 50px;
-        position: absolute;
-        top: 10px;
-        right: 10px;
+        position: static; /* DEF-0023: static position, centered by flex */
+        margin: 10px auto;
     }
     
     #player-info {
-        position: absolute;
-        top: auto;
-        bottom: 10px;
-        left: 10px;
-        right: 10px;
-        transform: none;
+        position: relative; /* DEF-0022: relative, not absolute */
+        width: 100%;
+        max-width: 100%;
+        flex-direction: row;
+        justify-content: space-around;
         padding: 10px;
+        margin: 10px 0;
     }
     
     #roll-button {
@@ -226,7 +228,30 @@ body {
         width: 20px;
         height: 20px;
     }
-} 
+    
+    #game-board {
+        max-width: 100%;
+    }
+    
+    #left-title-panel {
+        flex: 0 0 auto;
+        width: 100%;
+        height: 60px;
+        order: -1;
+    }
+    
+    #left-title-panel .title-content {
+        writing-mode: horizontal-tb;
+        transform: none;
+        text-orientation: mixed;
+    }
+    
+    #right-commentary-panel {
+        width: 100%;
+        max-height: 200px;
+        order: 3;
+    }
+}
 
 @keyframes bounce {
   0% { transform: scale(1); }
@@ -253,9 +278,17 @@ body {
     pointer-events: none; /* Allow clicks to pass through to game */
 }
 
-/* Game board container */
+/* Game board container - DEF-0027: single definition */
 #game-board-container {
-    flex: 1 1 auto;
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 4px;
+    box-sizing: border-box;
+    min-height: 0;
 }
 
 #left-title-panel .title-content {
@@ -280,22 +313,21 @@ body {
     font-style: italic;
 }
 
-#game-board-container {
-    flex: 1;
-    position: relative;
-}
-
+/* Right column wrapper for commentary */
 #right-column-wrapper {
     display: flex;
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    flex: 0 0 180px;
 }
+
+/* Commentary panel - DEF-0024: scrolling enabled */
 #right-commentary-panel {
     flex: 1 1 0;
     min-height: 0;
     overflow: hidden;
-    pointer-events: none; /* Allow clicks to pass through to game */
+    /* pointer-events: none; REMOVED - DEF-0024: was preventing scrolling */
 }
 
 #right-commentary-panel #commentary-content {
@@ -307,6 +339,7 @@ body {
     font-family: 'Courier New', monospace;
     font-size: 0.85rem;
     line-height: 1.4;
+    min-height: 0; /* Allow shrinking */
 }
 
 #right-commentary-panel #commentary-content::-webkit-scrollbar {
@@ -329,8 +362,9 @@ body {
 
 /* Footer */
 #app-footer {
-    width: 620px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: 800px;
+    margin: 16px auto 0;
     height: 20px;
     line-height: 20px;
     text-align: center;
@@ -358,13 +392,13 @@ body {
         flex: 0 0 80px;
     }
     
-    #right-commentary-panel {
+    #right-column-wrapper {
         flex: 0 0 250px;
     }
     
     #game-board-container {
-    flex: 1;
-    position: relative;
+        flex: 1;
+        position: relative;
     }
 }
 
@@ -373,13 +407,13 @@ body {
         flex: 0 0 60px;
     }
     
-    #right-commentary-panel {
+    #right-column-wrapper {
         flex: 0 0 200px;
     }
     
     #game-board-container {
-    flex: 1;
-    position: relative;
+        flex: 1;
+        position: relative;
     }
     
     #left-title-panel .title-main {
