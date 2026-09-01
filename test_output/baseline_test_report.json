@@ -1,9 +1,9 @@
 {
   "success": true,
-  "timestamp": "2026-08-30T23:47:11.112Z",
-  "duration_ms": 31717,
+  "timestamp": "2026-09-01T21:18:10.295Z",
+  "duration_ms": 31057,
   "state": {
-    "tokensOnBoard": 3,
+    "tokensOnBoard": 2,
     "diceHasImage": true
   },
   "errors": []
