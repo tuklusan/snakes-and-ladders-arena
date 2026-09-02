@@ -1,53 +1,61 @@
 # Project Status — SANYALnet Labs Snakes & Ladders Arena
-**Last Updated:** 2026-08-31
-**Git Commit:** `9e136f2` (main)
-**Server:** Running on `0.0.0.0:8080` (bind to all interfaces)
+**Last Updated:** 2026-09-01
+**Version / Tag:** `1.0.0`
+**Server:** `python3 tools/serve_nocache.py 8000` (binds `0.0.0.0:8000`, no-store cache)
 
 ---
 
 ## Executive Summary
-Fully functional 4-player Indian-style Snakes and Ladders arena with auto-play, procedural board generation, SVG-rendered snakes/ladders, and complete rule implementation. Core gameplay features (OI-1 through OI-4) are deployed. DeepSeek code review identified 28 accepted defects requiring repair; PENDING actions deferred to beta-0.0.4.
+A complete, fully-automated 4-player Indian-style Snakes & Ladders arena: procedural
+board generation, SVG-rendered snakes and ladders, tile-by-tile + path-glide token
+animation, twelve audio cues, and a zero-click auto-play loop. All operator issues
+(OI-1 through OI-4) and both PENDING items are resolved, and all 28 accepted defects
+from the DeepSeek code review have been repaired (see `.review_state/DEFECTS.md`,
+status `CLOSED - FIXED`). The build loads with zero console errors and zero failed
+requests. Version 1.0.0.
 
 ---
 
 ## Tech Stack
 | Layer | Technology |
 |-------|------------|
-| Language | Vanilla JavaScript (ES6, no bundler) |
-| Runtime | Browser (Chrome/Chromium); headless via Puppeteer |
-| Dependencies | `puppeteer@25.9.0`, `jsdom@30.0.1`, `node-fetch@3.3.2` |
+| Language | Vanilla JavaScript (ES6 modules, no bundler) |
+| Runtime | Browser (Chrome/Chromium); headless via Puppeteer for validation |
+| Dev dependencies | `puppeteer`, `jsdom`, `node-fetch` (see `package.json`) |
 | Styling | Plain CSS (`src/css/styles.css`) |
 | Architecture | MVC: `gameModel.js` (state + board gen + geometry), `gameController.js` (rules), `gameView.js` (DOM, SVG, animation, audio) |
-| Entry Point | `index.html` → `main.js` |
-| CI/CD | None (ad-hoc Puppeteer scripts in `tools/`) |
+| Entry Point | `index.html` → `src/js/main.js` |
+| CI/CD | None (ad-hoc Node/Puppeteer scripts in `tools/`) |
 
 ---
 
 ## Repository Structure
 ```
-/home/sanyalnet/SOFTWARE-DEVELOPMENT/snakes-and-ladders/
-├── index.html                    # SPA entry point
-├── package.json                  # Minimal deps
+snakes-and-ladders/
+├── index.html                      # SPA entry point
+├── package.json                    # Dev deps (Puppeteer, jsdom, node-fetch)
+├── LICENSE                         # MIT
+├── README.md                       # Public overview + screenshots
+├── GAME-RULES.md                   # Canonical ruleset (pseudocode)
+├── INDIAN-SNAKES-AND-LADDERS-GAME.md  # Technical specification
+├── PROJECT_STATUS.md               # This file
+├── API_CONTRACT.md                 # (internal) DeepSeek review-harness API contract
 ├── src/
-│   ├── css/styles.css            # All styling (~400 lines)
+│   ├── css/styles.css              # All styling
 │   └── js/
-│       ├── gameModel.js          # State + board generator + geometry (512 lines)
-│       ├── gameController.js     # Rules engine (228 lines)
-│       ├── gameView.js           # Rendering, SVG, animation, audio (2050 lines)
-│       └── main.js               # Bootstrap (27 lines)
+│       ├── gameModel.js            # State + procedural board generator + geometry
+│       ├── gameController.js       # Rules engine
+│       ├── gameView.js             # Rendering, SVG, animation, audio
+│       └── main.js                 # Bootstrap
 ├── assets/
-│   ├── images/tokens/, /dice/    # PNG assets
-│   ├── audio/                    # 12 .ogg files
-│   └── reference/                # Snake/ladder reference images
-├── tools/                        # Shell/JS utilities, validation scripts
-├── validation_output/            # Puppeteer screenshots
-├── test_output/                  # Baseline/regression test reports
-├── .review_state/                # DeepSeek review artifacts (DEFECTS.md, ADJUDICATIONS.md)
-├── PENDING-ACTIONS-beta-0.0.4.md # Deferred items for beta-0.0.4
-├── GAME-RULES.md                 # Canonical ruleset
-├── PROJECT_STATUS.md             # This file
-├── INDIAN-SNAKES-AND-LADDERS-GAME.md # Technical spec
-└── .eslintrc.json                # ESLint config
+│   ├── images/tokens/, /dice/, /board/   # PNG assets
+│   ├── audio/                      # 12 .ogg files + CREDITS.md
+│   └── reference/                  # Snake/ladder reference images + SVGs
+├── tools/                          # Node/Puppeteer/shell utilities
+├── validation_output/              # Screenshots + test reports
+├── test_output/                    # Baseline/regression reports
+├── .review_state/                  # DeepSeek review record (DEFECTS.md, adjudications)
+└── .eslintrc.json                  # ESLint config
 ```
 
 ---
@@ -55,41 +63,44 @@ Fully functional 4-player Indian-style Snakes and Ladders arena with auto-play, 
 ## Implemented Features
 
 ### Core Gameplay (GAME-RULES.md)
-- ✅ 4-player deterministic turn-based play on 10×10 board (tiles 1–100)
-- ✅ Entry on roll 1 or 6; exact landing on 100 required
+- ✅ 4-player deterministic turn-based play on a 10×10 board (tiles 1–100)
+- ✅ Entry on roll 1 or 6; exact landing on 100 required (overshoot voids the move)
 - ✅ Ladders (up) and Snakes (down) with non-crossing procedural generation
-- ✅ Capture (Katti) mechanic — opponent sent to 0
-- ✅ Triple-six penalty — revert turn movement, advance turn
-- ✅ Extra turn on 6 (max 2 consecutive)
+- ✅ Capture (Katti) — every opponent on the landing tile is sent back to 0
+- ✅ Triple-six penalty — revert this turn's movement, advance turn
+- ✅ Extra turn on 6 (max 2 consecutive; the 3rd six triggers the penalty)
 
 ### Visual & UX
-- ✅ Three-column responsive layout: 100px title | flex board | 180px commentary
-- ✅ SVG snakes: uniform width (2.4 vb), sinuous sine-wave body, speckled yellow/black via filter, small head (rx=1.2, ry=0.8), fine whip tail (r=0.15)
-- ✅ SVG ladders: two rails + intermediate rungs only (no endpoint rungs)
-- ✅ Token animation: step-by-step walk + smooth jump along SVG path, CSS transition suppression during jumps
+- ✅ Three-column responsive layout (title • board • commentary), columns flush to the staging box with the Blog link directly beneath
+- ✅ SVG snakes: uniform-width sinuous sine-wave body rendered dark, small head (with two eyes and a forked tongue pointing outward) and fine whip tail; a `snakeSpeckle` SVG filter is applied (subtle texture — not a vivid yellow/black)
+- ✅ SVG ladders: two rails with interior rungs only (no endpoint rungs)
+- ✅ Token animation: tile-by-tile walk + smooth glide along the exact SVG path, with the CSS position transition suppressed during jumps (no wobble)
 - ✅ Dice tumble animation + face display
-- ✅ Audio: 12 event sounds with autoplay policy probe + start-button gate
-- ✅ Commentary panel with player-colored log entries
-- ✅ Kiosk mode detection (`display-mode: standalone`)
+- ✅ Audio: 12 event sounds (incl. capture/katti) gated behind an autoplay-policy probe + start button on non-kiosk browsers
+- ✅ Commentary panel (internal scroll) with player-colored log entries
+- ✅ Kiosk-mode detection (`display-mode: standalone`) — auto-starts, hides the start button
 
 ### Technical
-- ✅ Procedural board generator with geometric validation (clearance ≥5, row-span ≥3, no snake heads 95–99)
+- ✅ Procedural board generator with geometric validation (clearance, row-span, fairness zones, no snake heads near 100)
 - ✅ Continuous animation paths for snake traversal (`data-snake-animation="true"`)
 - ✅ `data-jump` attributes on all snake/ladder elements for animation binding
-- ✅ Auto-restart 10s after game over
+- ✅ Auto-restart ~10s after game over
+- ✅ Zero console errors / zero failed requests on load and during play
 
 ---
 
 ## Issue Resolution History
 
-| Issue | Description | Status | Commit |
-|-------|-------------|--------|--------|
-| **OI-1** | Tile numbers at 50% font size | ✅ Done | `a9a92c5` |
-| **OI-2** | Snake uniformity: uniform width, small head/tail, speckled yellow/black | ✅ Done | `717f324` |
-| **OI-3** | Ladder rungs: intermediate only (no endpoints) | ✅ Done | `a9a92c5` |
-| **OI-4** | Snake traversal regression: slide animation + audio | ✅ Done | `a9a92c5` |
-| **PENDING #1** | Snake forked tongue direction (fixed inward→outward) | ✅ Done | `0d18e0f` |
-| **PENDING #2** | Ladder-climb wobble (deferred) | ⏸ Deferred to beta-0.0.4 | — |
+| Issue | Description | Status |
+|-------|-------------|--------|
+| **OI-1** | Tile numbers reduced to a small corner label | ✅ Done |
+| **OI-2** | Snake uniformity: uniform width, small head/tail, speckle filter | ✅ Done |
+| **OI-3** | Ladder rungs: interior only (no endpoints) | ✅ Done |
+| **OI-4** | Snake traversal: slide animation + audio | ✅ Done |
+| **PENDING #1** | Snake forked tongue direction (inward → outward) | ✅ Done |
+| **PENDING #2** | Ladder-climb wobble | ✅ Addressed (path-pixel positioning + transition suppression) |
+| **Follow-up A** | Game canvas over-tall: columns flush to staging box, Blog beneath | ✅ Done (beta-0.1.3) |
+| **Follow-up B** | Capture/katti sound restored after DEF-0033 array change | ✅ Done (beta-0.1.3) |
 
 ---
 
@@ -98,94 +109,62 @@ Fully functional 4-player Indian-style Snakes and Ladders arena with auto-play, 
 | Metric | Count |
 |--------|-------|
 | Total Findings | 32 |
-| **Accepted Defects (OPEN)** | **28** |
-| Rejected (False Positive) | 1 (F004) |
-| Out of Scope | 1 (F020) |
-| Defects Repaired | 0 |
+| Accepted Defects | 28 |
+| Rejected (False Positive) | 1 |
+| Out of Scope | 1 |
+| **Defects Repaired** | **28 (all)** |
 
-**All 28 accepted defects are recorded in `.review_state/DEFECTS.md` with status OPEN.** Key defects include:
-- DOM XSS risk in error handling (DEF-0001)
-- Unbound event handlers breaking asset loading (DEF-0009)
-- Missing `stagingElement` initialization (DEF-0004)
-- Multiple `transitionend` causing duplicate settle (DEF-0010)
-- Head/tongue scaling inconsistencies (DEF-0015)
-- Tongue path rounded-cap artifacts (DEF-0017)
-- Speckled filter promised but not applied (DEF-0019)
-- Responsive layout overflow on small screens (DEF-0021)
-- Commentary panel scrolling disabled (DEF-0024)
-- Active player selector mismatch (DEF-0025)
+All 28 accepted defects are recorded in `.review_state/DEFECTS.md` with status
+`CLOSED - FIXED`. Representative repairs: DOM-XSS on the error path switched to
+`textContent` (DEF-0001); event handlers bound (DEF-0009); `stagingElement`
+initialized (DEF-0004); duplicate settle from multiple `transitionend` guarded
+(DEF-0010); commentary panel scroll restored (DEF-0024); responsive overflow fixed
+(DEF-0021/0022); the `snakeSpeckle` filter applied rather than left unused
+(DEF-0005/0019).
 
 ---
 
-## Key Files & Line References
-
-### `src/js/gameView.js`
-| Feature | Lines |
-|---------|-------|
-| SVG filter `snakeSpeckle` definition | ~270–310, ~580–620 |
-| Snake body generation (uniform width, zones) | ~360–470 |
-| Head element (`_createHeadElement`) | ~2070–2120 |
-| Tail element (`_createTailElement`) | ~2122–2150 |
-| Animation path selector (prefers `data-snake-animation`) | ~1400 |
-| Ladder rung loop (intermediate only) | ~340 |
-
-### `src/js/gameController.js`
-| Feature | Lines |
-|---------|-------|
-| Snake event detection | 120–126 |
-| Turn record creation | 192–204 |
-
----
-
-## Validation Scripts
+## Tooling (`tools/`)
 | Script | Purpose |
 |--------|---------|
-| `tools/validate_tongues.js` | Snake tongue direction + head transforms |
-| `tools/validate_all_fixes.js` | OI-1, OI-3, OI-4 comprehensive check |
-| `tools/validate_oi2.js` | OI-2 specific: speckle filter, body width, head/tail |
-| `tools/tester_phase.js` | Baseline + regression + harness fault injection |
+| `serve_nocache.py [port=8000]` | Static no-store dev/kiosk server |
+| `test_board_gen.js` | Board generator sanity check |
+| `test_board_stress.js` | Board generator stress test |
+| `test_autoplay_button.js` / `_final.js` | Autoplay / start-button behavior |
+| `tester_phase.js` | Baseline + regression harness |
+| `verify_all.sh` | Aggregate verification run |
+| `lint_undeclared.js` | Undeclared-identifier lint helper |
 
-Run with: `node tools/validate_oi2.js` (requires Puppeteer)
+Most Node scripts require Puppeteer (`npm install`).
 
 ---
 
 ## Running the Project
-
-### Local Development
 ```bash
-cd /home/sanyalnet/SOFTWARE-DEVELOPMENT/snakes-and-ladders
-python3 -m http.server 8080 --bind 0.0.0.0
-# Open http://localhost:8080
+git clone https://github.com/tuklusan/snakes-and-ladders-arena.git
+cd snakes-and-ladders-arena
+python3 tools/serve_nocache.py 8000          # binds 0.0.0.0:8000, sends Cache-Control: no-store
+# open http://localhost:8000  (or http://<LAN-IP>:8000)
+# stop: pkill -f serve_nocache.py
 ```
-
-### Network Access
-Server binds to `0.0.0.0:8080` — accessible at `http://<LAN-IP>:8080`.
-
-### Stop Server
-```bash
-pkill -f "http.server 8080"
-```
+Kiosk: launch Chromium with `--app=http://localhost:8000/index.html --autoplay-policy=no-user-gesture-required` for auto-start with no start button.
 
 ---
 
 ## Known Gaps / Future Work
-1. **28 OPEN defects from DeepSeek review** — require repair cycle
-2. **No formal test suite** — only ad-hoc Puppeteer scripts
-3. **No CI/CD pipeline**
-4. **`gameView.js` monolithic** (~2050 lines) — candidate for module split
-5. **Ladder-climb wobble** (PENDING #2, deferred to beta-0.0.4) — root cause known
-6. **Snake structural fidelity** (PENDING #1 in beta-0.0.4) — body curvature, organic width, tapering tail
-7. **Accessibility / i18n** — English only, no keyboard nav
+1. **No formal test suite** — only ad-hoc Node/Puppeteer scripts (no Vitest/Playwright, no CI).
+2. **`gameView.js` is monolithic** — a candidate for a module split (SnakeRenderer / LadderRenderer / TokenAnimator / AudioManager).
+3. **Snake speckle is subtle** — the `snakeSpeckle` filter is applied but the body still reads as dark rather than a vivid yellow/black; a color-matrix pass would make it read as documented.
+4. **Accessibility / i18n** — English only, no keyboard navigation or ARIA pass.
 
 ---
 
 ## Resumption Checklist
-- [ ] `git pull origin main` to get latest
+- [ ] `git pull origin master` (single branch; `main` was retired)
 - [ ] `npm install` if dependencies changed
-- [ ] `python3 -m http.server 8080 --bind 0.0.0.0` to start server
-- [ ] Run validation scripts to verify no regressions
-- [ ] Review `.review_state/DEFECTS.md` for 28 OPEN defects
-- [ ] Check `PENDING-ACTIONS-beta-0.0.4.md` for deferred items
+- [ ] `python3 tools/serve_nocache.py 8000` to serve
+- [ ] Spot-check with `node tools/test_board_gen.js` / `bash tools/verify_all.sh`
+- [ ] Review `.review_state/DEFECTS.md` (all `CLOSED - FIXED`) for context
 
 ---
 

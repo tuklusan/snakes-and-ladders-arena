@@ -11,7 +11,7 @@
 |---------|---------|
 | **Authentic Indian rules** | Entry on 1 or 6, exact landing on 100, capture (Katti), triple-six penalty, extra turn on 6 |
 | **Procedural boards** | 4–6 ladders & 4–6 snakes each game, geometrically validated (no crossings, minimum row-span, fairness zone) |
-| **SVG-rendered pieces** | Sinuous, speckled yellow/black snakes with tiny heads & whip tails; two-rail ladders with interior rungs only |
+| **SVG-rendered pieces** | Sinuous dark snakes with tiny heads, forked tongues & whip tails (an SVG speckle filter is applied for subtle texture); two-rail ladders with interior rungs only |
 | **Smooth animation** | Token walks tile-by-tile then glides along the exact SVG path; CSS transitions suppressed during jumps for zero wobble |
 | **Audio cues** | 12 event sounds (roll, step, settle, ladder, snake, six, triple-six, turn, win, game-over, capture, enter) with autoplay-policy gate |
 | **Kiosk-ready** | Detects `display-mode: standalone`; hides start button when autoplay allowed |
@@ -44,7 +44,7 @@ In normal browsers, autoplay is blocked — the game waits for a user gesture. T
 
 | Before click | After click (mid-game) |
 |--------------|------------------------|
-| ![Start button](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_start_button.png) | ![Mid-game](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_midgame.png) |
+| ![Start button](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_start_button.png) | ![Mid-game](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_30s.png) |
 
 *In kiosk mode (`--app` / standalone) the button is hidden and the arena starts automatically.*
 
@@ -90,9 +90,10 @@ index.html
 ## 🛠️ Development
 
 ```bash
-# Run visual validation (requires Puppeteer)
-node tools/validate_all_fixes.js   # OI-1, OI-3, OI-4
-node tools/validate_oi2.js         # OI-2 snake uniformity
+# Sanity / regression checks (Node scripts require Puppeteer: npm install)
+node tools/test_board_gen.js        # board generator sanity
+node tools/test_board_stress.js     # board generator stress test
+bash tools/verify_all.sh            # aggregate verification run
 
 # Lint
 npx eslint src/js/
@@ -100,14 +101,15 @@ npx eslint src/js/
 
 ### Key source locations
 
-| Feature | File / Lines |
-|---------|--------------|
-| Board generator & validation | `src/js/gameModel.js:138-258` |
-| Snake rendering (speckle filter, uniform width) | `src/js/gameView.js:360-470` |
-| Head / tail SVG elements | `src/js/gameView.js:2070-2150` |
-| Ladder rung loop (interior only) | `src/js/gameView.js:340` |
-| Token animation (step + jump) | `src/js/gameView.js:1270-1480` |
-| Audio autoplay probe & start button | `src/js/gameView.js:810-897` |
+| Feature | File |
+|---------|------|
+| Board generator & validation | `src/js/gameModel.js` |
+| Snake rendering (speckle filter, uniform width) | `src/js/gameView.js` |
+| Head / tail SVG elements | `src/js/gameView.js` |
+| Ladder rung loop (interior only) | `src/js/gameView.js` |
+| Token animation (step + jump) | `src/js/gameView.js` |
+| Audio autoplay probe & start button | `src/js/gameView.js` |
+| Rules engine (ProcessTurn, capture, triple-six, win) | `src/js/gameController.js` |
 
 ---
 
@@ -115,8 +117,12 @@ npx eslint src/js/
 
 | Tag | Date | Notes |
 |-----|------|-------|
-| `beta-0.0.1` – `beta-0.0.5` | 2026-08 | Incremental fixes (tongue direction, wobble analysis, etc.) |
-| **`beta-0.1.0`** | **2026-08-29** | **All open issues resolved:** tile font 50 %, ladder interior rungs, snake traversal + audio, uniform speckled snakes |
+| `beta-0.0.1` – `beta-0.0.5` | 2026-08 | Incremental fixes (movement, snake heads/tongues, ladder rungs, wobble analysis) |
+| `beta-0.1.0` | 2026-08-31 | Operator issues OI-1..4 resolved: small tile font, ladder interior rungs, snake traversal + audio, uniform snakes |
+| `beta-0.1.1` | 2026-08-31 | Defects/pending closed; DeepSeek review baseline |
+| `beta-0.1.2` | 2026-09-01 | Repo consolidation: single linear branch, hygiene cleanup |
+| `beta-0.1.3` | 2026-09-01 | 28 DeepSeek defects repaired; layout height + capture-sound follow-ups |
+| **`1.0.0`** | **2026-09-01** | **First stable release** — all issues and review defects resolved; zero console errors |
 
 ---
 
@@ -132,8 +138,8 @@ npx eslint src/js/
 
 ## 📄 License
 
-MIT – see `LICENSE` (to be added).  
-Assets (tokens, dice, audio) are CC0 / Kenney.nl – see `assets/*/CREDITS.md`.
+MIT – see [`LICENSE`](LICENSE).  
+Assets (tokens, dice, audio) are CC0 / Kenney.nl – see `assets/audio/CREDITS.md`.
 
 ---
 
@@ -141,7 +147,7 @@ Assets (tokens, dice, audio) are CC0 / Kenney.nl – see `assets/*/CREDITS.md`.
 
 * **Author** – Supratim Sanyal / SANYALnet Labs  
 * **Snake reference art** – `assets/reference/snake_example.jpg`  
-* **Audio** – Kenney “Impact” & “Interface” packs (CC0)  
+* **Audio** – Kenney “Casino”, “Interface”, “Digital” & “Impact” packs (CC0) – see `assets/audio/CREDITS.md`  
 
 ---
 

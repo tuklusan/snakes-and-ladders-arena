@@ -1,4 +1,4 @@
-# Technical Specification: Indian-Style Snakes and Ladders (Chaturanga-based)
+# Technical Specification: Indian-Style Snakes and Ladders (Moksha Patam / Gyan Chaupar tradition)
 
 ## 1. Overview
 A deterministic, 4-player, turn-based board game played on a 10x10 grid (tiles 1-100). The game incorporates non-linear traversal via "Snakes" (downgrades) and "Ladders" (upgrades), with competitive "Capture" mechanics.
