@@ -3,6 +3,9 @@
 > **A fully-automated, browser-based, 4-player Indian Snakes & Ladders arena**  
 > Procedural boards · SVG snakes & ladders · real-time animation · zero-click auto-play
 
+### 📝 Read the build story
+**➡️ [How AI Agents Built a Snakes & Ladders Web Game](https://supratim-sanyal.blogspot.com/2026/08/build-snakes-and-ladders-web-game-ai-agents.html)** — the full story of an AI software company (a fleet of LLM agents running an SDLC) building this arena, on the **SANYALnet Labs blog**.
+
 ---
 
 ## ✨ Highlights
@@ -138,8 +141,11 @@ npx eslint src/js/
 
 ## 📄 License
 
-MIT – see [`LICENSE`](LICENSE).  
-Assets (tokens, dice, audio) are CC0 / Kenney.nl – see `assets/audio/CREDITS.md`.
+Copyright © 2026 Supratim Sanyal / SANYALnet Labs.
+
+Licensed under the **SANYALnet Labs Non-Commercial License** — free to use, modify, and distribute for **non-commercial** purposes (personal, educational, hobbyist); **commercial use is prohibited** without prior written permission. Derivative works must carry the attribution *“Based on original work by Supratim Sanyal of SANYALnet Labs.”* See [`LICENSE`](LICENSE) for the full terms.
+
+Third-party assets (tokens, dice, audio) are CC0 / Kenney.nl — see `assets/audio/CREDITS.md`.
 
 ---
 

@@ -1,14 +1,25 @@
 {
-  "name": "snakes-and-ladders",
+  "name": "snakes-and-ladders-arena",
   "version": "1.0.0",
-  "description": "",
-  "main": "test.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "description": "Fully-automated, browser-based, 4-player Indian Snakes & Ladders arena: procedural boards, SVG snakes & ladders, real-time animation, zero-click auto-play.",
+  "homepage": "https://github.com/tuklusan/snakes-and-ladders-arena",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tuklusan/snakes-and-ladders-arena.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "test": "node tools/test_board_gen.js && node tools/test_board_stress.js",
+    "serve": "python3 tools/serve_nocache.py 8000"
+  },
+  "keywords": [
+    "snakes-and-ladders",
+    "board-game",
+    "svg",
+    "auto-play",
+    "kiosk"
+  ],
+  "author": "Supratim Sanyal / SANYALnet Labs",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "jsdom": "^30.0.1",
     "node-fetch": "^3.3.2",
