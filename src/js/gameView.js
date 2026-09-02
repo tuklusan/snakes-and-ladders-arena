@@ -1057,34 +1057,40 @@ class GameView {
             });
         }
         
-        // UNLOCK HTMLAudioElement FALLBACKS: prime each <audio> so they can play on iOS
-        // (iOS requires a user gesture to unlock <audio> elements individually)
-        Object.values(this.assets.audio).forEach(audio => {
-            if (audio && audio.play) {
-                try {
-                    const p = audio.play();
-                    if (p && p.catch) p.catch(() => {});
-                    audio.pause();
-                    if (audio.readyState > 0) {
-                        audio.currentTime = 0;
-                    }
-                } catch (e) {
-                    // ignore any error during priming
-                }
-            }
-        });
-        
-        // Play a sound to satisfy the user-gesture requirement (use the 'enter' sound if available)
-        this.playAudio('enter');
-        
+        // CRITICAL: start the game FIRST, before any audio calls, so a throw in audio cannot block gameplay
         // Remove the button from DOM
         if (this.startButtonElement.parentNode) {
             this.startButtonElement.parentNode.removeChild(this.startButtonElement);
         }
+        // Trigger the first dice roll immediately
+        this.autoRoll();
+        
+        // THEN best-effort audio unlock/priming (wrapped so any throw cannot affect game start)
+        try {
+            // UNLOCK HTMLAudioElement FALLBACKS: prime each <audio> so they can play on iOS
+            // (iOS requires a user gesture to unlock <audio> elements individually)
+            Object.values(this.assets.audio).forEach(audio => {
+                if (audio && audio.play) {
+                    try {
+                        const p = audio.play();
+                        if (p && p.catch) p.catch(() => {});
+                        audio.pause();
+                        if (audio.readyState > 0) {
+                            audio.currentTime = 0;
+                        }
+                    } catch (e) {
+                        // ignore any error during priming
+                    }
+                }
+            });
+            
+            // Play a sound to satisfy the user-gesture requirement (use the 'enter' sound if available)
+            this.playAudio('enter');
+        } catch (e) {
+            console.warn('[gameView] Audio unlock/priming failed (non-fatal):', e);
+        }
         
         console.log('[gameView] Audio unlocked via user interaction (AudioContext + HTMLAudioElements primed)');
-        // Trigger the first dice roll after unlocking audio
-        this.autoRoll();
     }
 
     clearTimeouts() {
@@ -1936,10 +1942,17 @@ class GameView {
         // Fallback: HTMLAudioElement (legacy path)
         const audio = this.assets.audio[event];
         if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => {
-                console.warn(`[gameView] Failed to play audio ${event}:`, e);
-            });
+            try {
+                if (audio.readyState > 0) {
+                    audio.currentTime = 0;
+                }
+                const p = audio.play();
+                if (p && p.catch) p.catch(e => {
+                    console.warn(`[gameView] Failed to play audio ${event}:`, e);
+                });
+            } catch (e) {
+                console.warn(`[gameView] Fallback play failed for ${event}:`, e);
+            }
         } else {
             console.warn(`[gameView] Audio not found for event: ${event}`);
         }
