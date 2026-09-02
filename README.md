@@ -1,5 +1,9 @@
 # 🐍🪜 SANYALnet Labs – Indian Snakes & Ladders Arena
 
+[![CI](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/License-SANYALnet%20Non--Commercial-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/tuklusan/snakes-and-ladders-arena?sort=semver)](https://github.com/tuklusan/snakes-and-ladders-arena/releases/latest)
+
 > **A fully-automated, browser-based, 4-player Indian Snakes & Ladders arena**  
 > Procedural boards · SVG snakes & ladders · real-time animation · zero-click auto-play
 
