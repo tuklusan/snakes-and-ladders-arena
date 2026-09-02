@@ -1061,10 +1061,16 @@ class GameView {
         // (iOS requires a user gesture to unlock <audio> elements individually)
         Object.values(this.assets.audio).forEach(audio => {
             if (audio && audio.play) {
-                const p = audio.play();
-                if (p && p.catch) p.catch(() => {}); // ignore errors
-                audio.pause();
-                audio.currentTime = 0;
+                try {
+                    const p = audio.play();
+                    if (p && p.catch) p.catch(() => {});
+                    audio.pause();
+                    if (audio.readyState > 0) {
+                        audio.currentTime = 0;
+                    }
+                } catch (e) {
+                    // ignore any error during priming
+                }
             }
         });
         
