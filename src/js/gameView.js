@@ -74,6 +74,14 @@ class GameView {
         this.startButtonElement.addEventListener('click', () => {
             this._unlockAudioAndStart();
         });
+        // iOS Safari: 'click' fires on second tap; use pointerup (covers mouse/touch/pen) with a fire-once guard
+        this.startTriggered = false;
+        this.startButtonElement.addEventListener('pointerup', (e) => {
+            if (this.startTriggered) return;
+            e.preventDefault();
+            this.startTriggered = true;
+            this._unlockAudioAndStart();
+        }, { passive: false });
         this._debugEnabled = (new URLSearchParams(window.location.search).get('debug') === '1');
     }
 
@@ -857,9 +865,10 @@ class GameView {
                 })
                 .then(audioBuffer => {
                     this.audioBuffers[event] = audioBuffer;
+                    console.log(`[gameView] Web Audio decode SUCCESS for ${event}`);
                 })
                 .catch(e => {
-                    console.warn(`[gameView] Web Audio decode failed for ${event} (fallback to HTMLAudioElement):`, e);
+                    console.warn(`[gameView] Web Audio decode FAILED for ${event} (fallback to HTMLAudioElement):`, e);
                 });
         });
     }
@@ -1034,6 +1043,10 @@ class GameView {
      * This satisfies the user-gesture requirement for audio playback.
      */
     _unlockAudioAndStart() {
+        // Fire-once guard (also hit by pointerup handler)
+        if (this.startTriggered) return;
+        this.startTriggered = true;
+        
         // Mark audio as unlocked
         this.isAudioUnlocked = true;
         
@@ -1044,6 +1057,17 @@ class GameView {
             });
         }
         
+        // UNLOCK HTMLAudioElement FALLBACKS: prime each <audio> so they can play on iOS
+        // (iOS requires a user gesture to unlock <audio> elements individually)
+        Object.values(this.assets.audio).forEach(audio => {
+            if (audio && audio.play) {
+                const p = audio.play();
+                if (p && p.catch) p.catch(() => {}); // ignore errors
+                audio.pause();
+                audio.currentTime = 0;
+            }
+        });
+        
         // Play a sound to satisfy the user-gesture requirement (use the 'enter' sound if available)
         this.playAudio('enter');
         
@@ -1052,7 +1076,7 @@ class GameView {
             this.startButtonElement.parentNode.removeChild(this.startButtonElement);
         }
         
-        console.log('[gameView] Audio unlocked via user interaction');
+        console.log('[gameView] Audio unlocked via user interaction (AudioContext + HTMLAudioElements primed)');
         // Trigger the first dice roll after unlocking audio
         this.autoRoll();
     }
