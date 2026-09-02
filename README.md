@@ -7,6 +7,9 @@
 > **A fully-automated, browser-based, 4-player Indian Snakes & Ladders arena**  
 > Procedural boards · SVG snakes & ladders · real-time animation · zero-click auto-play
 
+### ▶️ Play it now
+**[▶️ Play in your browser (GitHub Pages)](https://tuklusan.github.io/snakes-and-ladders-arena/)** — then click **“Click to start the arena”** to unlock audio and watch it auto-play.
+
 ### 📝 Read the build story
 **➡️ [How AI Agents Built a Snakes & Ladders Web Game](https://supratim-sanyal.blogspot.com/2026/08/build-snakes-and-ladders-web-game-ai-agents.html)** — the full story of an AI software company (a fleet of LLM agents running an SDLC) building this arena, on the **SANYALnet Labs blog**.
 
