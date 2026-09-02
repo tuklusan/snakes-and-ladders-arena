@@ -845,7 +845,7 @@ class GameView {
             this.assets.audio[event] = audio;
 
             // 2. Fetch and decode audio into AudioBuffer for low-latency Web Audio API playback
-            // (also counts toward asset tally via assetLoaded/assetError)
+            // (does NOT affect asset tally; HTMLAudioElement above handles loaded/error counting)
             fetch(`assets/audio/${event}.${preferredExt}`)
                 .then(response => response.arrayBuffer())
                 .then(arrayBuffer => {
@@ -857,11 +857,9 @@ class GameView {
                 })
                 .then(audioBuffer => {
                     this.audioBuffers[event] = audioBuffer;
-                    this.assetLoaded();
                 })
                 .catch(e => {
-                    console.error(`[gameView] Failed to load/decode audio ${event} for Web Audio:`, e);
-                    this.assetError({ target: { src: `assets/audio/${event}.${preferredExt}` } });
+                    console.warn(`[gameView] Web Audio decode failed for ${event} (fallback to HTMLAudioElement):`, e);
                 });
         });
     }
