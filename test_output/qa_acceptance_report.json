@@ -1,0 +1,54 @@
+{
+  "test1_kiosk": {
+    "passed": true,
+    "details": [
+      "Start button visible: false (expected: false)",
+      "PASS: No start button visible - auto-start working",
+      "Browser preferred audio format: mp3",
+      "Loaded audio formats: {\"roll\":\"mp3\",\"step\":\"mp3\",\"settle\":\"mp3\",\"ladder\":\"mp3\",\"snake\":\"mp3\",\"six\":\"mp3\",\"triple_six\":\"mp3\",\"turn\":\"mp3\",\"win\":\"mp3\",\"gameover\":\"mp3\",\"capture\":\"mp3\",\"enter\":\"mp3\"}",
+      "PASS: All 12 audio events loaded",
+      "All audio use mp3: PASS",
+      "Audio-related logs: 0 entries"
+    ],
+    "screenshots": [
+      "/home/sanyalnet/SOFTWARE-DEVELOPMENT/snakes-and-ladders/test_output/qa_screenshots/test1_kiosk_mode.png"
+    ]
+  },
+  "test2_nonkiosk": {
+    "passed": true,
+    "details": [
+      "Debug info: {\"isKioskMode\":false,\"startButtonInDOM\":false,\"startButtonParent\":\"yes\",\"containerHasButton\":true,\"containerInnerHTML\":\"\\n        <!-- Left margin title panel -->\\n        <div id=\\\"left-title-panel\\\" style=\\\"position: relative; flex: 0 0 60px; display: flex; flex-direction: column; align-items: center; padding: 4px; box-sizing: border-box;\\\">\\n            <div class=\\\"title-content\\\">\\n                <div class=\\\"title-main\\\">SANYALnet Labs Snakes &amp; Ladders Arena</div>\\n                <div class=\\\"title-sub\\\">© Supratim Sanyal</div>\\n            </div>\\n        </div>\\n        \\n        <!-- Game board and controls -->\\n     \"}",
+      "Start button visible immediately: true (expected: true)",
+      "PASS: Start button visible immediately on load",
+      "Initial game state: {\"positions\":[0,0,0,0],\"currentTurn\":0,\"isGameOver\":false,\"keys\":[\"NUM_PLAYERS\",\"SafeZones\",\"Ladders\",\"Snakes\",\"pawn_positions\",\"active_player\",\"consecutive_sixes\",\"turn_start_position\",\"game_over\",\"winner\",\"lastRoll\",\"lastMover\",\"lastMoveIntermediatePosition\",\"lastTurnRecord\"]}",
+      "PASS: Game has not auto-started (all tokens at position 0)",
+      "Game state after click: {\"positions\":[1,0,0,0],\"currentTurn\":1,\"isGameOver\":false,\"keys\":[\"NUM_PLAYERS\",\"SafeZones\",\"Ladders\",\"Snakes\",\"pawn_positions\",\"active_player\",\"consecutive_sixes\",\"turn_start_position\",\"game_over\",\"winner\",\"lastRoll\",\"lastMover\",\"lastMoveIntermediatePosition\",\"lastTurnRecord\"]}",
+      "PASS: Game started after button click"
+    ],
+    "screenshots": [
+      "/home/sanyalnet/SOFTWARE-DEVELOPMENT/snakes-and-ladders/test_output/qa_screenshots/test2_nonkiosk_mode.png"
+    ]
+  },
+  "test3_mobile": {
+    "passed": true,
+    "details": [
+      "Commentary debug: {\"contentScrollHeight\":893,\"contentClientHeight\":252,\"contentInnerHTML\":4200,\"panelStyle\":\"\",\"contentStyle\":\"\"}",
+      "Body scrollWidth: 390, clientWidth: 390",
+      "Horizontal overflow: false (expected: false)",
+      "PASS: No horizontal scroll/overflow",
+      "Layout info: {\n  \"titleTop\": 8,\n  \"boardTop\": 76,\n  \"commentaryTop\": 574,\n  \"isStackedCorrectly\": true,\n  \"boardWidth\": 374,\n  \"containerWidth\": 390,\n  \"boardFillsWidth\": true,\n  \"commentaryScrollable\": true,\n  \"commentaryContentHeight\": 893,\n  \"commentaryViewportHeight\": 252\n}",
+      "PASS: Layout stacks correctly (title → board → commentary)",
+      "PASS: Board fills viewport width",
+      "PASS: Commentary panel is scrollable"
+    ],
+    "screenshots": [
+      "/home/sanyalnet/SOFTWARE-DEVELOPMENT/snakes-and-ladders/test_output/qa_screenshots/test3_mobile_390x844.png"
+    ]
+  },
+  "summary": {
+    "test1_kiosk": "PASS",
+    "test2_nonkiosk": "PASS",
+    "test3_mobile": "PASS",
+    "overall": "PASS"
+  }
+}

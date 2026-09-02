@@ -752,6 +752,13 @@ class GameView {
         // Size tokens after all DOM is created
         this.sizeTokens();
         console.log("DOM creation complete");
+        
+        // In non-kiosk mode, show the start button immediately on DOM ready
+        // This is independent of asset loading state and satisfies iOS user-gesture requirement
+        if (!this.isKioskMode) {
+            this.showStartButton();
+            console.log('[gameView] Non-kiosk mode: Start button shown immediately on DOM ready');
+        }
     }
 
     loadAssets() {
@@ -768,12 +775,25 @@ class GameView {
         // Set a timeout to hide loading overlay after 5 seconds if assets don't load
         this.loadingTimeout = setTimeout(() => {
             if (!this.isAssetsLoaded && !this.isAssetsHandled) {
-                console.log("[gameView] Loading timeout: hiding overlay and enabling roll button");
+                console.log("[gameView] Loading timeout: hiding overlay");
                 this.hideLoadingOverlay();
                 this.enableRollButton();
                 this.isAssetsHandled = true;
-                // Start auto-play even if assets didn't load (maybe some failed)
-                this.autoRoll();
+                
+                // In non-kiosk mode: do NOT auto-start. Button is already shown (or ensure it's visible).
+                // In kiosk mode: auto-start the game.
+                if (!this.isKioskMode) {
+                    // Ensure start button is visible (should already be shown from createDOM)
+                    if (!this.startButtonElement.parentNode) {
+                        this.showStartButton();
+                        console.log('[gameView] Non-kiosk mode: Loading timeout - ensuring start button is visible');
+                    }
+                    console.log('[gameView] Non-kiosk mode: Loading timeout - waiting for user click, NOT auto-starting');
+                } else {
+                    // Kiosk mode: auto-start even if assets didn't fully load
+                    console.log('[gameView] Kiosk mode: Loading timeout - auto-starting game');
+                    this.autoRoll();
+                }
             }
         }, 5000);
 
@@ -808,11 +828,14 @@ class GameView {
         tumbleSheet.src = 'assets/images/dice/dice_tumble_sheet.png';
         this.assets.diceTumbleSheet = tumbleSheet;
 
-        // Load audio files
+        // Load audio files with format fallback (MP3 first for iOS WebKit, OGG fallback)
         const audioEvents = ['roll', 'step', 'settle', 'ladder', 'snake', 'six', 'triple_six', 'turn', 'win', 'gameover', 'capture', 'enter'];
+        // Detect MP3 support once (iOS WebKit cannot decode OGG Vorbis)
+        const canPlayMp3 = (new Audio()).canPlayType('audio/mpeg');
+        const preferredExt = canPlayMp3 ? 'mp3' : 'ogg';
         audioEvents.forEach(event => {
             const audio = new Audio();
-            audio.src = `assets/audio/${event}.ogg`;
+            audio.src = `assets/audio/${event}.${preferredExt}`;
             audio.preload = 'auto';
             audio.addEventListener('loadeddata', () => this.assetLoaded(), { once: true });
             audio.addEventListener('error', (e) => this.assetError(e), { once: true });
@@ -839,23 +862,31 @@ class GameView {
             if (!this.isAssetsHandled) {
                 this.isAssetsHandled = true;
                 this.hideLoadingOverlay();
-                // Probe autoplay policy - wait for result before deciding to auto-start
-                if (!this.hasProbedAutoplay) {
-                    this.hasProbedAutoplay = true;
-                    this.probeAutoplay().then(() => {
-                        // Probe completed. Check if start button is shown (autoplay blocked) or not (autoplay allowed)
-                        if (!this.startButtonElement.parentNode) {
-                            // Autoplay allowed (kiosk): auto-start the game
-                            console.log('[gameView] Autoplay allowed, starting game automatically');
-                            if (this.controller) {
-                                this.controller.resetGame();
+                
+                // In non-kiosk mode, the start button is already shown (in createDOM).
+                // We do NOT probe autoplay or auto-start - we wait for user click.
+                // In kiosk mode, probe autoplay policy to determine if we can auto-start.
+                if (!this.isKioskMode) {
+                    console.log('[gameView] Non-kiosk mode: Assets loaded, start button already shown, waiting for user click');
+                } else {
+                    // Probe autoplay policy - wait for result before deciding to auto-start
+                    if (!this.hasProbedAutoplay) {
+                        this.hasProbedAutoplay = true;
+                        this.probeAutoplay().then(() => {
+                            // Probe completed. Check if start button is shown (autoplay blocked) or not (autoplay allowed)
+                            if (!this.startButtonElement.parentNode) {
+                                // Autoplay allowed (kiosk): auto-start the game
+                                console.log('[gameView] Kiosk mode: Autoplay allowed, starting game automatically');
+                                if (this.controller) {
+                                    this.controller.resetGame();
+                                }
+                                this.autoRoll();
+                            } else {
+                                // Autoplay blocked even in kiosk: button is shown, wait for user click
+                                console.log('[gameView] Kiosk mode: Autoplay blocked, start button shown, waiting for user click');
                             }
-                            this.autoRoll();
-                        } else {
-                            // Autoplay blocked (normal browser): button is shown, wait for user click
-                            console.log('[gameView] Autoplay blocked, start button shown, waiting for user click');
-                        }
-                    });
+                        });
+                    }
                 }
             }
         }
@@ -1043,7 +1074,10 @@ class GameView {
             this.hasProbedAutoplay = true;
             await this.probeAutoplay();
             // If the button is now shown, we wait for the user to click it.
-            if (this.startButtonElement.parentNode) {
+            // In non-kiosk mode, the button is always shown initially (from createDOM or probeAutoplay),
+            // but the user gesture has already occurred (button click) when we reach here via _unlockAudioAndStart.
+            // Only return early in kiosk mode where the button appears due to autoplay being blocked.
+            if (this.isKioskMode && this.startButtonElement.parentNode) {
                 return;
             }
         }

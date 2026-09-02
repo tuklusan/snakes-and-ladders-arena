@@ -188,75 +188,373 @@ body {
     background: #fb8c00;
 }
 
-/* Responsive adjustments */
-@media (max-width: 600px) {
+/* Responsive adjustments for tablets and small laptops */
+@media (max-width: 1200px) {
     #game-container {
-        margin: 10px;
-        padding: 15px;
-        min-height: auto;
-        flex-direction: column;
-        align-items: center;
+        grid-template-columns: 80px 1fr 250px;
+    }
+}
+
+@media (max-width: 900px) {
+    #game-container {
+        grid-template-columns: 60px 1fr 200px;
+    }
+    
+    #left-title-panel .title-main {
+        font-size: 1.2rem;
+    }
+    
+    #left-title-panel .title-sub {
+        font-size: 0.8rem;
+    }
+    
+    #right-commentary-panel #commentary-content {
+        font-size: 0.75rem;
+        padding: 8px;
+    }
+}
+
+/* ============================================================================
+   MOBILE VIEWPORT POLISH (PRD-C)
+   Target: 390x844 (iPhone 14/15/16), 360x800 (Android), 414x896 (iPhone Plus/Max)
+   Stack vertically: Title → Board → Commentary
+   Board fits viewport width, no horizontal scroll, readable size
+   ============================================================================ */
+
+/* Phones in portrait: up to 420px wide (covers 390, 360, 414) */
+@media (max-width: 420px) {
+    /* Container: switch to vertical flex, full viewport width, no max-width constraint */
+    #game-container {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 8px !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        gap: 8px !important;
+        min-height: 100vh !important;
+        box-sizing: border-box !important;
+        align-items: stretch !important;
+    }
+
+    /* Title panel: horizontal text, compact height, full width */
+    #left-title-panel {
+        order: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        min-height: 0 !important;
+        padding: 8px 12px !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        background: #f8f9fa !important;
+        border-radius: 8px !important;
+    }
+
+    #left-title-panel .title-content {
+        writing-mode: horizontal-tb !important;
+        transform: none !important;
+        text-orientation: mixed !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        max-width: 100% !important;
+    }
+
+    #left-title-panel .title-main {
+        font-size: 1.1rem !important;
+        font-weight: bold !important;
+        margin-bottom: 2px !important;
+        letter-spacing: 0.3px !important;
+    }
+
+    #left-title-panel .title-sub {
+        font-size: 0.75rem !important;
+        color: #666 !important;
+        font-style: italic !important;
+    }
+
+    /* Board container: full width, centered, no fixed width from JS */
+    #game-board-container {
+        order: 1 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 8px !important;
+        padding: 4px !important;
+        box-sizing: border-box !important;
+        position: relative !important;
+    }
+
+    /* Board: fill viewport width (minus padding), square aspect ratio */
+    #game-board {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Staging area: full width, responsive height */
+    #staging-area {
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        min-height: 44px !important; /* touch target size */
+        display: flex !important;
+        justify-content: space-around !important;
+        align-items: center !important;
+        padding: 4px 8px !important;
+        box-sizing: border-box !important;
+        background: rgba(0,0,0,0.05) !important;
+        border-radius: 8px !important;
+    }
+
+    /* Right column wrapper (holds dice + commentary): full width, at bottom */
+    #right-column-wrapper {
+        order: 2 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+    }
+
+    /* Dice container: centered, touch-friendly */
+    #dice-container {
+        width: 56px !important;
+        height: 56px !important;
+        min-height: 56px !important;
+        flex: 0 0 56px !important;
+        margin: 0 auto !important;
+        position: static !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    }
+
+    /* Commentary panel: scrollable, fixed max-height, at bottom */
+    #right-commentary-panel {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        max-height: 35vh !important; /* ~300px on 844px viewport */
+        display: flex !important;
+        flex-direction: column !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
+        background: #f8f9fa !important;
+        border: 1px solid #eee !important;
+    }
+
+    #right-commentary-panel #commentary-content {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        padding: 10px 12px !important;
+        font-family: 'Courier New', monospace !important;
+        font-size: 0.8rem !important;
+        line-height: 1.5 !important;
+        -webkit-overflow-scrolling: touch !important; /* momentum scrolling on iOS */
+    }
+
+    /* Scrollbar styling for mobile */
+    #right-commentary-panel #commentary-content::-webkit-scrollbar {
+        width: 6px !important;
+    }
+
+    #right-commentary-panel #commentary-content::-webkit-scrollbar-track {
+        background: transparent !important;
+    }
+
+    #right-commentary-panel #commentary-content::-webkit-scrollbar-thumb {
+        background: #c1c1c1 !important;
+        border-radius: 3px !important;
+    }
+
+    /* Token elements: ensure they scale with board */
+    .game-token {
+        /* Token sizing is handled by JS sizeTokens(), but ensure they're above board */
+        z-index: 20 !important;
+    }
+
+    /* Cell text: readable on mobile */
+    .cell {
+        font-size: 35% !important; /* smaller than desktop 50% for density */
+    }
+
+    /* Footer: compact */
+    #app-footer {
+        margin: 8px auto 0 !important;
+        max-width: 100% !important;
+        padding: 8px 0 !important;
+        height: auto !important;
+        line-height: 1.4 !important;
+        font-size: 12px !important;
+    }
+}
+
+/* Small phones: 360px and below (e.g., older Android) */
+@media (max-width: 360px) {
+    #game-container {
+        padding: 6px !important;
+        gap: 6px !important;
+    }
+
+    #left-title-panel {
+        padding: 6px 10px !important;
+    }
+
+    #left-title-panel .title-main {
+        font-size: 1rem !important;
+    }
+
+    #left-title-panel .title-sub {
+        font-size: 0.7rem !important;
+    }
+
+    #game-board-container {
+        gap: 6px !important;
+    }
+
+    #dice-container {
+        width: 52px !important;
+        height: 52px !important;
+        min-height: 52px !important;
+        flex: 0 0 52px !important;
+    }
+
+    #right-commentary-panel {
+        max-height: 30vh !important;
+    }
+
+    #right-commentary-panel #commentary-content {
+        font-size: 0.75rem !important;
+        padding: 8px 10px !important;
+    }
+
+    .cell {
+        font-size: 30% !important;
+    }
+}
+
+/* Landscape phones: height-constrained, width > height */
+@media (max-height: 480px) and (orientation: landscape) {
+    #game-container {
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        min-height: 100vh !important;
+        padding: 8px !important;
+        gap: 8px !important;
+        align-items: flex-start !important;
+    }
+
+    #left-title-panel {
+        order: 0 !important;
+        flex: 0 0 auto !important;
+        width: auto !important;
+        min-width: 120px !important;
+        max-width: 160px !important;
+        height: 100% !important;
+        padding: 8px !important;
+    }
+
+    #left-title-panel .title-content {
+        writing-mode: vertical-rl !important;
+        text-orientation: sideways !important;
+        white-space: normal !important;
+    }
+
+    #game-board-container {
+        order: 1 !important;
+        flex: 1 1 auto !important;
+        width: auto !important;
+        max-width: none !important;
+        height: 100% !important;
+        justify-content: center !important;
+    }
+
+    #game-board {
+        width: auto !important;
+        max-width: 100% !important;
+        max-height: 90vh !important;
+        height: auto !important;
+        aspect-ratio: 1 / 1 !important;
+    }
+
+    #staging-area {
+        display: none !important; /* hide staging in landscape to save space */
+    }
+
+    #right-column-wrapper {
+        order: 2 !important;
+        flex: 0 0 auto !important;
+        width: 180px !important;
+        max-width: 180px !important;
+        height: 100% !important;
+        min-height: 0 !important;
+    }
+
+    #dice-container {
+        margin: 8px auto !important;
+    }
+
+    #right-commentary-panel {
+        max-height: none !important;
+        height: calc(100% - 72px) !important; /* minus dice */
+    }
+}
+
+/* Tablets in portrait: 600px - 800px */
+@media (min-width: 421px) and (max-width: 768px) {
+    #game-container {
+        grid-template-columns: 70px 1fr 200px !important;
+        padding: 12px !important;
+        gap: 12px !important;
+    }
+
+    #left-title-panel .title-main {
+        font-size: 1.1rem !important;
+    }
+
+    #left-title-panel .title-sub {
+        font-size: 0.75rem !important;
+    }
+
+    #game-board {
+        max-width: 100% !important;
+    }
+
+    #right-commentary-panel #commentary-content {
+        font-size: 0.8rem !important;
+        padding: 10px !important;
+    }
+}
+
+/* High DPI displays: ensure crisp rendering */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    #game-board {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+    
+    .game-token {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
     }
     
     #dice-container {
-        width: 50px;
-        height: 50px;
-        position: static; /* DEF-0023: static position, centered by flex */
-        margin: 10px auto;
-    }
-    
-    #player-info {
-        position: relative; /* DEF-0022: relative, not absolute */
-        width: 100%;
-        max-width: 100%;
-        flex-direction: row;
-        justify-content: space-around;
-        padding: 10px;
-        margin: 10px 0;
-    }
-    
-    #roll-button {
-        padding: 10px 25px;
-        font-size: 1rem;
-    }
-    
-    #player-info > div {
-        min-width: 50px;
-    }
-    
-    #player-info div div:first-child {
-        width: 20px;
-        height: 20px;
-    }
-    
-    #game-board {
-        max-width: 100%;
-    }
-    
-    #left-title-panel {
-        grid-column: 1 / -1;
-        grid-row: 1;
-        height: 60px;
-        order: -1;
-    }
-    
-    #left-title-panel .title-content {
-        writing-mode: horizontal-tb;
-        transform: none;
-        text-orientation: mixed;
-    }
-    
-    #game-board-container {
-        grid-column: 1 / -1;
-        grid-row: 2;
-        order: 0;
-    }
-    
-    #right-column-wrapper {
-        grid-column: 1 / -1;
-        grid-row: 3;
-        max-height: 200px;
-        order: 1;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
     }
 }
 
@@ -393,29 +691,3 @@ body {
 .commentary-player-1 { color: #3498db; } /* Blue */
 .commentary-player-2 { color: #2ecc71; } /* Green */
 .commentary-player-3 { color: #f1c40f; } /* Yellow */
-
-/* Responsive adjustments for panels */
-@media (max-width: 1200px) {
-    #game-container {
-        grid-template-columns: 80px 1fr 250px;
-    }
-}
-
-@media (max-width: 900px) {
-    #game-container {
-        grid-template-columns: 60px 1fr 200px;
-    }
-    
-    #left-title-panel .title-main {
-        font-size: 1.2rem;
-    }
-    
-    #left-title-panel .title-sub {
-        font-size: 0.8rem;
-    }
-    
-    #right-commentary-panel #commentary-content {
-        font-size: 0.75rem;
-        padding: 8px;
-    }
-}
