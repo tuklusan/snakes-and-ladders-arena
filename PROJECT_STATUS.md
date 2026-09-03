@@ -1,6 +1,6 @@
 # Project Status — SANYALnet Labs Snakes & Ladders Arena
-**Last Updated:** 2026-09-01
-**Version / Tag:** `1.0.0`
+**Last Updated:** 2026-09-02
+**Version / Tag:** `1.0.1`
 **Server:** `python3 tools/serve_nocache.py 8000` (binds `0.0.0.0:8000`, no-store cache)
 
 ---
@@ -12,7 +12,7 @@ animation, twelve audio cues, and a zero-click auto-play loop. All operator issu
 (OI-1 through OI-4) and both PENDING items are resolved, and all 28 accepted defects
 from the DeepSeek code review have been repaired (see `.review_state/DEFECTS.md`,
 status `CLOSED - FIXED`). The build loads with zero console errors and zero failed
-requests. Version 1.0.0.
+requests. Version 1.0.1. Release 1.0.1 adds low-latency iOS audio via the Web Audio API, a responsive mobile layout for phones (verified on iPhone 12 and iPhone 15 Pro Max), and a reliable single-tap start button.
 
 ---
 

@@ -133,6 +133,7 @@ npx eslint src/js/
 | `beta-0.1.2` | 2026-09-01 | Repo consolidation: single linear branch, hygiene cleanup |
 | `beta-0.1.3` | 2026-09-01 | 28 DeepSeek defects repaired; layout height + capture-sound follow-ups |
 | **`1.0.0`** | **2026-09-01** | **First stable release** — all issues and review defects resolved; zero console errors |
+| **`1.0.1`** | **2026-09-02** | **Cross-platform polish** — iOS audio sync via Web Audio API, responsive mobile layout (iPhone 12 & iPhone 15 Pro Max), reliable single-tap start; zero console errors |
 
 ---
 

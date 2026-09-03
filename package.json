@@ -1,6 +1,6 @@
 {
   "name": "snakes-and-ladders-arena",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Fully-automated, browser-based, 4-player Indian Snakes & Ladders arena: procedural boards, SVG snakes & ladders, real-time animation, zero-click auto-play.",
   "homepage": "https://github.com/tuklusan/snakes-and-ladders-arena",
   "repository": {
