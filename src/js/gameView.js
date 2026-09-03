@@ -1029,6 +1029,8 @@ class GameView {
      * Show the start button as an overlay over the game container.
      */
     showStartButton() {
+        // Guard: never re-show the button once the game has started
+        if (this._unlockFired) return;
         // Append the button to the container (which is positioned relative)
         this.container.appendChild(this.startButtonElement);
     }
