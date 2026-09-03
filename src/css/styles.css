@@ -221,8 +221,8 @@ body {
    Board fits viewport width, no horizontal scroll, readable size
    ============================================================================ */
 
-/* Phones in portrait: up to 420px wide (covers 390, 360, 414) */
-@media (max-width: 420px) {
+/* Phones in portrait: up to 480px wide (covers 390, 414, 430) */
+@media (max-width: 480px) {
     /* Container: switch to vertical flex, full viewport width, no max-width constraint */
     #game-container {
         display: flex !important;

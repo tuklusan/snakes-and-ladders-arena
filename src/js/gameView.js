@@ -51,6 +51,9 @@ class GameView {
         this.isAudioUnlocked = false;
         this._deferredUnlock = false;
         this.hasProbedAutoplay = false;
+        this.audioContext = null; // lazily created AudioContext
+        this.audioBuffers = {};   // decoded AudioBuffer per event
+        this._unlockFired = false; // fire-once guard for start button
         // Detect kiosk mode (--app / standalone display mode)
         this.isKioskMode = window.matchMedia('(display-mode: standalone)').matches;
         this.startButtonElement = document.createElement('button');
@@ -72,6 +75,13 @@ class GameView {
         this.startButtonElement.addEventListener('click', () => {
             this._unlockAudioAndStart();
         });
+        // Also listen for pointerup as a fallback for iOS (same fire-once guard)
+        this.startButtonElement.addEventListener('pointerup', (e) => {
+            // Only handle primary button / touch; let the fire-once guard in _unlockAudioAndStart prevent double-fire
+            if (e.button === 0 || e.pointerType === 'touch') {
+                this._unlockAudioAndStart();
+            }
+        }, { passive: true });
         this._debugEnabled = (new URLSearchParams(window.location.search).get('debug') === '1');
     }
 
@@ -107,6 +117,19 @@ class GameView {
     
     _delay(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // Lazily create and return the AudioContext
+    _ensureAudioContext() {
+        if (!this.audioContext) {
+            try {
+                this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } catch (e) {
+                console.warn('[gameView] Failed to create AudioContext:', e);
+                this.audioContext = null;
+            }
+        }
+        return this.audioContext;
     }
 
     // Constants
@@ -840,6 +863,23 @@ class GameView {
             audio.addEventListener('loadeddata', () => this.assetLoaded(), { once: true });
             audio.addEventListener('error', (e) => this.assetError(e), { once: true });
             this.assets.audio[event] = audio;
+
+            // Decode into AudioBuffer for Web Audio API (near-zero latency on iOS)
+            // Fetch the same selected file and decode it
+            fetch(audio.src)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => {
+                    this._ensureAudioContext();
+                    return this.audioContext.decodeAudioData(arrayBuffer);
+                })
+                .then(audioBuffer => {
+                    this.audioBuffers[event] = audioBuffer;
+                    console.log(`[gameView] decodeAudioData SUCCESS: ${event}.${preferredExt}`);
+                })
+                .catch(err => {
+                    console.warn(`[gameView] decodeAudioData FAILED: ${event}.${preferredExt}`, err);
+                    // audioBuffers[event] remains undefined; fallback to HTMLAudioElement will handle it
+                });
         });
     }
 
@@ -998,24 +1038,56 @@ class GameView {
      * This satisfies the user-gesture requirement for audio playback.
      */
     _unlockAudioAndStart() {
-        // Mark audio as unlocked
+        // Fire-once guard
+        if (this._unlockFired) return;
+        this._unlockFired = true;
+
+        // 1. Mark audio as unlocked
         this.isAudioUnlocked = true;
-        
-        // Play a sound to satisfy the user-gesture requirement (use the 'enter' sound if available)
-        const audio = this.assets.audio.enter || new Audio('assets/audio/enter.ogg');
-        audio.currentTime = 0;
-        audio.play().catch(e => {
-            console.warn(`[gameView] Failed to play audio for unlock:`, e);
-        });
-        
-        // Remove the button from DOM
+
+        // 2. Resume AudioContext (wrapped; ignore errors)
+        try {
+            this._ensureAudioContext();
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume().catch(() => {});
+            }
+        } catch (e) {
+            // Ignore AudioContext resume errors
+        }
+
+        // 3. Remove the button from DOM NOW
         if (this.startButtonElement.parentNode) {
             this.startButtonElement.parentNode.removeChild(this.startButtonElement);
         }
-        
-        console.log('[gameView] Audio unlocked via user interaction');
-        // Trigger the first dice roll after unlocking audio
+
+        // 4. Trigger the first dice roll NOW
+        console.log('[gameView] Audio unlocked via user interaction; starting game');
         this.autoRoll();
+
+        // 5. THEN, best-effort: prime HTMLAudio fallbacks and play 'enter' (fully wrapped)
+        try {
+            // Prime each HTMLAudio fallback (play then pause) to satisfy any browser preload requirements
+            for (const [event, audio] of Object.entries(this.assets.audio)) {
+                if (audio && audio.readyState > 0) {
+                    audio.currentTime = 0;
+                }
+                if (audio) {
+                    const playPromise = audio.play();
+                    if (playPromise) {
+                        playPromise.then(() => {
+                            audio.pause();
+                            if (audio.readyState > 0) audio.currentTime = 0;
+                        }).catch(() => {
+                            // Ignore priming errors
+                        });
+                    }
+                }
+            }
+            // Play the 'enter' sound as confirmation
+            this.playAudio('enter');
+        } catch (e) {
+            console.warn('[gameView] Best-effort audio priming failed:', e);
+        }
     }
 
     clearTimeouts() {
@@ -1846,14 +1918,40 @@ class GameView {
         });
     }
 
-    // Play audio
+    // Play audio - primary path: Web Audio API (near-zero latency), fallback: HTMLAudioElement
+    // MUST NEVER THROW
     playAudio(event) {
+        // Primary path: decoded AudioBuffer via Web Audio API
+        const buffer = this.audioBuffers[event];
+        if (buffer && this._ensureAudioContext()) {
+            try {
+                const source = this.audioContext.createBufferSource();
+                source.buffer = buffer;
+                const gainNode = this.audioContext.createGain();
+                gainNode.gain.value = 1.0;
+                source.connect(gainNode);
+                gainNode.connect(this.audioContext.destination);
+                source.start(0);
+                return; // Success - never reaches fallback
+            } catch (e) {
+                console.warn(`[gameView] Web Audio play failed for ${event}, falling back:`, e);
+                // Fall through to HTMLAudioElement fallback
+            }
+        }
+
+        // Fallback path: HTMLAudioElement (guarded)
         const audio = this.assets.audio[event];
         if (audio) {
-            audio.currentTime = 0;
-            audio.play().catch(e => {
-                console.warn(`[gameView] Failed to play audio ${event}:`, e);
-            });
+            try {
+                if (audio.readyState > 0) {
+                    audio.currentTime = 0;
+                }
+                audio.play().catch(e => {
+                    console.warn(`[gameView] Fallback HTMLAudio play failed for ${event}:`, e);
+                });
+            } catch (e) {
+                console.warn(`[gameView] Fallback HTMLAudio error for ${event}:`, e);
+            }
         } else {
             console.warn(`[gameView] Audio not found for event: ${event}`);
         }
