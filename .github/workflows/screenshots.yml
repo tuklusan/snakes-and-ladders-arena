@@ -19,7 +19,7 @@ jobs:
   shots:
     name: ${{ matrix.label }}
     runs-on: ${{ matrix.label }}
-    timeout-minutes: 25
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       max-parallel: 10
@@ -42,7 +42,7 @@ jobs:
           chrome-version: stable
 
       - name: Provision browser (arm64 / slim fallback)
-        if: steps.chrome.outcome != 'success' || matrix.label == 'ubuntu-slim'
+        if: steps.chrome.outcome != 'success' || matrix.label == 'ubuntu-slim' || runner.os == 'macOS'
         shell: bash
         continue-on-error: true
         run: |
@@ -50,6 +50,8 @@ jobs:
           if [ "$RUNNER_OS" = "Linux" ]; then
             sudo apt-get update -y || true
             npx --yes playwright@1.47 install --with-deps chromium ||               sudo apt-get install -y chromium || sudo apt-get install -y chromium-browser || true
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            npx --yes playwright@1.47 install chromium || true
           elif [ "$RUNNER_OS" = "Windows" ]; then
             choco install googlechrome -y --no-progress --ignore-checksums || true
           fi
@@ -65,6 +67,7 @@ jobs:
           CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
           OFFSETS: ${{ inputs.offsets }}
           OUT_DIR: shots
+          PREFER_PLAYWRIGHT: ${{ runner.os == 'macOS' && '1' || '' }}
         run: node tools/arena-shot.js
 
       - name: Upload screenshots

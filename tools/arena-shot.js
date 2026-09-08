@@ -10,7 +10,31 @@ const LABEL = process.env.PLATFORM_LABEL || 'unknown';
 const OUT = process.env.OUT_DIR || 'shots';
 const OFFSETS = (process.env.OFFSETS || '30,300,600').split(',').map(Number);
 
+function playwrightChrome() {
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const roots = [path.join(home, '.cache', 'ms-playwright'),
+                 path.join(home, 'Library', 'Caches', 'ms-playwright'),
+                 path.join(home, 'AppData', 'Local', 'ms-playwright')];
+  for (const root of roots) {
+    try {
+      if (!fs.existsSync(root)) continue;
+      for (const d of fs.readdirSync(root).filter(x => x.startsWith('chromium'))) {
+        for (const rel of ['chrome-linux/chrome', 'chrome-win/chrome.exe',
+                           'chrome-mac/Chromium.app/Contents/MacOS/Chromium',
+                           'chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium']) {
+          const cand = path.join(root, d, rel);
+          if (fs.existsSync(cand)) return cand;
+        }
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
 function resolveChrome() {
+  // setup-chrome's macOS arm64 chromium launches but never answers CDP, so
+  // prefer Playwright's build where we ask for it.
+  if (process.env.PREFER_PLAYWRIGHT) { const p = playwrightChrome(); if (p) return p; }
   const envp = process.env.CHROME_PATH;
   if (envp && fs.existsSync(envp)) return envp;
   const c = [
@@ -21,24 +45,8 @@ function resolveChrome() {
     'C:\Program Files\Google\Chrome\Application\chrome.exe',
     'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
   ];
-  for (const p of c) { try { if (fs.existsSync(p)) return p; } catch (e) {} }
-  // Playwright cache (provides linux-arm64 chromium that Chrome-for-Testing lacks)
-  const home = process.env.HOME || process.env.USERPROFILE || '';
-  const pwRoots = [path.join(home, '.cache', 'ms-playwright'),
-                   path.join(home, 'AppData', 'Local', 'ms-playwright')];
-  for (const root of pwRoots) {
-    try {
-      if (!fs.existsSync(root)) continue;
-      for (const d of fs.readdirSync(root).filter(x => x.startsWith('chromium'))) {
-        for (const rel of ['chrome-linux/chrome', 'chrome-win/chrome.exe',
-                           'chrome-mac/Chromium.app/Contents/MacOS/Chromium']) {
-          const cand = path.join(root, d, rel);
-          if (fs.existsSync(cand)) return cand;
-        }
-      }
-    } catch (e) {}
-  }
-  return null;
+  for (const q of c) { try { if (fs.existsSync(q)) return q; } catch (e) {} }
+  return playwrightChrome();
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
