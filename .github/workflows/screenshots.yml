@@ -1,0 +1,81 @@
+name: Arena Screenshots
+
+on:
+  workflow_dispatch:
+    inputs:
+      offsets:
+        description: 'Capture offsets in seconds after start click'
+        required: false
+        default: '30,300,600'
+
+permissions:
+  contents: read
+
+jobs:
+  shots:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.label }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 10
+      matrix:
+        label:
+          - ubuntu-22.04
+          - ubuntu-latest
+          - ubuntu-24.04
+          - ubuntu-26.04
+          - ubuntu-22.04-arm
+          - ubuntu-24.04-arm
+          - ubuntu-26.04-arm
+          - ubuntu-slim
+          - windows-latest
+          - windows-2022
+          - windows-2025
+          - windows-2025-vs2026
+          - windows-11-arm
+          - windows-11-vs2026-arm
+          - macos-latest
+          - macos-15
+          - macos-14
+          - macos-15-intel
+          - macos-26
+          - macos-26-intel
+          - xcode-27
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Setup Chrome
+        id: chrome
+        continue-on-error: true
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Install puppeteer-core
+        shell: bash
+        run: npm init -y > /dev/null 2>&1 || true; npm install puppeteer-core@23 --no-audit --no-fund
+
+      - name: Capture screenshots
+        shell: bash
+        env:
+          PLATFORM_LABEL: ${{ matrix.label }}
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+          OFFSETS: ${{ inputs.offsets }}
+          OUT_DIR: shots
+        run: node tools/arena-shot.js
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shots-${{ matrix.label }}
+          path: shots/*.png
+          if-no-files-found: ignore
+          retention-days: 7

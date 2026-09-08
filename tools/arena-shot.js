@@ -1,0 +1,68 @@
+// Capture Snakes & Ladders Arena screenshots at fixed offsets after the start click.
+// Marked by platform via PLATFORM_LABEL. Uses a TRUSTED CDP mouse click so the
+// page's user-activation gate (start + audio unlock) is satisfied.
+const fs = require('fs');
+const path = require('path');
+const puppeteer = require('puppeteer-core');
+
+const URL_ = process.env.TARGET_URL || 'https://tuklusan.github.io/snakes-and-ladders-arena/';
+const LABEL = process.env.PLATFORM_LABEL || 'unknown';
+const OUT = process.env.OUT_DIR || 'shots';
+const OFFSETS = (process.env.OFFSETS || '30,300,600').split(',').map(Number);
+
+function resolveChrome() {
+  const envp = process.env.CHROME_PATH;
+  if (envp && fs.existsSync(envp)) return envp;
+  const c = [
+    '/usr/bin/google-chrome-stable','/usr/bin/google-chrome','/usr/bin/chromium-browser',
+    '/usr/bin/chromium','/snap/bin/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    'C:\Program Files\Google\Chrome\Application\chrome.exe',
+    'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
+  ];
+  for (const p of c) { try { if (fs.existsSync(p)) return p; } catch (e) {} }
+  return null;
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+(async () => {
+  const exe = resolveChrome();
+  if (!exe) { console.error('NO_CHROME_FOUND on ' + LABEL); process.exit(78); }
+  console.log('platform=' + LABEL + ' chrome=' + exe);
+  fs.mkdirSync(OUT, { recursive: true });
+
+  const browser = await puppeteer.launch({
+    executablePath: exe,
+    headless: 'new',
+    protocolTimeout: 900000,
+    args: ['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--hide-scrollbars',
+           '--autoplay-policy=no-user-gesture-required','--window-size=1920,1080','--force-device-scale-factor=1'],
+    defaultViewport: { width: 1920, height: 1080 },
+  });
+
+  const page = await browser.newPage();
+  page.on('console', m => { if (m.type() === 'error') console.log('PAGE_ERR: ' + m.text().slice(0,150)); });
+  await page.goto(URL_, { waitUntil: 'networkidle2', timeout: 90000 });
+
+  const FIND = "[...document.querySelectorAll('button')].find(b=>/click to start/i.test(b.textContent||''))";
+  await page.waitForFunction('!!(' + FIND + ')', { timeout: 60000 });
+  const box = await page.evaluate(new Function('const b=' + FIND + '; const r=b.getBoundingClientRect(); return {x:r.x,y:r.y,w:r.width,h:r.height};'));
+  console.log('start button at ' + JSON.stringify(box));
+
+  await page.mouse.click(box.x + box.w / 2, box.y + box.h / 2);  // trusted gesture
+  const t0 = Date.now();
+  await page.waitForFunction('!(' + FIND + ')', { timeout: 45000 });
+  console.log('arena started');
+
+  for (const s of OFFSETS) {
+    const due = t0 + s * 1000 - Date.now();
+    if (due > 0) await sleep(due);
+    const f = path.join(OUT, LABEL + '__t' + s + 's.png');
+    await page.screenshot({ path: f });
+    const moves = await page.evaluate("(document.querySelector('#commentary-content')||{}).childElementCount||0");
+    console.log('captured ' + f + ' (commentary entries: ' + moves + ')');
+  }
+  await browser.close();
+})().catch(e => { console.error('FAIL ' + LABEL + ': ' + e.message); process.exit(1); });
