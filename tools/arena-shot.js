@@ -22,6 +22,22 @@ function resolveChrome() {
     'C:\Program Files (x86)\Google\Chrome\Application\chrome.exe',
   ];
   for (const p of c) { try { if (fs.existsSync(p)) return p; } catch (e) {} }
+  // Playwright cache (provides linux-arm64 chromium that Chrome-for-Testing lacks)
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const pwRoots = [path.join(home, '.cache', 'ms-playwright'),
+                   path.join(home, 'AppData', 'Local', 'ms-playwright')];
+  for (const root of pwRoots) {
+    try {
+      if (!fs.existsSync(root)) continue;
+      for (const d of fs.readdirSync(root).filter(x => x.startsWith('chromium'))) {
+        for (const rel of ['chrome-linux/chrome', 'chrome-win/chrome.exe',
+                           'chrome-mac/Chromium.app/Contents/MacOS/Chromium']) {
+          const cand = path.join(root, d, rel);
+          if (fs.existsSync(cand)) return cand;
+        }
+      }
+    } catch (e) {}
+  }
   return null;
 }
 

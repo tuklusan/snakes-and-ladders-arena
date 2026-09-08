@@ -58,6 +58,19 @@ jobs:
         with:
           chrome-version: stable
 
+      - name: Provision browser (arm64 / slim fallback)
+        if: steps.chrome.outcome != 'success' || matrix.label == 'ubuntu-slim'
+        shell: bash
+        continue-on-error: true
+        run: |
+          echo "setup-chrome outcome: ${{ steps.chrome.outcome }} - using fallback"
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -y || true
+            npx --yes playwright@1.47 install --with-deps chromium ||               sudo apt-get install -y chromium || sudo apt-get install -y chromium-browser || true
+          elif [ "$RUNNER_OS" = "Windows" ]; then
+            choco install googlechrome -y --no-progress --ignore-checksums || true
+          fi
+
       - name: Install puppeteer-core
         shell: bash
         run: npm init -y > /dev/null 2>&1 || true; npm install puppeteer-core@23 --no-audit --no-fund
