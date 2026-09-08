@@ -52,7 +52,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const browser = await puppeteer.launch({
     executablePath: exe,
     headless: 'new',
-    protocolTimeout: 900000,
+    protocolTimeout: 1800000,
     args: ['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--hide-scrollbars',
            '--autoplay-policy=no-user-gesture-required','--window-size=1920,1080','--force-device-scale-factor=1'],
     defaultViewport: { width: 1920, height: 1080 },
@@ -72,9 +72,18 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await page.waitForFunction('!(' + FIND + ')', { timeout: 45000 });
   console.log('arena started');
 
+  // Dwell with a CDP keepalive: a silent 10-minute sleep lets a pending
+  // protocol command age out (macOS runners failed with Network.enable timeout).
+  const dwellUntil = async (deadline) => {
+    while (Date.now() < deadline) {
+      await sleep(Math.min(15000, deadline - Date.now()));
+      try { await page.evaluate('1'); } catch (e) {}
+    }
+  };
+
   for (const s of OFFSETS) {
     const due = t0 + s * 1000 - Date.now();
-    if (due > 0) await sleep(due);
+    if (due > 0) await dwellUntil(t0 + s * 1000);
     const f = path.join(OUT, LABEL + '__t' + s + 's.png');
     await page.screenshot({ path: f });
     const moves = await page.evaluate("(document.querySelector('#commentary-content')||{}).childElementCount||0");
