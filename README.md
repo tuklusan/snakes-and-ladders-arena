@@ -1,6 +1,6 @@
 # 🐍🪜 SANYALnet Labs – Indian Snakes & Ladders Arena
 
-[![CI](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/ci.yml/badge.svg)](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/ci.yml)
+[![Arena Screenshots](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/screenshots.yml/badge.svg)](https://github.com/tuklusan/snakes-and-ladders-arena/actions/workflows/screenshots.yml)
 [![License](https://img.shields.io/badge/License-SANYALnet%20Non--Commercial-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/tuklusan/snakes-and-ladders-arena?sort=semver)](https://github.com/tuklusan/snakes-and-ladders-arena/releases/latest)
 
@@ -27,7 +27,7 @@
 | **Kiosk-ready** | Detects `display-mode: standalone`; hides start button when autoplay allowed |
 | **Auto-play arena** | Starts, plays to completion, shows winner, waits 10 s, regenerates board, repeats — no user input required |
 | **Responsive layout** | 3-column flex UI (title • board • commentary) that works from desktop down to 600 px |
-| **Zero-build** | Pure ES6 modules, plain CSS, static files — drop into any static host (GitHub Pages, Netlify, Nginx) |
+| **Zero-build** | Four plain deferred `<script>` tags, plain CSS, static files — no bundler, no transpiler; drop into any static host (GitHub Pages, Netlify, Nginx) |
 
 ---
 
@@ -58,14 +58,73 @@ In normal browsers, autoplay is blocked — the game waits for a user gesture. T
 
 *In kiosk mode (`--app` / standalone) the button is hidden and the arena starts automatically.*
 
-### Gameplay at 30s and 90s
-Real mid-game captures from a properly running session (start button clicked, audio unlocked, auto-play active).
+---
 
-| 30 seconds | 90 seconds |
-|------------|------------|
-| ![30s](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_30s.png) | ![90s](https://raw.githubusercontent.com/tuklusan/snakes-and-ladders-arena/master/validation_output/screenshot_90s.png) |
+## 🌍 Cross-Platform Proof — 19 Runners, 3 OSes, 2 Architectures
 
-*Captured with headless Puppeteer at exact timestamps after start button click.*
+There is no build step, no runtime to install, and no native code — the arena is
+static HTML, CSS and JavaScript. The payoff is that *the identical bytes run
+anywhere a modern browser does*, and that is worth demonstrating rather than
+asserting.
+
+The [screenshot workflow](.github/workflows/screenshots.yml) points headless
+Chrome at the [live public URL](https://tuklusan.github.io/snakes-and-ladders-arena/)
+from **19 GitHub-hosted runner images**, clicks the start gate, and captures the
+running game at **30 s, 5 min and 10 min**.
+
+Every cell below is a **different machine playing its own independent game** —
+same code, same URL, ten minutes in:
+
+|             | **x86-64** | **ARM64** |
+|-------------|------------|-----------|
+| **Linux**   | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/ubuntu-latest__t600s.png" width="300"><br>`ubuntu-latest` | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/ubuntu-24.04-arm__t600s.png" width="300"><br>`ubuntu-24.04-arm` |
+| **Windows** | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/windows-latest__t600s.png" width="300"><br>`windows-latest` | — *no Chrome build exists for Windows ARM64* |
+| **macOS**   | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/macos-15-intel__t600s.png" width="300"><br>`macos-15-intel` *(Intel)* | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/macos-latest__t600s.png" width="300"><br>`macos-latest` *(Apple Silicon)* |
+
+Different boards, different dice, different pieces in flight — because each
+runner generates its own procedural board and plays its own game. The engine is
+the constant.
+
+### One session, sampled over time
+
+The same `ubuntu-latest` run at each capture point:
+
+| 30 seconds | 5 minutes | 10 minutes |
+|------------|-----------|------------|
+| <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/ubuntu-latest__t30s.png" width="270"> | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/ubuntu-latest__t300s.png" width="270"> | <img src="https://media.githubusercontent.com/media/tuklusan/snakes-and-ladders-arena/master/screenshots/runners/ubuntu-latest__t600s.png" width="270"> |
+
+The arena auto-restarts after each winner, so it is still playing at ten
+minutes with no input of any kind.
+
+### Full runner coverage
+
+All 57 captures live in [`screenshots/runners/`](screenshots/runners) as
+`<runner-label>__t{30,300,600}s.png` (stored via Git LFS).
+
+| OS | Arch | Runner images |
+|----|------|---------------|
+| Linux | x86-64 | `ubuntu-latest`, `ubuntu-22.04`, `ubuntu-24.04`, `ubuntu-26.04`, `ubuntu-slim` |
+| Linux | ARM64 | `ubuntu-22.04-arm`, `ubuntu-24.04-arm`, `ubuntu-26.04-arm` |
+| Windows | x86-64 | `windows-latest`, `windows-2022`, `windows-2025`, `windows-2025-vs2026` |
+| macOS | ARM64 | `macos-latest`, `macos-14`, `macos-15`, `macos-26`, `xcode-27` |
+| macOS | x86-64 | `macos-15-intel`, `macos-26-intel` |
+
+**19 of 21** runner images captured successfully. The two absentees are
+`windows-11-arm` and `windows-11-vs2026-arm`: no Chrome or Chromium build is
+published for Windows on ARM64, so there is no browser to drive. That is a
+platform gap, not an application one.
+
+### Reproducing the matrix
+
+```bash
+# any subset of runners, any capture offsets
+gh workflow run "Arena Screenshots" --ref master \
+  -f labels='["ubuntu-latest","macos-latest"]' \
+  -f offsets='30,300,600'
+```
+
+Captures arrive as per-runner artifacts; `tools/crop-shots.py` trims each frame
+to the board.
 
 ---
 
@@ -139,7 +198,7 @@ npx eslint src/js/
 
 ## 🚀 Roadmap (post-β)
 
-- Formal test suite (Vitest + Playwright) + GitHub Actions CI  
+- Formal test suite (Vitest + Playwright) — the cross-platform screenshot workflow is in place, but there is still no automated correctness gate  
 - Module split: `SnakeRenderer`, `LadderRenderer`, `TokenAnimator`, `AudioManager`  
 - Static-host packaging (esbuild / Vite) for GitHub Pages deploy  
 - Accessibility pass (ARIA, keyboard nav, colour-contrast audit)  

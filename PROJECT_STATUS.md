@@ -1,5 +1,5 @@
 # Project Status — SANYALnet Labs Snakes & Ladders Arena
-**Last Updated:** 2026-09-02
+**Last Updated:** 2026-09-08
 **Version / Tag:** `1.0.1`
 **Server:** `python3 tools/serve_nocache.py 8000` (binds `0.0.0.0:8000`, no-store cache)
 
@@ -19,13 +19,13 @@ requests. Version 1.0.1. Release 1.0.1 adds low-latency iOS audio via the Web Au
 ## Tech Stack
 | Layer | Technology |
 |-------|------------|
-| Language | Vanilla JavaScript (ES6 modules, no bundler) |
+| Language | Vanilla JavaScript — four plain deferred `<script>` tags in `index.html`, no bundler and no ES module graph |
 | Runtime | Browser (Chrome/Chromium); headless via Puppeteer for validation |
 | Dev dependencies | `puppeteer`, `jsdom`, `node-fetch` (see `package.json`) |
 | Styling | Plain CSS (`src/css/styles.css`) |
 | Architecture | MVC: `gameModel.js` (state + board gen + geometry), `gameController.js` (rules), `gameView.js` (DOM, SVG, animation, audio) |
 | Entry Point | `index.html` → `src/js/main.js` |
-| CI/CD | None (ad-hoc Node/Puppeteer scripts in `tools/`) |
+| CI/CD | `.github/workflows/screenshots.yml` — cross-platform capture matrix across 19 hosted runners (manual dispatch). `ci.yml` exists but is **disabled**; correctness checks remain ad-hoc Node/Puppeteer scripts in `tools/` |
 
 ---
 
@@ -34,7 +34,7 @@ requests. Version 1.0.1. Release 1.0.1 adds low-latency iOS audio via the Web Au
 snakes-and-ladders/
 ├── index.html                      # SPA entry point
 ├── package.json                    # Dev deps (Puppeteer, jsdom, node-fetch)
-├── LICENSE                         # MIT
+├── LICENSE                         # SANYALnet Labs Non-Commercial License
 ├── README.md                       # Public overview + screenshots
 ├── GAME-RULES.md                   # Canonical ruleset (pseudocode)
 ├── INDIAN-SNAKES-AND-LADDERS-GAME.md  # Technical specification
@@ -49,9 +49,12 @@ snakes-and-ladders/
 │       └── main.js                 # Bootstrap
 ├── assets/
 │   ├── images/tokens/, /dice/, /board/   # PNG assets
-│   ├── audio/                      # 12 .ogg files + CREDITS.md
+│   ├── audio/                      # 12 events x .ogg + .mp3 (24 files) + CREDITS.md
 │   └── reference/                  # Snake/ladder reference images + SVGs
+├── .github/workflows/              # screenshots.yml (active), ci.yml (disabled)
+├── screenshots/runners/            # 57 cross-platform captures, 19 runners (Git LFS)
 ├── tools/                          # Node/Puppeteer/shell utilities
+│                                   #   incl. arena-shot.js + crop-shots.py (capture harness)
 ├── validation_output/              # Screenshots + test reports
 ├── test_output/                    # Baseline/regression reports
 ├── .review_state/                  # DeepSeek review record (DEFECTS.md, adjudications)
@@ -72,7 +75,7 @@ snakes-and-ladders/
 
 ### Visual & UX
 - ✅ Three-column responsive layout (title • board • commentary), columns flush to the staging box with the Blog link directly beneath
-- ✅ SVG snakes: uniform-width sinuous sine-wave body rendered dark, small head (with two eyes and a forked tongue pointing outward) and fine whip tail; a `snakeSpeckle` SVG filter is applied (subtle texture — not a vivid yellow/black)
+- ✅ SVG snakes: uniform-width sinuous sine-wave body rendered dark, small head (no eyes — an elongated snout with a forked tongue pointing outward, matching the reference silhouette) and fine whip tail; a `snakeSpeckle` SVG filter is applied (subtle texture — not a vivid yellow/black)
 - ✅ SVG ladders: two rails with interior rungs only (no endpoint rungs)
 - ✅ Token animation: tile-by-tile walk + smooth glide along the exact SVG path, with the CSS position transition suppressed during jumps (no wobble)
 - ✅ Dice tumble animation + face display
@@ -152,7 +155,9 @@ Kiosk: launch Chromium with `--app=http://localhost:8000/index.html --autoplay-p
 ---
 
 ## Known Gaps / Future Work
-1. **No formal test suite** — only ad-hoc Node/Puppeteer scripts (no Vitest/Playwright, no CI).
+1. **No formal test suite** — only ad-hoc Node/Puppeteer scripts (no Vitest/Playwright). The
+   screenshot workflow proves the build *renders and plays* on 19 platforms, but nothing gates
+   correctness automatically; `ci.yml` is disabled.
 2. **`gameView.js` is monolithic** — a candidate for a module split (SnakeRenderer / LadderRenderer / TokenAnimator / AudioManager).
 3. **Snake speckle is subtle** — the `snakeSpeckle` filter is applied but the body still reads as dark rather than a vivid yellow/black; a color-matrix pass would make it read as documented.
 4. **Accessibility / i18n** — English only, no keyboard navigation or ARIA pass.
@@ -160,7 +165,11 @@ Kiosk: launch Chromium with `--app=http://localhost:8000/index.html --autoplay-p
 ---
 
 ## Resumption Checklist
-- [ ] `git pull origin master` (single branch; `main` was retired)
+- [ ] `git pull origin master` (`main` was retired; `master` is the working branch. Archive
+      branches `backup-audio-saga` and `backup-nim-review-222f7d3`, plus `pages-stable`, are
+      preserved on the remote and are not part of the active line)
+- [ ] `git lfs install && git lfs pull` — `screenshots/**/*.png` is LFS-tracked; without git-lfs
+      those files check out as 130-byte pointer stubs
 - [ ] `npm install` if dependencies changed
 - [ ] `python3 tools/serve_nocache.py 8000` to serve
 - [ ] Spot-check with `node tools/test_board_gen.js` / `bash tools/verify_all.sh`
