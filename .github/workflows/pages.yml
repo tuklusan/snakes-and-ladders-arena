@@ -1,0 +1,44 @@
+name: Deploy Pages
+
+# The Pages source is "GitHub Actions" (not "deploy from a branch"), so a push
+# to master does not publish by itself. This workflow publishes only the files
+# the game needs at runtime; screenshots/ (Git LFS), tools/, docs and review
+# artefacts stay out of the site.
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Stage site files
+        run: |
+          mkdir _site
+          cp index.html favicon.ico .nojekyll _site/
+          cp -r src assets _site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
